@@ -2036,36 +2036,7 @@ void create_mdl_material(const USDExporterContext &usd_export_context,
     return;
   }
 
-  usd_define_or_over<pxr::UsdGeomScope>(usd_export_context.stage,
-                                        usd_material.GetPath().AppendChild(usdtokens::mdl),
-                                        usd_export_context.export_params.export_as_overs);
-
-  pxr::SdfPath shader_path =
-      usd_material.GetPath().AppendChild(usdtokens::mdl).AppendChild(usdtokens::Shader);
-
-  pxr::UsdShadeShader shader = (usd_export_context.export_params.export_as_overs) ?
-                                   pxr::UsdShadeShader(
-                                       usd_export_context.stage->OverridePrim(shader_path)) :
-                                   pxr::UsdShadeShader::Define(usd_export_context.stage,
-                                                               shader_path);
-
-  if (!shader) {
-    std::cout << "WARNING in create_mdl_material(): couldn't create mdl shader " << shader_path
-              << std::endl;
-    return;
-  }
-
-  pxr::UsdShadeOutput material_surface_output = usd_material.CreateSurfaceOutput(usdtokens::mdl);
-
-  if (!material_surface_output) {
-    std::cout
-        << "WARNING in create_mdl_material(): couldn't create material 'mdl:surface' output.\n";
-    return;
-  }
-
-  material_surface_output.ConnectToSource(shader.ConnectableAPI(), usdtokens::out);
-
-  umm_export_material(usd_export_context, material, shader, "MDL");
+  umm_export_material(usd_export_context, material, usd_material, "MDL");
 
 #endif
 }

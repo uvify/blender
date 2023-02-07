@@ -35,6 +35,7 @@
 #include <pxr/usd/usdGeom/cube.h>
 #include <pxr/usd/usdGeom/cylinder.h>
 #include <pxr/usd/usdGeom/sphere.h>
+#include <pxr/usd/usdUtils/stageCache.h>
 
 #include <iostream>
 
@@ -57,6 +58,13 @@ USDStageReader::~USDStageReader()
 {
   clear_proto_readers();
   clear_readers();
+
+  /* If the stage was cached for Python calls, remove
+   * it from the cache now. */
+  if (pxr::UsdUtilsStageCache::Get().Contains(stage_)) {
+    std::cout << "deleting cached stage" << std::endl;
+    pxr::UsdUtilsStageCache::Get().Erase(stage_);
+  }
 }
 
 bool USDStageReader::valid() const

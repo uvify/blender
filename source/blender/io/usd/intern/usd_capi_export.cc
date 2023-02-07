@@ -19,6 +19,7 @@
 #include <pxr/usd/usdGeom/tokens.h>
 #include <pxr/usd/usdGeom/xformCommonAPI.h>
 #include <pxr/usd/usdUtils/dependencies.h>
+#include <pxr/usd/usdUtils/StageCache.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -534,6 +535,13 @@ static void export_startjob(void *customdata,
   pxr::UsdGeomSetStageMetersPerUnit(usd_stage, meters_per_unit);
 
   usd_stage->GetRootLayer()->Save();
+
+  /* If the stage was cached for Python calls, remove
+   * it from the cache now. */
+  if (pxr::UsdUtilsStageCache::Get().Contains(usd_stage)) {
+    std::cout << "deleting cached stage" << std::endl;
+    pxr::UsdUtilsStageCache::Get().Erase(usd_stage);
+  }
 
   if (data->is_usdz_export) {
     if (!perform_usdz_conversion(data)) {
