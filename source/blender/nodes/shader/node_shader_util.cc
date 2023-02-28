@@ -11,11 +11,14 @@
 
 #include "node_shader_util.hh"
 
+#include "NOD_add_node_search.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "node_exec.h"
 
-bool sh_node_poll_default(bNodeType * /*ntype*/, bNodeTree *ntree, const char **r_disabled_hint)
+bool sh_node_poll_default(const bNodeType * /*ntype*/,
+                          const bNodeTree *ntree,
+                          const char **r_disabled_hint)
 {
   if (!STREQ(ntree->idname, "ShaderNodeTree")) {
     *r_disabled_hint = TIP_("Not a shader node tree");
@@ -24,8 +27,8 @@ bool sh_node_poll_default(bNodeType * /*ntype*/, bNodeTree *ntree, const char **
   return true;
 }
 
-static bool sh_fn_poll_default(bNodeType * /*ntype*/,
-                               bNodeTree *ntree,
+static bool sh_fn_poll_default(const bNodeType * /*ntype*/,
+                               const bNodeTree *ntree,
                                const char **r_disabled_hint)
 {
   if (!STR_ELEM(ntree->idname, "ShaderNodeTree", "GeometryNodeTree")) {
@@ -42,6 +45,7 @@ void sh_node_type_base(struct bNodeType *ntype, int type, const char *name, shor
   ntype->poll = sh_node_poll_default;
   ntype->insert_link = node_insert_link_default;
   ntype->gather_link_search_ops = blender::nodes::search_link_ops_for_basic_node;
+  ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
 }
 
 void sh_fn_node_type_base(bNodeType *ntype, int type, const char *name, short nclass)
@@ -49,6 +53,7 @@ void sh_fn_node_type_base(bNodeType *ntype, int type, const char *name, short nc
   sh_node_type_base(ntype, type, name, nclass);
   ntype->poll = sh_fn_poll_default;
   ntype->gather_link_search_ops = blender::nodes::search_link_ops_for_basic_node;
+  ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
 }
 
 /* ****** */

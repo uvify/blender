@@ -12,6 +12,7 @@ struct bNode;
 struct bNodeTree;
 struct Material;
 struct USDExportParams;
+struct Material;
 
 namespace blender::io::usd {
 
@@ -34,6 +35,9 @@ void create_usd_cycles_material(pxr::UsdStageRefPtr a_stage,
 void create_mdl_material(const USDExporterContext &usd_export_context,
                          Material *material,
                          pxr::UsdShadeMaterial &usd_material);
+/* Returns a USDPreviewSurface token name for a given Blender shader Socket name,
+ * or an empty TfToken if the input name is not found in the map. */
+const pxr::TfToken token_for_input(const char *input_name);
 
 /**
  * Entry point to create an approximate USD Preview Surface network from a Cycles node graph.
@@ -70,7 +74,9 @@ std::string get_tex_image_asset_path(const std::string &asset_path,
                                      const pxr::UsdStageRefPtr stage,
                                      const USDExportParams &export_params);
 
-void export_textures(const Material *material, const pxr::UsdStageRefPtr stage);
+void export_textures(const Material *material,
+                     const pxr::UsdStageRefPtr stage,
+                     bool allow_overwrite = false);
 
 }  // namespace blender::io::usd
 

@@ -2,6 +2,7 @@
  * Copyright 2019 Blender Foundation. All rights reserved. */
 
 #include "usd.h"
+#include "usd_asset_utils.h"
 #include "usd_common.h"
 #include "usd_hierarchy_iterator.h"
 #include "usd_light_convert.h"
@@ -13,6 +14,8 @@
 #include <pxr/pxr.h>
 #include <pxr/usd/kind/registry.h>
 #include <pxr/usd/usd/modelAPI.h>
+#include <pxr/usd/usd/prim.h>
+#include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/metrics.h>
 #include <pxr/usd/usdGeom/scope.h>
@@ -341,10 +344,9 @@ static bool perform_usdz_conversion(const ExportJobData *data)
       return false;
     }
   }
-  result = BLI_rename(usdz_temp_dirfile, data->usdz_filepath);
-  if (result != 0) {
+  if (!copy_asset(usdz_temp_dirfile, data->usdz_filepath, USD_TEX_NAME_COLLISION_OVERWRITE)) {
     WM_reportf(RPT_ERROR,
-               "USD Export: Couldn't move new usdz file from temporary location %s to %s",
+               "USD Export: Couldn't copy new usdz file from temporary location %s to %s",
                usdz_temp_dirfile,
                data->usdz_filepath);
     return false;
@@ -367,7 +369,9 @@ static void export_startjob(void *customdata,
   data->start_time = timeit::Clock::now();
 
   G.is_rendering = true;
-  WM_set_locked_interface(data->wm, true);
+  if (data->wm) {
+    WM_set_locked_interface(data->wm, true);
+  }
   G.is_break = false;
 
   if (!validate_params(data->params)) {
@@ -528,6 +532,16 @@ static void export_startjob(void *customdata,
     }
   }
 
+  /* Set the default prim if it doesn't exist */
+  if (!usd_stage->GetDefaultPrim()) {
+    /* Use TraverseAll since it's guaranteed to be depth first and will get the first top level
+     * prim, and is less verbose than getting the PseudoRoot + iterating its children.*/
+    for (auto prim : usd_stage->TraverseAll()) {
+      usd_stage->SetDefaultPrim(prim);
+      break;
+    }
+  }
+
   /* Set unit scale.
    * TODO(makowalsk): Add an option to use scene->unit.scale_length as well? */
   double meters_per_unit = data->params.convert_to_cm ? pxr::UsdGeomLinearUnits::centimeters :
@@ -587,7 +601,9 @@ static void export_endjob(void *customdata)
   }
 
   G.is_rendering = false;
-  WM_set_locked_interface(data->wm, false);
+  if (data->wm) {
+    WM_set_locked_interface(data->wm, false);
+  }
   report_job_duration(data);
 }
 
@@ -631,7 +647,7 @@ bool USD_export(bContext *C,
   if (BLI_path_extension_check_n(filepath, ".usd", ".usda", ".usdc", NULL)) {
     BLI_strncpy(job->filepath, filepath, sizeof(job->filepath));
   }
-  else if (BLI_path_extension_check_n(filepath, ".usdz")) {
+  else if (BLI_path_extension_check_n(filepath, ".usdz", NULL)) {
     create_temp_path_for_usdz_export(filepath, job);
     job->is_usdz_export = true;
   }

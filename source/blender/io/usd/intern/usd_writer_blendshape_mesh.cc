@@ -82,28 +82,28 @@ static const Key *get_shape_key(Object *obj)
   return mesh->key;
 }
 
-static void print_blendshape_info(Object *obj)
-{
-  const Key *key = get_shape_key(obj);
-
-  if (!key) {
-    return;
-  }
-
-  printf("have shape key\n");
-  const int num_keys = key->totkey;
-  printf("num keys %d\n", num_keys);
-  printf("type %d\n", key->type);
-  printf("ctime: %f\n", key->ctime);
-  // BKE_keyblock_convert_to_mesh()
-  // BKE_keyblock_mesh_calc_normals()
-  // BKE_keyblock_element_count_from_shape()
-  LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
-    printf("%s %f %f\n", kb->name, kb->curval, kb->pos);
-  }
-
-  printf("anim pointer %p\n", key->adt);
-}
+//static void print_blendshape_info(Object *obj)
+//{
+//  const Key *key = get_shape_key(obj);
+//
+//  if (!key) {
+//    return;
+//  }
+//
+//  printf("have shape key\n");
+//  const int num_keys = key->totkey;
+//  printf("num keys %d\n", num_keys);
+//  printf("type %d\n", key->type);
+//  printf("ctime: %f\n", key->ctime);
+//  // BKE_keyblock_convert_to_mesh()
+//  // BKE_keyblock_mesh_calc_normals()
+//  // BKE_keyblock_element_count_from_shape()
+//  LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
+//    printf("%s %f %f\n", kb->name, kb->curval, kb->pos);
+//  }
+//
+//  printf("anim pointer %p\n", key->adt);
+//}
 
 bool is_blendshape_mesh(Object *obj)
 {
@@ -378,7 +378,10 @@ Mesh *USDBlendShapeMeshWriter::get_export_mesh(Object *object_eval, bool &r_need
   Mesh *temp_mesh = reinterpret_cast<Mesh *>(
       BKE_id_copy_ex(nullptr, &src_mesh->id, nullptr, LIB_ID_COPY_LOCALIZE));
 
-  BKE_keyblock_convert_to_mesh(basis, temp_mesh->mvert, temp_mesh->totvert);
+  BKE_keyblock_convert_to_mesh(
+      basis,
+      reinterpret_cast<float(*)[3]>(temp_mesh->vert_positions_for_write().data()),
+      temp_mesh->totvert);
 
   r_needsfree = true;
 

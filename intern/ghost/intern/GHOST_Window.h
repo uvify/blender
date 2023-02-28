@@ -152,7 +152,7 @@ class GHOST_Window : public GHOST_IWindow {
    * Gets the cursor grab region, if unset the window is used.
    * reset when grab is disabled.
    */
-  GHOST_TSuccess getCursorGrabBounds(GHOST_Rect &bounds) override;
+  GHOST_TSuccess getCursorGrabBounds(GHOST_Rect &bounds) const override;
 
   void getCursorGrabState(GHOST_TGrabCursorMode &mode,
                           GHOST_TAxisFlag &axis_flag,
@@ -274,12 +274,8 @@ class GHOST_Window : public GHOST_IWindow {
    * Needs to be called after each swap events as the framebuffer will change.
    * \return  A boolean success indicator.
    */
-  virtual GHOST_TSuccess getVulkanBackbuffer(void *image,
-                                             void *framebuffer,
-                                             void *command_buffer,
-                                             void *render_pass,
-                                             void *extent,
-                                             uint32_t *fb_id) override;
+  virtual GHOST_TSuccess getVulkanBackbuffer(
+      void *image, void *framebuffer, void *render_pass, void *extent, uint32_t *fb_id) override;
 
   /**
    * Returns the window user data.
