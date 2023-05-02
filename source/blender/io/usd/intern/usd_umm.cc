@@ -412,6 +412,7 @@ bool umm_export_material(const USDExporterContext &usd_export_context,
   if (!PyObject_HasAttrString(g_umm_module, func_name)) {
     WM_reportf(
         RPT_ERROR, "%s: module %s has no attribute %s", __func__, k_umm_module_name, func_name);
+    PyGILState_Release(gilstate);
     return false;
   }
 
