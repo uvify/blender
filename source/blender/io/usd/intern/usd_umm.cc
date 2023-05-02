@@ -115,16 +115,12 @@ static eUMMNotification report_notification(PyObject *dict)
   }
 
   if (strcmp(notification_str, "incomplete_process") == 0) {
-    if (message_str) {
-      WM_reportf(RPT_WARNING, message_str);
-    }
+    WM_reportf(RPT_WARNING, "%s", message_str);
     return UMM_NOTIFICATION_FAILURE;
   }
 
   if (strcmp(notification_str, "unexpected_error") == 0) {
-    if (message_str) {
-      WM_reportf(RPT_ERROR, message_str);
-    }
+    WM_reportf(RPT_ERROR, "%s", message_str);
     return UMM_NOTIFICATION_FAILURE;
   }
 
