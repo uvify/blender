@@ -391,6 +391,10 @@ Material *USDMaterialReader::add_material(const pxr::UsdShadeMaterial &usd_mater
 #ifdef WITH_PYTHON
     /* Invoke UMM to convert to MDL. */
     mdl_imported = umm_import_material(params_, mtl, usd_material, "MDL");
+    if (params_.import_textures_mode == USD_TEX_IMPORT_PACK) {
+      /* Process the imported material to pack the textures.  */
+      pack_imported_textures(mtl);
+    }
 #endif
     if (!mdl_imported && usd_preview) {
       /* The material has no MDL shader or we couldn't convert the MDL,
