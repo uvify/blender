@@ -451,8 +451,15 @@ bool umm_export_material(const USDExporterContext &usd_export_context,
   PyDict_SetItemString(args_dict, "mtl_path", mtl_path_arg);
   Py_DECREF(mtl_path_arg);
 
-  pxr::UsdStageCache::Id id = pxr::UsdUtilsStageCache::Get().Insert(
-      usd_material.GetPrim().GetStage());
+  pxr::UsdStageWeakPtr stage = usd_material.GetPrim().GetStage();
+
+  if (!stage) {
+    WM_reportf(RPT_ERROR, "%s:  Couldn't get stage pointer from material", __func__);
+    PyGILState_Release(gilstate);
+    return false;
+  }
+
+  pxr::UsdStageCache::Id id = pxr::UsdUtilsStageCache::Get().Insert(stage);
 
   if (!id.IsValid()) {
     WM_reportf(RPT_ERROR, "%s:  Couldn't create stage cache", __func__);
@@ -463,6 +470,11 @@ bool umm_export_material(const USDExporterContext &usd_export_context,
   PyObject *stage_id_arg = PyLong_FromLong(id.ToLongInt());
   PyDict_SetItemString(args_dict, "stage_id", stage_id_arg);
   Py_DECREF(stage_id_arg);
+
+  std::string usd_path = stage->GetRootLayer()->GetRealPath();
+  PyObject *usd_path_arg = PyUnicode_FromString(usd_path.c_str());
+  PyDict_SetItemString(args_dict, "usd_path", usd_path_arg);
+  Py_DECREF(usd_path_arg);
 
   PyObject *args = PyTuple_New(1);
   PyTuple_SetItem(args, 0, args_dict);
