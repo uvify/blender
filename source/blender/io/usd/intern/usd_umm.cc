@@ -44,6 +44,8 @@
 
 static PyObject *g_umm_module = nullptr;
 static const char *k_umm_module_name = "umm";
+static const char *k_export_mtl_func_name = "export_material";
+static const char *k_import_mtl_func_name = "import_material";
 
 using namespace blender::io::usd;
 
@@ -305,7 +307,7 @@ bool umm_import_material(const USDImportParams &import_params,
     return false;
   }
 
-  const char *func_name = "apply_data_to_instance";
+  const char *func_name = k_import_mtl_func_name;
 
   print_obj(g_umm_module);
 
@@ -405,7 +407,7 @@ bool umm_export_material(const USDExporterContext &usd_export_context,
     return false;
   }
 
-  const char *func_name = "convert_instance_to_data";
+  const char *func_name = k_export_mtl_func_name;
 
   print_obj(g_umm_module);
 
