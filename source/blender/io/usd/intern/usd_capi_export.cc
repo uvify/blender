@@ -23,7 +23,7 @@
 #include <pxr/usd/usdGeom/xform.h>
 #include <pxr/usd/usdGeom/xformCommonAPI.h>
 #include <pxr/usd/usdUtils/dependencies.h>
-#include <pxr/usd/usdUtils/StageCache.h>
+#include <pxr/usd/usdUtils/stageCache.h>
 
 #include "MEM_guardedalloc.h"
 
