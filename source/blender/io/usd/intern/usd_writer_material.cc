@@ -2379,6 +2379,34 @@ static void copy_single_file(Image *ima, const std::string &dest_dir, const bool
   }
 }
 
+/* Export the texture of every texture image node in the given
+ * node tree. */
+static void export_textures(const bNodeTree *ntree,
+                            const pxr::UsdStageRefPtr stage,
+                            const bool allow_overwrite)
+{
+  if (!ntree) {
+    return;
+  }
+
+  if (!stage) {
+    return;
+  }
+
+  ntree->ensure_topology_cache();
+
+  for (bNode *node = (bNode *)ntree->nodes.first; node; node = node->next) {
+    if (ELEM(node->type, SH_NODE_TEX_IMAGE, SH_NODE_TEX_ENVIRONMENT)) {
+      export_texture(node, stage, allow_overwrite);
+    }
+    else if (node->is_group()) {
+      if (const bNodeTree *sub_tree = reinterpret_cast<const bNodeTree *>(node->id)) {
+        export_textures(sub_tree, stage, allow_overwrite);
+      }
+    }
+  }
+}
+
 /* Export the given texture node's image to a 'textures' directory
  * next to given stage's root layer USD.
  * Based on ImagesExporter::export_UV_Image() */
@@ -2424,11 +2452,7 @@ void export_textures(const Material *material, const pxr::UsdStageRefPtr stage, 
     return;
   }
 
-  for (bNode *node = (bNode *)material->nodetree->nodes.first; node; node = node->next) {
-    if (ELEM(node->type, SH_NODE_TEX_IMAGE, SH_NODE_TEX_ENVIRONMENT)) {
-      export_texture(node, stage, allow_overwrite);
-    }
-  }
+  export_textures(material->nodetree, stage, allow_overwrite);
 }
 
 
