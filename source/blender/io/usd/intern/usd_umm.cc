@@ -194,6 +194,23 @@ static eUMMNotification report_notification(PyObject *dict)
     return UMM_NOTIFICATION_NONE;
   }
 
+  /* Display warnings first. */
+  PyObject *warnings_list = PyDict_GetItemString(dict, "warnings");
+
+  if (warnings_list && PyList_Check(warnings_list)) {
+    Py_ssize_t len = PyList_Size(warnings_list);
+    for (Py_ssize_t i = 0; i < len; ++i) {
+      PyObject *warning_item = PyList_GetItem(warnings_list, i);
+      if (!(warning_item && PyUnicode_Check(warning_item))) {
+        continue;
+      }
+      const char *warning_str = PyUnicode_AsUTF8(warning_item);
+      if (warning_str) {
+        WM_reportf(RPT_WARNING, "%s", warning_str);
+      }
+    }
+  }
+
   PyObject *notification_item = PyDict_GetItemString(dict, "umm_notification");
 
   if (!notification_item) {
@@ -201,14 +218,14 @@ static eUMMNotification report_notification(PyObject *dict)
   }
 
   if (!PyUnicode_Check(notification_item)) {
-    std::cerr << "WARNING: 'umm_notification' value is not a string" << std::endl;
+    WM_reportf(RPT_WARNING, "%s: 'umm_notification' value is not a string", __func__);
     return UMM_NOTIFICATION_NONE;
   }
 
   const char *notification_str = PyUnicode_AsUTF8(notification_item);
 
   if (!notification_str) {
-    std::cerr << "WARNING: couldn't get 'umm_notification' string value" << std::endl;
+    WM_reportf(RPT_WARNING, "%s: Couldn't get 'umm_notification' string value", __func__);
     return UMM_NOTIFICATION_NONE;
   }
 
@@ -217,25 +234,22 @@ static eUMMNotification report_notification(PyObject *dict)
     return UMM_NOTIFICATION_SUCCESS;
   }
 
-  const char *message_str = nullptr;
-
   PyObject *message_item = PyDict_GetItemString(dict, "message");
 
   if (message_item && PyUnicode_Check(message_item)) {
-    message_str = PyUnicode_AsUTF8(message_item);
-  }
+    const char *message_str = PyUnicode_AsUTF8(message_item);
+    if (!message_str) {
+      WM_reportf(RPT_WARNING, "%s: Null message string value", __func__);
+      return UMM_NOTIFICATION_NONE;
+    }
 
-  if (strcmp(notification_str, "incomplete_process") == 0) {
-    WM_reportf(RPT_WARNING, "%s", message_str);
-    return UMM_NOTIFICATION_FAILURE;
-  }
+    if (strcmp(notification_str, "unexpected_error") == 0) {
+      WM_reportf(RPT_ERROR, "%s", message_str);
+      return UMM_NOTIFICATION_FAILURE;
+    }
 
-  if (strcmp(notification_str, "unexpected_error") == 0) {
-    WM_reportf(RPT_ERROR, "%s", message_str);
-    return UMM_NOTIFICATION_FAILURE;
+    WM_reportf(RPT_WARNING, "%s: Unsupported notification type '%s'", __func__, notification_str);
   }
-
-  std::cout << "WARNING: unknown notification type: " << notification_str << std::endl;
 
   return UMM_NOTIFICATION_NONE;
 }
