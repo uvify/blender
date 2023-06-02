@@ -487,15 +487,14 @@ bool umm_import_material(const USDImportParams &import_params,
   Py_DECREF(stage_id_arg);
 
   PyObject *import_tex_cb_arg = create_import_texture_cb(import_params);
-
   PyDict_SetItemString(args_dict, "import_texture_cb", import_tex_cb_arg);
   Py_DECREF(import_tex_cb_arg);
 
   PyObject *args = PyTuple_New(1);
   PyTuple_SetItem(args, 0, args_dict);
 
-  std::cout << func_name << " arguments:\n";
-  print_obj(args);
+  //std::cout << func_name << " arguments:\n";
+  //print_obj(args);
 
   PyObject *ret = PyObject_Call(func, args, nullptr);
   Py_DECREF(func);
@@ -504,7 +503,7 @@ bool umm_import_material(const USDImportParams &import_params,
 
   if (ret && !is_none_value(ret)) {
     std::cout << "result:\n";
-    print_obj(ret);
+    //print_obj(ret);
     success = report_notification(ret) == UMM_NOTIFICATION_SUCCESS;
   }
 
@@ -607,8 +606,8 @@ bool umm_export_material(const USDExporterContext &usd_export_context,
   PyObject *args = PyTuple_New(1);
   PyTuple_SetItem(args, 0, args_dict);
 
-  std::cout << func_name << " arguments:\n";
-  print_obj(args);
+  //std::cout << func_name << " arguments:\n";
+  //print_obj(args);
 
   PyObject *ret = PyObject_Call(func, args, nullptr);
   Py_DECREF(func);
@@ -617,7 +616,7 @@ bool umm_export_material(const USDExporterContext &usd_export_context,
 
   if (ret && !is_none_value(ret)) {
     std::cout << "result:\n";
-    print_obj(ret);
+    //print_obj(ret);
     success = report_notification(ret) == UMM_NOTIFICATION_SUCCESS;
   }
 
