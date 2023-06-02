@@ -168,7 +168,10 @@ static PyObject *create_import_texture_cb(const USDImportParams &import_params)
   PyObject *collision_mode_item = PyLong_FromLong(static_cast<long>(name_collision_mode));
   PyTuple_SetItem(import_texture_self, 1, collision_mode_item);
 
-  return PyCFunction_New(&import_texture_method, import_texture_self);
+  PyObject *new_func = PyCFunction_New(&import_texture_method, import_texture_self);
+  Py_DECREF(import_texture_self);
+
+  return new_func;
 }
 
 namespace {
@@ -502,7 +505,7 @@ bool umm_import_material(const USDImportParams &import_params,
   bool success = false;
 
   if (ret && !is_none_value(ret)) {
-    std::cout << "result:\n";
+    //std::cout << "result:\n";
     //print_obj(ret);
     success = report_notification(ret) == UMM_NOTIFICATION_SUCCESS;
   }
@@ -615,7 +618,7 @@ bool umm_export_material(const USDExporterContext &usd_export_context,
   bool success = false;
 
   if (ret && !is_none_value(ret)) {
-    std::cout << "result:\n";
+    //std::cout << "result:\n";
     //print_obj(ret);
     success = report_notification(ret) == UMM_NOTIFICATION_SUCCESS;
   }
