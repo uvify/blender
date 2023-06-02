@@ -19,6 +19,7 @@
 
 #  include "usd_umm.h"
 #  include "usd.h"
+#  include "usd_asset_utils.h"
 #  include "usd_exporter_context.h"
 
 #  include <pxr/usd/sdf/copyUtils.h>
@@ -60,6 +61,114 @@ static void print_obj(PyObject *obj)
     std::cout << PyUnicode_AsUTF8(str) << std::endl;
     Py_DECREF(str);
   }
+}
+
+/* A no-op callback used when impoting textures is turned off. */
+static PyObject *import_texture_noop(PyObject *self, PyObject *args)
+{
+  /* Return the input path unchanged. */
+  const char *asset_path;
+  if (!PyArg_ParseTuple(args, "s", &asset_path)) {
+    return NULL;
+  }
+  return PyUnicode_FromString(asset_path);
+}
+
+static PyMethodDef import_texture_noop_method = {
+    "import_texture_noop_cb",
+    import_texture_noop,
+    METH_VARARGS,
+    "A no-op function that returns the input path "
+    "argument unchanged, used when texture importing "
+    "is turned off."};
+
+static PyObject *import_texture(PyObject *self, PyObject *args)
+{
+  const char *asset_path = "";
+  if (!PyArg_ParseTuple(args, "s", &asset_path)) {
+    return NULL;
+  }
+
+  if (!should_import_asset(asset_path)) {
+    return PyUnicode_FromString(asset_path);
+  }
+
+  if (!self) {
+    return NULL;
+  }
+
+  if (!PyTuple_Check(self)) {
+    return NULL;
+  }
+
+  if (PyTuple_Size(self) < 2) {
+    return NULL;
+  }
+
+  PyObject *tex_dir_item = PyTuple_GetItem(self, 0);
+  if (!(tex_dir_item && PyUnicode_Check(tex_dir_item))) {
+    return NULL;
+  }
+  const char *tex_dir = PyUnicode_AsUTF8(tex_dir_item);
+
+  PyObject *name_collision_mode_item = PyTuple_GetItem(self, 1);
+  if (!(name_collision_mode_item && PyLong_Check(name_collision_mode_item))) {
+    return NULL;
+  }
+
+  eUSDTexNameCollisionMode name_collision_mode = static_cast<eUSDTexNameCollisionMode>(
+      PyLong_AsLong(name_collision_mode_item));
+
+  std::string import_path = import_asset(asset_path, tex_dir, name_collision_mode);
+
+  if (!import_path.empty()) {
+    return PyUnicode_FromString(import_path.c_str());
+  }
+
+  return PyUnicode_FromString(asset_path);
+}
+
+static PyMethodDef import_texture_method = {
+    "import_texture",
+    import_texture,
+    METH_VARARGS,
+    "If the given texture asset path is a URI or is "
+    "relative to a USDZ arhive, attempt to copy the "
+    "texture to the local file system and return the "
+    "asset's local path. The source path will be "
+    "returned unchanged if it's alreay a local "
+    "file or if it could not be copied to a local "
+    "destination. The function may return None if "
+    "there was a Python error."};
+
+
+static PyObject *create_import_texture_cb(const USDImportParams &import_params)
+{
+  if (import_params.import_textures_mode == USD_TEX_IMPORT_NONE) {
+    /* Importing textures is turned off, so return a no-op function. */
+    return PyCFunction_New(&import_texture_noop_method, NULL);
+  }
+
+  /* Create the first 'self' argument for the 'import_textures'
+   * function, which is a tuple storing the texture import
+   * parameters that will be needed to copy the texture. */
+
+  const char *textures_dir = import_params.import_textures_mode == USD_TEX_IMPORT_PACK ?
+                                 temp_textures_dir() :
+                                 import_params.import_textures_dir;
+
+  const eUSDTexNameCollisionMode name_collision_mode = import_params.import_textures_mode ==
+                                                               USD_TEX_IMPORT_PACK ?
+                                                           USD_TEX_NAME_COLLISION_OVERWRITE :
+                                                           import_params.tex_name_collision_mode;
+
+  PyObject *import_texture_self = PyTuple_New(2);
+  PyObject *tex_dir_item = PyUnicode_FromString(textures_dir);
+  PyTuple_SetItem(import_texture_self, 0, tex_dir_item);
+  PyObject *collision_mode_item = PyLong_FromLong(static_cast<long>(name_collision_mode));
+  PyTuple_SetItem(import_texture_self, 1, collision_mode_item);
+
+  return PyCFunction_New(&import_texture_method, import_texture_self);
 }
 
 namespace {
@@ -362,6 +471,11 @@ bool umm_import_material(const USDImportParams &import_params,
   PyObject *stage_id_arg = PyLong_FromLong(id.ToLongInt());
   PyDict_SetItemString(args_dict, "stage_id", stage_id_arg);
   Py_DECREF(stage_id_arg);
+
+  PyObject *import_tex_cb_arg = create_import_texture_cb(import_params);
+
+  PyDict_SetItemString(args_dict, "import_texture_cb", import_tex_cb_arg);
+  Py_DECREF(import_tex_cb_arg);
 
   PyObject *args = PyTuple_New(1);
   PyTuple_SetItem(args, 0, args_dict);
