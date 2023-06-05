@@ -2036,17 +2036,13 @@ void create_usd_cycles_material(pxr::UsdStageRefPtr a_stage,
 
   localize(localtree, localtree);
 
-  usd_define_or_over<pxr::UsdGeomScope>(a_stage,
-                                        usd_material.GetPath().AppendChild(cyclestokens::cycles),
-                                        export_params.export_as_overs);
-
   store_cycles_nodes(a_stage,
                      localtree,
-                     usd_material.GetPath().AppendChild(cyclestokens::cycles),
+                     usd_material.GetPath(),
                      &output,
                      export_params);
   link_cycles_nodes(
-      a_stage, usd_material, localtree, usd_material.GetPath().AppendChild(cyclestokens::cycles));
+      a_stage, usd_material, localtree, usd_material.GetPath());
 
   ntreeFreeLocalTree(localtree);
   MEM_freeN(localtree);
@@ -2129,7 +2125,7 @@ static pxr::UsdShadeShader create_usd_preview_shader(const USDExporterContext &u
                                                      const int type)
 {
   pxr::SdfPath shader_path = material.GetPath().AppendChild(
-      pxr::TfToken(pxr::TfMakeValidIdentifier(name)));
+      pxr::TfToken("preview_" + pxr::TfMakeValidIdentifier(name)));
   pxr::UsdShadeShader shader = pxr::UsdShadeShader::Define(usd_export_context.stage, shader_path);
 
   switch (type) {
