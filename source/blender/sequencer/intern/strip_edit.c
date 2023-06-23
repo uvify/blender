@@ -70,7 +70,7 @@ bool SEQ_edit_sequence_swap(Scene *scene, Sequence *seq_a, Sequence *seq_b, cons
   SWAP(Sequence, *seq_a, *seq_b);
 
   /* swap back names so animation fcurves don't get swapped */
-  BLI_strncpy(name, seq_a->name + 2, sizeof(name));
+  STRNCPY(name, seq_a->name + 2);
   BLI_strncpy(seq_a->name + 2, seq_b->name + 2, sizeof(seq_b->name) - 2);
   BLI_strncpy(seq_b->name + 2, name, sizeof(seq_b->name) - 2);
 
@@ -275,7 +275,9 @@ static void seq_split_set_right_hold_offset(Main *bmain,
   /* Adjust within range of strip contents. */
   else if ((timeline_frame >= content_start) && (timeline_frame <= content_end)) {
     seq->endofs = 0;
-    float speed_factor = seq_time_media_playback_rate_factor_get(scene, seq);
+    float speed_factor = (seq->type == SEQ_TYPE_SOUND_RAM) ?
+                             seq_time_media_playback_rate_factor_get(scene, seq) :
+                             seq_time_playback_rate_factor_get(scene, seq);
     seq->anim_endofs += round_fl_to_int((content_end - timeline_frame) * speed_factor);
   }
 
@@ -294,7 +296,9 @@ static void seq_split_set_left_hold_offset(Main *bmain,
 
   /* Adjust within range of strip contents. */
   if ((timeline_frame >= content_start) && (timeline_frame <= content_end)) {
-    float speed_factor = seq_time_media_playback_rate_factor_get(scene, seq);
+    float speed_factor = (seq->type == SEQ_TYPE_SOUND_RAM) ?
+                             seq_time_media_playback_rate_factor_get(scene, seq) :
+                             seq_time_playback_rate_factor_get(scene, seq);
     seq->anim_startofs += round_fl_to_int((timeline_frame - content_start) * speed_factor);
     seq->start = timeline_frame;
     seq->startofs = 0;

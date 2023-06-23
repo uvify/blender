@@ -122,21 +122,7 @@ bool ui_but_is_popover_once_compat(const uiBut *but)
 
 bool ui_but_has_array_value(const uiBut *but)
 {
-  return (but->rnapoin.data && but->rnaprop &&
-          ELEM(RNA_property_subtype(but->rnaprop),
-               PROP_COLOR,
-               PROP_TRANSLATION,
-               PROP_DIRECTION,
-               PROP_VELOCITY,
-               PROP_ACCELERATION,
-               PROP_MATRIX,
-               PROP_EULER,
-               PROP_QUATERNION,
-               PROP_AXISANGLE,
-               PROP_XYZ,
-               PROP_XYZ_LENGTH,
-               PROP_COLOR_GAMMA,
-               PROP_COORDS));
+  return (but->rnapoin.data && but->rnaprop && RNA_property_array_check(but->rnaprop));
 }
 
 static wmOperatorType *g_ot_tool_set_by_id = nullptr;
@@ -583,10 +569,10 @@ size_t ui_but_drawstr_len_without_sep_char(const uiBut *but)
   return strlen(but->drawstr);
 }
 
-size_t ui_but_drawstr_without_sep_char(const uiBut *but, char *str, size_t str_maxlen)
+size_t ui_but_drawstr_without_sep_char(const uiBut *but, char *str, size_t str_maxncpy)
 {
   size_t str_len_clip = ui_but_drawstr_len_without_sep_char(but);
-  return BLI_strncpy_rlen(str, but->drawstr, min_zz(str_len_clip + 1, str_maxlen));
+  return BLI_strncpy_rlen(str, but->drawstr, min_zz(str_len_clip + 1, str_maxncpy));
 }
 
 size_t ui_but_tip_len_only_first_line(const uiBut *but)

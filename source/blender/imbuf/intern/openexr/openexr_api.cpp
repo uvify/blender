@@ -762,7 +762,7 @@ void *IMB_exr_get_handle_name(const char *name)
 
   if (data == nullptr) {
     data = (ExrHandle *)IMB_exr_get_handle();
-    BLI_strncpy(data->name, name, strlen(name) + 1);
+    STRNCPY(data->name, name);
   }
   return data;
 }
@@ -819,12 +819,16 @@ static void imb_exr_get_views(MultiPartInputFile &file, StringVector &views)
 }
 
 /* Multi-layer Blender files have the view name in all the passes (even the default view one). */
-static void imb_exr_insert_view_name(char *name_full, const char *passname, const char *viewname)
+static void imb_exr_insert_view_name(char name_full[EXR_TOT_MAXNAME + 1],
+                                     const char *passname,
+                                     const char *viewname)
 {
+  /* Match: `sizeof(ExrChannel::name)`. */
+  const size_t name_full_maxncpy = EXR_TOT_MAXNAME + 1;
   BLI_assert(!ELEM(name_full, passname, viewname));
 
   if (viewname == nullptr || viewname[0] == '\0') {
-    BLI_strncpy(name_full, passname, sizeof(ExrChannel::name));
+    BLI_strncpy(name_full, passname, name_full_maxncpy);
     return;
   }
 
@@ -836,10 +840,10 @@ static void imb_exr_insert_view_name(char *name_full, const char *passname, cons
   len = BLI_str_rpartition(passname, delims, &sep, &token);
 
   if (sep) {
-    BLI_snprintf(name_full, EXR_PASS_MAXNAME, "%.*s.%s.%s", int(len), passname, viewname, token);
+    BLI_snprintf(name_full, name_full_maxncpy, "%.*s.%s.%s", int(len), passname, viewname, token);
   }
   else {
-    BLI_snprintf(name_full, EXR_PASS_MAXNAME, "%s.%s", passname, viewname);
+    BLI_snprintf(name_full, name_full_maxncpy, "%s.%s", passname, viewname);
   }
 }
 
@@ -880,10 +884,10 @@ void IMB_exr_add_channel(void *handle,
   }
   else if (!data->multiView->empty()) {
     std::string raw_name = insertViewName(echan->m->name, *data->multiView, echan->view_id);
-    BLI_strncpy(echan->name, raw_name.c_str(), sizeof(echan->name));
+    STRNCPY(echan->name, raw_name.c_str());
   }
   else {
-    BLI_strncpy(echan->name, echan->m->name.c_str(), sizeof(echan->name));
+    STRNCPY(echan->name, echan->m->name.c_str());
   }
 
   echan->xstride = xstride;
@@ -1088,11 +1092,10 @@ bool IMB_exr_begin_read(
   return true;
 }
 
-void IMB_exr_set_channel(
+bool IMB_exr_set_channel(
     void *handle, const char *layname, const char *passname, int xstride, int ystride, float *rect)
 {
   ExrHandle *data = (ExrHandle *)handle;
-  ExrChannel *echan;
   char name[EXR_TOT_MAXNAME + 1];
 
   if (layname && layname[0] != '\0') {
@@ -1100,22 +1103,23 @@ void IMB_exr_set_channel(
     BLI_strncpy(lay, layname, EXR_LAY_MAXNAME);
     BLI_strncpy(pass, passname, EXR_PASS_MAXNAME);
 
-    BLI_snprintf(name, sizeof(name), "%s.%s", lay, pass);
+    SNPRINTF(name, "%s.%s", lay, pass);
   }
   else {
     BLI_strncpy(name, passname, EXR_TOT_MAXNAME - 1);
   }
 
-  echan = (ExrChannel *)BLI_findstring(&data->channels, name, offsetof(ExrChannel, name));
+  ExrChannel *echan = (ExrChannel *)BLI_findstring(
+      &data->channels, name, offsetof(ExrChannel, name));
 
-  if (echan) {
-    echan->xstride = xstride;
-    echan->ystride = ystride;
-    echan->rect = rect;
+  if (echan == nullptr) {
+    return false;
   }
-  else {
-    printf("IMB_exr_set_channel error %s\n", name);
-  }
+
+  echan->xstride = xstride;
+  echan->ystride = ystride;
+  echan->rect = rect;
+  return true;
 }
 
 float *IMB_exr_channel_rect(void *handle,
@@ -1132,7 +1136,7 @@ float *IMB_exr_channel_rect(void *handle,
     BLI_strncpy(lay, layname, EXR_LAY_MAXNAME);
     BLI_strncpy(pass, passname, EXR_PASS_MAXNAME);
 
-    BLI_snprintf(name, sizeof(name), "%s.%s", lay, pass);
+    SNPRINTF(name, "%s.%s", lay, pass);
   }
   else {
     BLI_strncpy(name, passname, EXR_TOT_MAXNAME - 1);
@@ -1140,14 +1144,14 @@ float *IMB_exr_channel_rect(void *handle,
 
   /* name has to be unique, thus it's a combination of layer, pass, view, and channel */
   if (layname && layname[0] != '\0') {
-    char temp_buf[EXR_PASS_MAXNAME];
+    char temp_buf[EXR_TOT_MAXNAME + 1];
     imb_exr_insert_view_name(temp_buf, name, viewname);
-    BLI_strncpy(name, temp_buf, sizeof(name));
+    STRNCPY(name, temp_buf);
   }
   else if (!data->multiView->empty()) {
     const int view_id = std::max(0, imb_exr_get_multiView_id(*data->multiView, viewname));
     std::string raw_name = insertViewName(name, *data->multiView, view_id);
-    BLI_strncpy(name, raw_name.c_str(), sizeof(name));
+    STRNCPY(name, raw_name.c_str());
   }
 
   echan = (ExrChannel *)BLI_findstring(&data->channels, name, offsetof(ExrChannel, name));
@@ -1347,9 +1351,6 @@ void IMB_exr_read_channels(void *handle)
         frameBuffer.insert(echan->m->internal_name,
                            Slice(Imf::FLOAT, (char *)rect, xstride, ystride));
       }
-      else {
-        printf("warning, channel with no rect set %s\n", echan->m->internal_name.c_str());
-      }
     }
 
     /* Read pixels. */
@@ -1512,8 +1513,6 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
     echan->chan_id = BLI_toupper_ascii(channelname[0]);
   }
   else if (len > 1) {
-    bool ok = false;
-
     if (len == 2) {
       /* Some multi-layers are using two-letter channels name,
        * like, MX or NZ, which is basically has structure of
@@ -1526,33 +1525,28 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
       const char chan_id = BLI_toupper_ascii(channelname[1]);
       if (ELEM(chan_id, 'X', 'Y', 'Z', 'R', 'G', 'B', 'U', 'V', 'A')) {
         echan->chan_id = chan_id;
-        ok = true;
+      }
+      else {
+        echan->chan_id = 'X'; /* Default to X if unknown. */
       }
     }
     else if (BLI_strcaseeq(channelname, "red")) {
       echan->chan_id = 'R';
-      ok = true;
     }
     else if (BLI_strcaseeq(channelname, "green")) {
       echan->chan_id = 'G';
-      ok = true;
     }
     else if (BLI_strcaseeq(channelname, "blue")) {
       echan->chan_id = 'B';
-      ok = true;
     }
     else if (BLI_strcaseeq(channelname, "alpha")) {
       echan->chan_id = 'A';
-      ok = true;
     }
     else if (BLI_strcaseeq(channelname, "depth")) {
       echan->chan_id = 'Z';
-      ok = true;
     }
-
-    if (ok == false) {
-      printf("multilayer read: unknown channel token: %s\n", channelname);
-      return 0;
+    else {
+      echan->chan_id = 'X'; /* Default to X if unknown. */
     }
   }
   end -= len + 1; /* +1 to skip '.' separator */
@@ -1605,7 +1599,7 @@ static ExrPass *imb_exr_get_pass(ListBase *lb, char *passname)
     }
   }
 
-  BLI_strncpy(pass->name, passname, EXR_LAY_MAXNAME);
+  STRNCPY(pass->name, passname);
 
   return pass;
 }
@@ -1638,12 +1632,12 @@ static bool imb_exr_multilayer_parse_channels_from_file(ExrHandle *data)
       const char *view = echan->m->view.c_str();
       char internal_name[EXR_PASS_MAXNAME];
 
-      BLI_strncpy(internal_name, passname, EXR_PASS_MAXNAME);
+      STRNCPY(internal_name, passname);
 
       if (view[0] != '\0') {
         char tmp_pass[EXR_PASS_MAXNAME];
-        BLI_snprintf(tmp_pass, sizeof(tmp_pass), "%s.%s", passname, view);
-        BLI_strncpy(passname, tmp_pass, sizeof(passname));
+        SNPRINTF(tmp_pass, "%s.%s", passname, view);
+        STRNCPY(passname, tmp_pass);
       }
 
       ExrLayer *lay = imb_exr_get_layer(&data->layers, layname);
@@ -1652,8 +1646,8 @@ static bool imb_exr_multilayer_parse_channels_from_file(ExrHandle *data)
       pass->chan[pass->totchan] = echan;
       pass->totchan++;
       pass->view_id = echan->view_id;
-      BLI_strncpy(pass->view, view, sizeof(pass->view));
-      BLI_strncpy(pass->internal_name, internal_name, EXR_PASS_MAXNAME);
+      STRNCPY(pass->view, view);
+      STRNCPY(pass->internal_name, internal_name);
 
       if (pass->totchan >= EXR_PASS_MAXCHAN) {
         break;

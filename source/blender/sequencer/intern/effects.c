@@ -2615,7 +2615,7 @@ float seq_speed_effect_target_frame_get(Scene *scene,
   }
 
   SEQ_effect_handle_get(seq_speed); /* Ensure, that data are initialized. */
-  int frame_index = SEQ_give_frame_index(scene, seq_speed, timeline_frame);
+  int frame_index = seq_give_frame_index(scene, seq_speed, timeline_frame);
   SpeedControlVars *s = (SpeedControlVars *)seq_speed->effectdata;
   const Sequence *source = seq_speed->seq1;
 
@@ -3191,7 +3191,7 @@ static void init_text_effect(Sequence *seq)
   data->box_color[3] = 0.7f;
   data->box_margin = 0.01f;
 
-  BLI_strncpy(data->text, "Text", sizeof(data->text));
+  STRNCPY(data->text, "Text");
 
   data->loc[0] = 0.5f;
   data->loc[1] = 0.5f;

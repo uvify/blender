@@ -287,6 +287,7 @@ MTLContext::~MTLContext()
 
   /* Release update/blit shaders. */
   this->get_texture_utils().cleanup();
+  this->get_compute_utils().cleanup();
 
   /* Detach resource references. */
   GPU_texture_unbind_all();
@@ -970,8 +971,8 @@ bool MTLContext::ensure_render_pipeline_state(MTLPrimitiveType mtl_prim_type)
     GPU_matrix_bind(reinterpret_cast<struct GPUShader *>(
         static_cast<Shader *>(this->pipeline_state.active_shader)));
 
-    /* Bind Uniforms */
-    this->ensure_uniform_buffer_bindings(rec, shader_interface, pipeline_state_instance);
+    /* Bind buffers. */
+    this->ensure_buffer_bindings(rec, shader_interface, pipeline_state_instance);
 
     /* Bind Null attribute buffer, if needed. */
     if (pipeline_state_instance->null_attribute_buffer_index >= 0) {
@@ -1087,9 +1088,9 @@ bool MTLContext::ensure_render_pipeline_state(MTLPrimitiveType mtl_prim_type)
   return result;
 }
 
-/* Bind uniform buffers to an active render command encoder using the rendering state of the
+/* Bind UBOs and SSBOs to an active render command encoder using the rendering state of the
  * current context -> Active shader, Bound UBOs). */
-bool MTLContext::ensure_uniform_buffer_bindings(
+bool MTLContext::ensure_buffer_bindings(
     id<MTLRenderCommandEncoder> rec,
     const MTLShaderInterface *shader_interface,
     const MTLRenderPipelineStateInstance *pipeline_state_instance)
@@ -1148,7 +1149,7 @@ bool MTLContext::ensure_uniform_buffer_bindings(
       /* buffer(N) index of where to bind the UBO. */
       const uint32_t buffer_index = ubo.buffer_index;
       id<MTLBuffer> ubo_buffer = nil;
-      int ubo_size = 0;
+      size_t ubo_size = 0;
 
       bool bind_dummy_buffer = false;
       if (this->pipeline_state.ubo_bindings[ubo_location].bound) {
@@ -1196,7 +1197,7 @@ bool MTLContext::ensure_uniform_buffer_bindings(
             if (ubo_size < expected_size) {
               MTL_LOG_UBO_ERROR(
                   "[Error][UBO] UBO (UBO Name: %s) bound at location: %d (buffer[[%d]]) with size "
-                  "%d (Expected size "
+                  "%lu (Expected size "
                   "%d)  (Shader Name: %s) is too small -- binding NULL buffer. This is likely an "
                   "over-binding, which is not used,  but we need this to avoid validation "
                   "issues\n",
@@ -1270,7 +1271,7 @@ bool MTLContext::ensure_uniform_buffer_bindings(
       /* buffer(N) index of where to bind the SSBO. */
       const uint32_t buffer_index = ssbo.buffer_index;
       id<MTLBuffer> ssbo_buffer = nil;
-      int ssbo_size = 0;
+      size_t ssbo_size = 0;
       UNUSED_VARS_NDEBUG(ssbo_size);
 
       if (this->pipeline_state.ssbo_bindings[ssbo_location].bound) {
@@ -1332,9 +1333,9 @@ bool MTLContext::ensure_uniform_buffer_bindings(
   return true;
 }
 
-/* Variant for compute. Bind uniform buffers to an active compute command encoder using the
+/* Variant for compute. Bind UBOs and SSBOs to an active compute command encoder using the
  * rendering state of the current context -> Active shader, Bound UBOs). */
-bool MTLContext::ensure_uniform_buffer_bindings(
+bool MTLContext::ensure_buffer_bindings(
     id<MTLComputeCommandEncoder> rec,
     const MTLShaderInterface *shader_interface,
     const MTLComputePipelineStateInstance &pipeline_state_instance)
@@ -1378,7 +1379,7 @@ bool MTLContext::ensure_uniform_buffer_bindings(
       /* buffer(N) index of where to bind the UBO. */
       const uint32_t buffer_index = ubo.buffer_index;
       id<MTLBuffer> ubo_buffer = nil;
-      int ubo_size = 0;
+      size_t ubo_size = 0;
 
       bool bind_dummy_buffer = false;
       if (this->pipeline_state.ubo_bindings[ubo_location].bound) {
@@ -1483,10 +1484,10 @@ bool MTLContext::ensure_uniform_buffer_bindings(
         uint32_t buffer_bind_index = pipeline_state_instance.base_storage_buffer_index +
                                      buffer_index;
 
-        /* Bind Vertex UBO. */
+        /* Bind Compute SSBO. */
         if (bool(ssbo.stage_mask & ShaderStage::COMPUTE)) {
           BLI_assert(buffer_bind_index >= 0 && buffer_bind_index < MTL_MAX_BUFFER_BINDINGS);
-          cs.bind_compute_buffer(ssbo_buffer, 0, buffer_bind_index);
+          cs.bind_compute_buffer(ssbo_buffer, 0, buffer_bind_index, true);
         }
       }
       else {
@@ -1700,12 +1701,12 @@ void MTLContext::ensure_texture_bindings(
         }
         else {
           /* Populate argument buffer with current global sampler bindings. */
-          int size = [argument_encoder encodedLength];
-          int alignment = max_uu([argument_encoder alignment], 256);
-          int size_align_delta = (size % alignment);
-          int aligned_alloc_size = ((alignment > 1) && (size_align_delta > 0)) ?
-                                       size + (alignment - (size % alignment)) :
-                                       size;
+          size_t size = [argument_encoder encodedLength];
+          size_t alignment = max_uu([argument_encoder alignment], 256);
+          size_t size_align_delta = (size % alignment);
+          size_t aligned_alloc_size = ((alignment > 1) && (size_align_delta > 0)) ?
+                                          size + (alignment - (size % alignment)) :
+                                          size;
 
           /* Allocate buffer to store encoded sampler arguments. */
           encoder_buffer = MTLContext::get_global_memory_manager()->allocate(aligned_alloc_size,
@@ -1921,12 +1922,12 @@ void MTLContext::ensure_texture_bindings(
         }
         else {
           /* Populate argument buffer with current global sampler bindings. */
-          int size = [argument_encoder encodedLength];
-          int alignment = max_uu([argument_encoder alignment], 256);
-          int size_align_delta = (size % alignment);
-          int aligned_alloc_size = ((alignment > 1) && (size_align_delta > 0)) ?
-                                       size + (alignment - (size % alignment)) :
-                                       size;
+          size_t size = [argument_encoder encodedLength];
+          size_t alignment = max_uu([argument_encoder alignment], 256);
+          size_t size_align_delta = (size % alignment);
+          size_t aligned_alloc_size = ((alignment > 1) && (size_align_delta > 0)) ?
+                                          size + (alignment - (size % alignment)) :
+                                          size;
 
           /* Allocate buffer to store encoded sampler arguments. */
           encoder_buffer = MTLContext::get_global_memory_manager()->allocate(aligned_alloc_size,
@@ -2147,7 +2148,7 @@ void MTLContext::compute_dispatch(int groups_x_len, int groups_y_len, int groups
   cs.bind_pso(compute_pso_inst.pso);
 
   /* Bind buffers. */
-  this->ensure_uniform_buffer_bindings(compute_encoder, shader_interface, compute_pso_inst);
+  this->ensure_buffer_bindings(compute_encoder, shader_interface, compute_pso_inst);
   /** Ensure resource bindings. */
   /* Texture Bindings. */
   /* We will iterate through all texture bindings on the context and determine if any of the
@@ -2184,7 +2185,7 @@ void MTLContext::compute_dispatch_indirect(StorageBuf *indirect_buf)
     cs.bind_pso(compute_pso_inst.pso);
 
     /* Bind buffers. */
-    this->ensure_uniform_buffer_bindings(compute_encoder, shader_interface, compute_pso_inst);
+    this->ensure_buffer_bindings(compute_encoder, shader_interface, compute_pso_inst);
     /** Ensure resource bindings. */
     /* Texture Bindings. */
     /* We will iterate through all texture bindings on the context and determine if any of the
@@ -2451,6 +2452,77 @@ id<MTLSamplerState> MTLContext::get_default_sampler_state()
     default_sampler_state_ = this->get_sampler_from_state({GPUSamplerState::default_sampler()});
   }
   return default_sampler_state_;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Compute Utils impl
+ * \{ */
+
+id<MTLComputePipelineState> MTLContextComputeUtils::get_buffer_clear_pso()
+{
+  if (buffer_clear_pso_ != nil) {
+    return buffer_clear_pso_;
+  }
+
+  /* Fetch active context. */
+  MTLContext *ctx = static_cast<MTLContext *>(unwrap(GPU_context_active_get()));
+  BLI_assert(ctx);
+
+  @autoreleasepool {
+    /* Source as NSString. */
+    const char *src =
+        "\
+    struct BufferClearParams {\
+      uint clear_value;\
+    };\
+    kernel void compute_buffer_clear(constant BufferClearParams &params [[buffer(0)]],\
+                                     device uint32_t* output_data [[buffer(1)]],\
+                                     uint position [[thread_position_in_grid]])\
+    {\
+      output_data[position] = params.clear_value;\
+    }";
+    NSString *compute_buffer_clear_src = [NSString stringWithUTF8String:src];
+
+    /* Prepare shader library for buffer clearing. */
+    MTLCompileOptions *options = [[[MTLCompileOptions alloc] init] autorelease];
+    options.languageVersion = MTLLanguageVersion2_2;
+
+    NSError *error = nullptr;
+    id<MTLLibrary> temp_lib = [[ctx->device newLibraryWithSource:compute_buffer_clear_src
+                                                         options:options
+                                                           error:&error] autorelease];
+    if (error) {
+      /* Only exit out if genuine error and not warning. */
+      if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
+          NSNotFound) {
+        NSLog(@"Compile Error - Metal Shader Library error %@ ", error);
+        BLI_assert(false);
+        return nil;
+      }
+    }
+
+    /* Fetch compute function. */
+    BLI_assert(temp_lib != nil);
+    id<MTLFunction> temp_compute_function = [[temp_lib newFunctionWithName:@"compute_buffer_clear"]
+        autorelease];
+    BLI_assert(temp_compute_function);
+
+    /* Compile compute PSO */
+    buffer_clear_pso_ = [ctx->device newComputePipelineStateWithFunction:temp_compute_function
+                                                                   error:&error];
+    if (error || buffer_clear_pso_ == nil) {
+      NSLog(@"Failed to prepare compute_buffer_clear MTLComputePipelineState %@", error);
+      BLI_assert(false);
+      return nil;
+    }
+
+    [buffer_clear_pso_ retain];
+  }
+
+  BLI_assert(buffer_clear_pso_ != nil);
+  return buffer_clear_pso_;
 }
 
 /** \} */

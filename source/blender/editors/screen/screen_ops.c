@@ -3179,6 +3179,12 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static bool keyframe_jump_poll(bContext *C)
+{
+  /* There is a keyframe jump operator specifically for the Graph Editor. */
+  return ED_operator_screenactive_norender(C) && CTX_wm_area(C)->spacetype != SPACE_GRAPH;
+}
+
 static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
 {
   ot->name = "Jump to Keyframe";
@@ -3187,7 +3193,7 @@ static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
 
   ot->exec = keyframe_jump_exec;
 
-  ot->poll = ED_operator_screenactive_norender;
+  ot->poll = keyframe_jump_poll;
   ot->flag = OPTYPE_UNDO_GROUPED;
   ot->undo_group = "Frame Change";
 
@@ -4498,6 +4504,11 @@ static bool match_region_with_redraws(const ScrArea *area,
           return true;
         }
         break;
+      case SPACE_SPREADSHEET:
+        if ((redraws & TIME_SPREADSHEETS)) {
+          return true;
+        }
+        break;
       default:
         break;
     }
@@ -4863,7 +4874,9 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
     ED_screen_animation_timer(C, 0, 0, 0);
     BKE_sound_stop_scene(scene_eval);
 
-    WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
+    /* Triggers redraw of sequencer preview so that it does not show to fps anymore after stopping
+     * playback. */
+    WM_event_add_notifier(C, NC_SPACE | ND_SPACE_SEQUENCER, scene);
   }
   else {
     /* these settings are currently only available from a menu in the TimeLine */

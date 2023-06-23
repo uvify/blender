@@ -133,7 +133,7 @@ static CustomData *rna_mesh_ldata(const PointerRNA *ptr)
 
 static void rna_cd_layer_name_set(CustomData *cdata, CustomDataLayer *cdl, const char *value)
 {
-  BLI_strncpy_utf8(cdl->name, value, sizeof(cdl->name));
+  STRNCPY_UTF8(cdl->name, value);
   CustomData_set_layer_unique_name(cdata, cdl - cdata->layers);
 }
 
@@ -448,7 +448,8 @@ int rna_Mesh_loop_triangles_lookup_int(PointerRNA *ptr, int index, PointerRNA *r
   return true;
 }
 
-static void rna_Mesh_loop_triangle_faces_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+static void rna_Mesh_loop_triangle_polygons_begin(CollectionPropertyIterator *iter,
+                                                  PointerRNA *ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
   rna_iterator_array_begin(iter,
@@ -459,7 +460,7 @@ static void rna_Mesh_loop_triangle_faces_begin(CollectionPropertyIterator *iter,
                            NULL);
 }
 
-int rna_Mesh_loop_triangle_faces_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
+int rna_Mesh_loop_triangle_polygons_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
   if (index < 0 || index >= BKE_mesh_runtime_looptri_len(mesh)) {
@@ -732,7 +733,7 @@ static void rna_MeshPolygon_use_smooth_set(PointerRNA *ptr, bool value)
   bool *sharp_faces = (bool *)CustomData_get_layer_named_for_write(
       &mesh->pdata, CD_PROP_BOOL, "sharp_face", mesh->totpoly);
   if (!sharp_faces) {
-    if (!value) {
+    if (value) {
       /* Skip adding layer if the value is the same as the default. */
       return;
     }
@@ -2501,7 +2502,7 @@ int rna_MeshStringProperty_s_length(PointerRNA *ptr)
 void rna_MeshStringProperty_s_set(PointerRNA *ptr, const char *value)
 {
   MStringProperty *ms = (MStringProperty *)ptr->data;
-  BLI_strncpy(ms->s, value, sizeof(ms->s));
+  STRNCPY(ms->s, value);
 }
 
 static char *rna_MeshFaceMap_path(const PointerRNA *ptr)
@@ -2791,7 +2792,7 @@ static void rna_def_mvert(BlenderRNA *brna)
   RNA_def_property_float_funcs(
       prop, "rna_MeshVertex_bevel_weight_get", "rna_MeshVertex_bevel_weight_set", NULL);
   RNA_def_property_ui_text(
-      prop, "Bevel Weight", "Weight used by the Bevel modifier 'Only Vertices' option");
+      prop, "Bevel Weight", "Weight used by the Bevel modifier Vertices mode");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_data_legacy_deg_tag_all");
 
   prop = RNA_def_property(srna, "groups", PROP_COLLECTION, PROP_NONE);
@@ -4376,12 +4377,12 @@ static void rna_def_mesh(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "loop_triangle_polygons", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_funcs(prop,
-                                    "rna_Mesh_loop_triangle_faces_begin",
+                                    "rna_Mesh_loop_triangle_polygons_begin",
                                     "rna_iterator_array_next",
                                     "rna_iterator_array_end",
                                     "rna_iterator_array_get",
                                     "rna_Mesh_loop_triangles_length",
-                                    "rna_Mesh_loop_triangle_faces_lookup_int",
+                                    "rna_Mesh_loop_triangle_polygons_lookup_int",
                                     NULL,
                                     NULL);
   RNA_def_property_struct_type(prop, "ReadOnlyInteger");

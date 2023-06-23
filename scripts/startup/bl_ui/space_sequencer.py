@@ -1651,7 +1651,7 @@ class SEQUENCER_PT_source(SequencerButtonsPanel, Panel):
                 col = col.column(align=True)
                 split = col.split(factor=0.5, align=False)
                 split.alignment = 'RIGHT'
-                split.label(text="Samplerate")
+                split.label(text="Sample Rate")
                 split.alignment = 'LEFT'
                 if sound.samplerate <= 0:
                     split.label(text="Unknown")
@@ -1876,7 +1876,7 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
         split.label(text="Channel")
         split.prop(strip, "channel", text="")
 
-        if strip.type == 'SOUND':
+        if not is_effect:
             split = layout.split(factor=0.5 + max_factor)
             split.alignment = 'RIGHT'
             split.label(text="Speed Factor")

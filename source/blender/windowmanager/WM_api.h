@@ -100,16 +100,29 @@ void WM_init_input_devices(void);
  */
 void WM_init(struct bContext *C, int argc, const char **argv);
 /**
+ * \param do_python: Free all data associated with Blender's Python integration.
+ * Also exit the Python interpreter (unless `WITH_PYTHON_MODULE` is enabled).
+ * \param do_user_exit_actions: When enabled perform actions associated with a user
+ * having been using Blender then exiting. Actions such as writing the auto-save
+ * and writing any changes to preferences.
+ * Set to false in background mode or when exiting because of failed command line argument parsing.
+ * In general automated actions where the user isn't making changes should pass in false too.
+ *
  * \note doesn't run exit() call #WM_exit() for that.
  */
-void WM_exit_ex(struct bContext *C, bool do_python);
+void WM_exit_ex(struct bContext *C, bool do_python, bool do_user_exit_actions);
 
 /**
  * \brief Main exit function to close Blender ordinarily.
  * \note Use #wm_exit_schedule_delayed() to close Blender from an operator.
  * Might leak memory otherwise.
+ *
+ * \param exit_code: Passed to #exit, typically #EXIT_SUCCESS or #EXIT_FAILURE should be used.
+ * With failure being used for an early exit when parsing command line arguments fails.
+ * Note that any exit-code besides #EXIT_SUCCESS calls #WM_exit_ex with its `do_user_exit_actions`
+ * argument set to false.
  */
-void WM_exit(struct bContext *C) ATTR_NORETURN;
+void WM_exit(struct bContext *C, int exit_code) ATTR_NORETURN;
 
 void WM_main(struct bContext *C) ATTR_NORETURN;
 
@@ -519,7 +532,15 @@ void WM_event_free_ui_handler_all(struct bContext *C,
                                   wmUIHandlerFunc handle_fn,
                                   wmUIHandlerRemoveFunc remove_fn);
 
-struct wmEventHandler_Op *WM_event_add_modal_handler(struct bContext *C, struct wmOperator *op);
+/**
+ * Add a modal handler to `win`, `area` and `region` may optionally be NULL.
+ */
+struct wmEventHandler_Op *WM_event_add_modal_handler_ex(struct wmWindow *win,
+                                                        struct ScrArea *area,
+                                                        struct ARegion *region,
+                                                        wmOperator *op) ATTR_NONNULL(1, 4);
+struct wmEventHandler_Op *WM_event_add_modal_handler(struct bContext *C, struct wmOperator *op)
+    ATTR_NONNULL(1, 2);
 /**
  * Modal handlers store a pointer to an area which might be freed while the handler runs.
  * Use this function to NULL all handler pointers to \a old_area.
@@ -1516,7 +1537,9 @@ typedef enum eWM_JobType {
   WM_JOB_TYPE_LINEART,
   WM_JOB_TYPE_SEQ_DRAW_THUMBNAIL,
   WM_JOB_TYPE_SEQ_DRAG_DROP_PREVIEW,
+  WM_JOB_TYPE_CALCULATE_SIMULATION_NODES,
   WM_JOB_TYPE_BAKE_SIMULATION_NODES,
+  WM_JOB_TYPE_UV_PACK,
   /* add as needed, bake, seq proxy build
    * if having hard coded values is a problem */
 } eWM_JobType;
@@ -1606,14 +1629,15 @@ void WM_job_main_thread_lock_release(struct wmJob *job);
 
 /**
  * Return text from the clipboard.
- *
- * \note Caller needs to check for valid utf8 if this is a requirement.
+ * \param selection: Use the "primary" clipboard, see: #WM_CAPABILITY_PRIMARY_CLIPBOARD.
+ * \param ensure_utf8: Ensure the resulting string does not contain invalid UTF8 encoding.
  */
-char *WM_clipboard_text_get(bool selection, int *r_len);
+char *WM_clipboard_text_get(bool selection, bool ensure_utf8, int *r_len);
 /**
  * Convenience function for pasting to areas of Blender which don't support newlines.
  */
-char *WM_clipboard_text_get_firstline(bool selection, int *r_len);
+char *WM_clipboard_text_get_firstline(bool selection, bool ensure_utf8, int *r_len);
+
 void WM_clipboard_text_set(const char *buf, bool selection);
 
 /**

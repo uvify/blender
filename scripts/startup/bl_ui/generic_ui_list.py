@@ -29,7 +29,7 @@ def draw_ui_list(
         context,
         class_name="UI_UL_list",
         *,
-        unique_id="",
+        unique_id,
         list_path,
         active_index_path,
         insertion_operators=True,
@@ -46,7 +46,7 @@ def draw_ui_list(
     :type context: :class:`Context`
     :arg class_name: Name of the UIList class to draw. The default is the UIList class that ships with Blender.
     :type class_name: str
-    :arg unique_id: Optional identifier, in case wanting to draw multiple unique copies of a list.
+    :arg unique_id: Unique identifier to differentiate this from other UI lists.
     :type unique_id: str
     :arg list_path: Data path of the list relative to context, eg. "object.vertex_groups".
     :type list_path: str
@@ -238,8 +238,8 @@ class UILIST_OT_entry_move(GenericUIListOperator, Operator):
         active_index = self.get_active_index(context)
 
         delta = {
-            "DOWN": 1,
-            "UP": -1,
+            'DOWN': 1,
+            'UP': -1,
         }[self.direction]
 
         to_index = (active_index + delta) % len(my_list)

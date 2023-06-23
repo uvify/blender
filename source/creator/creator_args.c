@@ -706,12 +706,12 @@ static int arg_handle_arguments_end(int UNUSED(argc),
 }
 
 /* only to give help message */
-#  ifndef WITH_PYTHON_SECURITY /* default */
-#    define PY_ENABLE_AUTO ", (default)"
-#    define PY_DISABLE_AUTO ""
-#  else
+#  ifdef WITH_PYTHON_SECURITY /* default */
 #    define PY_ENABLE_AUTO ""
-#    define PY_DISABLE_AUTO ", (compiled as non-standard default)"
+#    define PY_DISABLE_AUTO ", (default)"
+#  else
+#    define PY_ENABLE_AUTO ", (default, non-standard compilation option)"
+#    define PY_DISABLE_AUTO ""
 #  endif
 
 static const char arg_handle_python_set_doc_enable[] =
@@ -1465,7 +1465,7 @@ static int arg_handle_output_set(int argc, const char **argv, void *data)
   if (argc > 1) {
     Scene *scene = CTX_data_scene(C);
     if (scene) {
-      BLI_strncpy(scene->r.pic, argv[1], sizeof(scene->r.pic));
+      STRNCPY(scene->r.pic, argv[1]);
       DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
     }
     else {
@@ -1497,7 +1497,7 @@ static int arg_handle_engine_set(int argc, const char **argv, void *data)
       Scene *scene = CTX_data_scene(C);
       if (scene) {
         if (BLI_findstring(&R_engines, argv[1], offsetof(RenderEngineType, idname))) {
-          BLI_strncpy_utf8(scene->r.engine, argv[1], sizeof(scene->r.engine));
+          STRNCPY_UTF8(scene->r.engine, argv[1]);
           DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
         }
         else {
@@ -1865,15 +1865,14 @@ static int arg_handle_python_file_run(int argc, const char **argv, void *data)
   if (argc > 1) {
     /* Make the path absolute because its needed for relative linked blends to be found */
     char filepath[FILE_MAX];
-    BLI_strncpy(filepath, argv[1], sizeof(filepath));
-    BLI_path_abs_from_cwd(filepath, sizeof(filepath));
+    STRNCPY(filepath, argv[1]);
+    BLI_path_canonicalize_native(filepath, sizeof(filepath));
 
     bool ok;
     BPY_CTX_SETUP(ok = BPY_run_filepath(C, filepath, NULL));
     if (!ok && app_state.exit_code_on_error.python) {
       fprintf(stderr, "\nError: script failed, file: '%s', exiting.\n", argv[1]);
-      BPY_python_end();
-      exit(app_state.exit_code_on_error.python);
+      WM_exit(C, app_state.exit_code_on_error.python);
     }
     return 1;
   }
@@ -1912,8 +1911,7 @@ static int arg_handle_python_text_run(int argc, const char **argv, void *data)
 
     if (!ok && app_state.exit_code_on_error.python) {
       fprintf(stderr, "\nError: script failed, text: '%s', exiting.\n", argv[1]);
-      BPY_python_end();
-      exit(app_state.exit_code_on_error.python);
+      WM_exit(C, app_state.exit_code_on_error.python);
     }
 
     return 1;
@@ -1942,8 +1940,7 @@ static int arg_handle_python_expr_run(int argc, const char **argv, void *data)
     BPY_CTX_SETUP(ok = BPY_run_string_exec(C, NULL, argv[1]));
     if (!ok && app_state.exit_code_on_error.python) {
       fprintf(stderr, "\nError: script failed, expr: '%s', exiting.\n", argv[1]);
-      BPY_python_end();
-      exit(app_state.exit_code_on_error.python);
+      WM_exit(C, app_state.exit_code_on_error.python);
     }
     return 1;
   }
@@ -2062,10 +2059,8 @@ static int arg_handle_load_file(int UNUSED(argc), const char **argv, void *data)
     fprintf(stderr, "unknown argument, loading as file: %s\n", argv[0]);
   }
 
-  BLI_strncpy(filepath, argv[0], sizeof(filepath));
-  BLI_path_slash_native(filepath);
-  BLI_path_abs_from_cwd(filepath, sizeof(filepath));
-  BLI_path_normalize(filepath);
+  STRNCPY(filepath, argv[0]);
+  BLI_path_canonicalize_native(filepath, sizeof(filepath));
 
   /* load the file */
   BKE_reports_init(&reports, RPT_PRINT);
@@ -2091,20 +2086,37 @@ static int arg_handle_load_file(int UNUSED(argc), const char **argv, void *data)
       return -1;
     }
 
-    if (BKE_blendfile_extension_check(filepath)) {
-      /* Just pretend a file was loaded, so the user can press Save and it'll
-       * save at the filepath from the CLI. */
-      STRNCPY(G_MAIN->filepath, filepath);
-      printf("... opened default scene instead; saving will write to: %s\n", filepath);
+    const char *error_msg = NULL;
+    if (BLI_exists(filepath)) {
+      /* When a file is found but can't be loaded, handling it as a new file
+       * could cause it to be unintentionally overwritten (data loss).
+       * Further this is almost certainly not that a user would expect or want.
+       * If they do, they can delete the file beforehand. */
+      error_msg = "file could not be loaded";
     }
-    else {
-      fprintf(
-          stderr,
-          "Error: argument has no '.blend' file extension, not using as new file, exiting! %s\n",
-          filepath);
-      G.is_break = true;
-      WM_exit(C);
+    else if (!BKE_blendfile_extension_check(filepath)) {
+      /* Unrelated arguments should not be treated as new blend files. */
+      error_msg = "argument has no '.blend' file extension, not using as new file";
     }
+
+    if (error_msg) {
+      fprintf(stderr, "Error: %s, exiting! %s\n", error_msg, filepath);
+
+      WM_exit(C, EXIT_FAILURE);
+      /* Unreachable, return for clarity. */
+      return -1;
+    }
+
+    /* Behave as if a file was loaded, calling "Save" will write to the `filepath` from the CLI.
+     *
+     * WARNING: The path referenced may be incorrect, no attempt is made to validate the path
+     * here or check that writing to it will work. If the users enters the path of a directory
+     * that doesn't exist (for e.g.) saving will fail.
+     * Attempting to create the file at this point is possible but likely to cause more
+     * trouble than it's worth (what with network drives), removable devices ... etc. */
+
+    STRNCPY(G_MAIN->filepath, filepath);
+    printf("... opened default scene instead; saving will write to: %s\n", filepath);
   }
 
   return 0;
@@ -2347,6 +2359,8 @@ void main_args_setup(bContext *C, bArgs *ba)
   BLI_args_add_case(ba, "-setaudio", 1, NULL, 0, CB(arg_handle_audio_set), NULL);
 
   /* Pass: Processing Arguments. */
+  /* NOTE: Use #WM_exit for these callbacks, not `exit()`
+   * so temporary files are properly cleaned up. */
   BLI_args_pass_set(ba, ARG_PASS_FINAL);
   BLI_args_add(ba, "-f", "--render-frame", CB(arg_handle_render_frame), C);
   BLI_args_add(ba, "-a", "--render-anim", CB(arg_handle_render_animation), C);

@@ -683,11 +683,8 @@ static int loopcut_modal(bContext *C, wmOperator *op, const wmEvent *event)
       BLI_snprintf(str_rep, NUM_STR_REP_LEN, "%d", (int)lcd->cuts);
       BLI_snprintf(str_rep + NUM_STR_REP_LEN, NUM_STR_REP_LEN, "%.2f", smoothness);
     }
-    BLI_snprintf(buf,
-                 sizeof(buf),
-                 TIP_("Number of Cuts: %s, Smooth: %s (Alt)"),
-                 str_rep,
-                 str_rep + NUM_STR_REP_LEN);
+    SNPRINTF(
+        buf, TIP_("Number of Cuts: %s, Smooth: %s (Alt)"), str_rep, str_rep + NUM_STR_REP_LEN);
     ED_workspace_status_text(C, buf);
   }
 
@@ -758,7 +755,7 @@ void MESH_OT_loopcut(wmOperatorType *ot)
   prop = RNA_def_property(ot->srna, "falloff", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_proportional_falloff_curve_only_items);
   RNA_def_property_enum_default(prop, PROP_INVSQUARE);
-  RNA_def_property_ui_text(prop, "Falloff", "Falloff type the feather");
+  RNA_def_property_ui_text(prop, "Falloff", "Falloff type of the feather");
   RNA_def_property_translation_context(prop,
                                        BLT_I18NCONTEXT_ID_CURVE_LEGACY); /* Abusing id_curve :/ */
 

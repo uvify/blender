@@ -100,7 +100,12 @@ static void free_anim_movie(struct anim * /*anim*/)
 #  define PATHSEPARATOR '/'
 #endif
 
-static int an_stringdec(const char *string, char *head, char *tail, ushort *numlen)
+static int an_stringdec(const char *string,
+                        char *head,
+                        size_t head_maxncpy,
+                        char *tail,
+                        size_t tail_maxncpy,
+                        ushort *numlen)
 {
   ushort len, nume, nums = 0;
   short i;
@@ -130,14 +135,13 @@ static int an_stringdec(const char *string, char *head, char *tail, ushort *numl
     }
   }
   if (found) {
-    strcpy(tail, &string[nume + 1]);
-    strcpy(head, string);
-    head[nums] = '\0';
+    BLI_strncpy(tail, &string[nume + 1], MIN2(nums + 1, tail_maxncpy));
+    BLI_strncpy(head, string, head_maxncpy);
     *numlen = nume - nums + 1;
     return int(atoi(&(string)[nums]));
   }
   tail[0] = '\0';
-  strcpy(head, string);
+  BLI_strncpy(head, string, head_maxncpy);
   *numlen = 0;
   return true;
 }
@@ -285,14 +289,14 @@ struct anim *IMB_open_anim(const char *filepath,
   if (anim != nullptr) {
     if (colorspace) {
       colorspace_set_default_role(colorspace, IM_MAX_SPACE, COLOR_ROLE_DEFAULT_BYTE);
-      BLI_strncpy(anim->colorspace, colorspace, sizeof(anim->colorspace));
+      STRNCPY(anim->colorspace, colorspace);
     }
     else {
       colorspace_set_default_role(
           anim->colorspace, sizeof(anim->colorspace), COLOR_ROLE_DEFAULT_BYTE);
     }
 
-    BLI_strncpy(anim->filepath, filepath, sizeof(anim->filepath));
+    STRNCPY(anim->filepath, filepath);
     anim->ib_flags = ib_flags;
     anim->streamindex = streamindex;
   }
@@ -320,7 +324,7 @@ bool IMB_anim_can_produce_frames(const struct anim *anim)
 
 void IMB_suffix_anim(struct anim *anim, const char *suffix)
 {
-  BLI_strncpy(anim->suffix, suffix, sizeof(anim->suffix));
+  STRNCPY(anim->suffix, suffix);
 }
 
 #ifdef WITH_AVI
@@ -850,12 +854,11 @@ static AVFrame *ffmpeg_double_buffer_frame_fallback_get(struct anim *anim)
   return nullptr;
 }
 
-/* postprocess the image in anim->pFrame and do color conversion
- * and deinterlacing stuff.
+/**
+ * Postprocess the image in anim->pFrame and do color conversion and de-interlacing stuff.
  *
- * Output is anim->cur_frame_final
+ * Output is `anim->cur_frame_final`.
  */
-
 static void ffmpeg_postprocess(struct anim *anim, AVFrame *input)
 {
   ImBuf *ibuf = anim->cur_frame_final;
@@ -1538,7 +1541,7 @@ static bool anim_getnew(struct anim *anim)
     case ANIM_SEQUENCE: {
       ImBuf *ibuf = IMB_loadiffname(anim->filepath, anim->ib_flags, anim->colorspace);
       if (ibuf) {
-        BLI_strncpy(anim->filepath_first, anim->filepath, sizeof(anim->filepath_first));
+        STRNCPY(anim->filepath_first, anim->filepath);
         anim->duration_in_frames = 1;
         IMB_freeImBuf(ibuf);
       }
@@ -1591,9 +1594,6 @@ struct ImBuf *IMB_anim_absolute(struct anim *anim,
                                 IMB_Proxy_Size preview_size)
 {
   struct ImBuf *ibuf = nullptr;
-  char head[256], tail[256];
-  ushort digits;
-  int pic;
   int filter_y;
   if (anim == nullptr) {
     return nullptr;
@@ -1626,15 +1626,19 @@ struct ImBuf *IMB_anim_absolute(struct anim *anim,
   }
 
   switch (anim->curtype) {
-    case ANIM_SEQUENCE:
-      pic = an_stringdec(anim->filepath_first, head, tail, &digits);
-      pic += position;
+    case ANIM_SEQUENCE: {
+      char head[ARRAY_SIZE(anim->filepath_first)], tail[ARRAY_SIZE(anim->filepath_first)];
+      ushort digits;
+      const int pic = an_stringdec(
+                          anim->filepath_first, head, sizeof(head), tail, sizeof(tail), &digits) +
+                      position;
       an_stringenc(anim->filepath, sizeof(anim->filepath), head, tail, digits, pic);
       ibuf = IMB_loadiffname(anim->filepath, IB_rect, anim->colorspace);
       if (ibuf) {
         anim->cur_position = position;
       }
       break;
+    }
     case ANIM_MOVIE:
       ibuf = movie_fetchibuf(anim, position);
       if (ibuf) {
@@ -1665,8 +1669,7 @@ struct ImBuf *IMB_anim_absolute(struct anim *anim,
     if (filter_y) {
       IMB_filtery(ibuf);
     }
-    BLI_snprintf(
-        ibuf->filepath, sizeof(ibuf->filepath), "%s.%04d", anim->filepath, anim->cur_position + 1);
+    SNPRINTF(ibuf->filepath, "%s.%04d", anim->filepath, anim->cur_position + 1);
   }
   return ibuf;
 }

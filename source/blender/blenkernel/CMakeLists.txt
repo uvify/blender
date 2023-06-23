@@ -36,6 +36,7 @@ set(INC
   ../../../intern/mikktspace
   ../../../intern/opensubdiv
   ../../../extern/curve_fit_nd
+  ../../../extern/fmtlib/include
 
   # dna_type_offsets.h
   ${CMAKE_CURRENT_BINARY_DIR}/../makesdna/intern
@@ -443,6 +444,7 @@ set(SRC
   BKE_multires.h
   BKE_nla.h
   BKE_node.h
+  BKE_node.hh
   BKE_node_runtime.hh
   BKE_node_tree_update.h
   BKE_node_tree_zones.hh

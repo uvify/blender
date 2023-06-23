@@ -1608,7 +1608,7 @@ static int image_file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *
   }
 
   char filepath[FILE_MAX];
-  BLI_strncpy(filepath, ima->filepath, sizeof(filepath));
+  STRNCPY(filepath, ima->filepath);
 
   /* Shift+Click to open the file, Alt+Click to browse a folder in the OS's browser. */
   if (event->modifier & (KM_SHIFT | KM_ALT)) {
@@ -1745,7 +1745,7 @@ static int image_replace_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "filepath", str);
 
   /* we can't do much if the str is longer than FILE_MAX :/ */
-  BLI_strncpy(sima->image->filepath, str, sizeof(sima->image->filepath));
+  STRNCPY(sima->image->filepath, str);
 
   if (sima->image->source == IMA_SRC_GENERATED) {
     sima->image->source = IMA_SRC_FILE;
@@ -1852,7 +1852,7 @@ static bool save_image_op(
   WM_cursor_wait(false);
 
   /* Remember file path for next save. */
-  BLI_strncpy(G.ima, opts->filepath, sizeof(G.ima));
+  STRNCPY(G.ima, opts->filepath);
 
   WM_main_add_notifier(NC_IMAGE | NA_EDITED, ima);
 
@@ -2006,7 +2006,7 @@ static void image_save_as_draw(bContext *UNUSED(C), wmOperator *op)
 
   /* Image format settings. */
   RNA_pointer_create(NULL, &RNA_ImageFormatSettings, &isd->opts.im_format, &imf_ptr);
-  uiTemplateImageSettings(layout, &imf_ptr, save_as_render);
+  uiTemplateImageSettings(layout, &imf_ptr, save_as_render, true);
 
   if (!save_as_render) {
     PointerRNA linear_settings_ptr = RNA_pointer_get(&imf_ptr, "linear_colorspace_settings");

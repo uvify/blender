@@ -18,7 +18,7 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_remap.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_screen.h"
 
@@ -64,7 +64,7 @@ void ED_node_tree_start(SpaceNode *snode, bNodeTree *ntree, ID *id, ID *from)
     copy_v2_v2(path->view_center, ntree->view_center);
 
     if (id) {
-      BLI_strncpy(path->display_name, id->name + 2, sizeof(path->display_name));
+      STRNCPY(path->display_name, id->name + 2);
     }
 
     BLI_addtail(&snode->treepath, path);
@@ -100,8 +100,8 @@ void ED_node_tree_push(SpaceNode *snode, bNodeTree *ntree, bNode *gnode)
       path->parent_key = NODE_INSTANCE_KEY_BASE;
     }
 
-    BLI_strncpy(path->node_name, gnode->name, sizeof(path->node_name));
-    BLI_strncpy(path->display_name, gnode->name, sizeof(path->display_name));
+    STRNCPY(path->node_name, gnode->name);
+    STRNCPY(path->display_name, gnode->name);
   }
   else {
     path->parent_key = NODE_INSTANCE_KEY_BASE;
@@ -1155,6 +1155,7 @@ void ED_spacetype_node()
   art->cursor = node_cursor;
   art->event_cursor = true;
   art->clip_gizmo_events_by_ui = true;
+  art->lock = 1;
 
   BLI_addhead(&st->regiontypes, art);
 
@@ -1183,7 +1184,7 @@ void ED_spacetype_node()
   /* regions: toolbar */
   art = MEM_cnew<ARegionType>("spacetype view3d tools region");
   art->regionid = RGN_TYPE_TOOLS;
-  art->prefsizex = 58; /* XXX */
+  art->prefsizex = int(UI_TOOLBAR_WIDTH);
   art->prefsizey = 50; /* XXX */
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
   art->listener = node_region_listener;

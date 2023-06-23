@@ -20,7 +20,7 @@
 #include "BKE_curve.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_scene.h"
@@ -331,7 +331,7 @@ static void node_buts_image_user(uiLayout *layout,
 
     char numstr[32];
     const int framenr = BKE_image_user_frame_get(iuser, scene->r.cfra, nullptr);
-    BLI_snprintf(numstr, sizeof(numstr), IFACE_("Frame: %d"), framenr);
+    SNPRINTF(numstr, IFACE_("Frame: %d"), framenr);
     uiItemL(layout, numstr, ICON_NONE);
   }
 
@@ -1150,6 +1150,9 @@ void ED_node_init_butfuncs()
    * Defined in blenkernel, but not registered in type hashes.
    */
 
+  using blender::bke::NodeSocketTypeUndefined;
+  using blender::bke::NodeTypeUndefined;
+
   NodeTypeUndefined.draw_buttons = nullptr;
   NodeTypeUndefined.draw_buttons_ex = nullptr;
 
@@ -1292,8 +1295,9 @@ static void std_node_socket_draw(
     return;
   }
 
-  if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_IS_LINKED) ||
-      (sock->flag & SOCK_HIDE_VALUE)) {
+  if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_HIDE_VALUE) ||
+      ((sock->flag & SOCK_IS_LINKED) && !all_links_muted(*sock)))
+  {
     node_socket_button_label(C, layout, ptr, node_ptr, text);
     return;
   }

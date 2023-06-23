@@ -333,16 +333,16 @@ static inline const Texture *unwrap(const GPUTexture *vert)
 /* GPU pixel Buffer. */
 class PixelBuffer {
  protected:
-  uint size_ = 0;
+  size_t size_ = 0;
 
  public:
-  PixelBuffer(uint size) : size_(size){};
+  PixelBuffer(size_t size) : size_(size){};
   virtual ~PixelBuffer(){};
 
   virtual void *map() = 0;
   virtual void unmap() = 0;
   virtual int64_t get_native_handle() = 0;
-  virtual uint get_size() = 0;
+  virtual size_t get_size() = 0;
 };
 
 /* Syntactic sugar. */
@@ -751,7 +751,8 @@ inline size_t to_bytesize(eGPUTextureFormat tex_format, eGPUDataFormat data_form
    * Standard component len calculation does not apply, as the texture formats contain multiple
    * channels, but associated data format contains several compacted components. */
   if ((tex_format == GPU_R11F_G11F_B10F && data_format == GPU_DATA_10_11_11_REV) ||
-      (tex_format == GPU_RGB10_A2 && data_format == GPU_DATA_2_10_10_10_REV))
+      ((tex_format == GPU_RGB10_A2 || tex_format == GPU_RGB10_A2UI) &&
+       data_format == GPU_DATA_2_10_10_10_REV))
   {
     return 4;
   }

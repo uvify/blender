@@ -63,7 +63,8 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
+#include "BKE_node_runtime.hh"
 #include "BKE_paint.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -103,7 +104,7 @@
 
 //#include "bmesh_tools.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 
 static void partial_redraw_array_init(ImagePaintPartialRedraw *pr);
 
@@ -6636,7 +6637,13 @@ static void default_paint_slot_color_get(int layer_type, Material *ma, float col
     case LAYER_ROUGHNESS:
     case LAYER_METALLIC: {
       bNodeTree *ntree = nullptr;
-      bNode *in_node = ma ? ntreeFindType(ma->nodetree, SH_NODE_BSDF_PRINCIPLED) : nullptr;
+      bNode *in_node = nullptr;
+      if (ma && ma->nodetree) {
+        ma->nodetree->ensure_topology_cache();
+        const blender::Span<bNode *> nodes = ma->nodetree->nodes_by_type(
+            "ShaderNodeBsdfPrincipled");
+        in_node = nodes.is_empty() ? nullptr : nodes.first();
+      }
       if (!in_node) {
         /* An existing material or Principled BSDF node could not be found.
          * Copy default color values from a default Principled BSDF instead. */
@@ -6667,7 +6674,7 @@ static void default_paint_slot_color_get(int layer_type, Material *ma, float col
       }
       /* Cleanup */
       if (ntree) {
-        ntreeFreeTree(ntree);
+        blender::bke::ntreeFreeTree(ntree);
         MEM_freeN(ntree);
       }
       return;
@@ -6729,7 +6736,7 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
       case PAINT_CANVAS_SOURCE_COLOR_ATTRIBUTE: {
         new_node = nodeAddStaticNode(C, ntree, SH_NODE_ATTRIBUTE);
         if (const char *name = proj_paint_color_attribute_create(op, ob)) {
-          BLI_strncpy_utf8(((NodeShaderAttribute *)new_node->storage)->name, name, MAX_NAME);
+          STRNCPY_UTF8(((NodeShaderAttribute *)new_node->storage)->name, name);
         }
         break;
       }
@@ -6740,7 +6747,9 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
     nodeSetActive(ntree, new_node);
 
     /* Connect to first available principled BSDF node. */
-    bNode *in_node = ntreeFindType(ntree, SH_NODE_BSDF_PRINCIPLED);
+    ntree->ensure_topology_cache();
+    const blender::Span<bNode *> bsdf_nodes = ntree->nodes_by_type("ShaderNodeBsdfPrincipled");
+    bNode *in_node = bsdf_nodes.is_empty() ? nullptr : bsdf_nodes.first();
     bNode *out_node = new_node;
 
     if (in_node != nullptr) {
@@ -6776,7 +6785,9 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
       }
       else if (type == LAYER_DISPLACEMENT) {
         /* Connect to the displacement output socket */
-        in_node = ntreeFindType(ntree, SH_NODE_OUTPUT_MATERIAL);
+        const blender::Span<bNode *> output_nodes = ntree->nodes_by_type(
+            "ShaderNodeOutputMaterial");
+        in_node = output_nodes.is_empty() ? nullptr : output_nodes.first();
 
         if (in_node != nullptr) {
           in_sock = nodeFindSocket(in_node, SOCK_IN, layer_type_items[type].name);
@@ -6791,13 +6802,13 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
       if (in_sock != nullptr && link == nullptr) {
         nodeAddLink(ntree, out_node, out_sock, in_node, in_sock);
 
-        nodePositionRelative(out_node, in_node, out_sock, in_sock);
+        blender::bke::nodePositionRelative(out_node, in_node, out_sock, in_sock);
       }
     }
 
     ED_node_tree_propagate_change(C, bmain, ntree);
     /* In case we added more than one node, position them too. */
-    nodePositionPropagate(out_node);
+    blender::bke::nodePositionPropagate(out_node);
 
     if (ima) {
       BKE_texpaint_slot_refresh_cache(scene, ma, ob);
@@ -6863,7 +6874,8 @@ static int texture_paint_add_texture_paint_slot_invoke(bContext *C,
   get_default_texture_layer_name_for_object(ob, type, (char *)&imagename, sizeof(imagename));
   RNA_string_set(op->ptr, "name", imagename);
 
-  /* Set default color. Copy the color from nodes, so it matches the existing material. */
+  /* Set default color. Copy the color from nodes, so it matches the existing material.
+   * Material could be null so we should have a default color. */
   float color[4];
   default_paint_slot_color_get(type, ma, color);
   RNA_float_set_array(op->ptr, "color", color);

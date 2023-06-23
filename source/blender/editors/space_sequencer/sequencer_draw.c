@@ -414,6 +414,7 @@ static void draw_seq_waveform_overlay(
 
   const float frames_per_pixel = BLI_rctf_size_x(&region->v2d.cur) / region->winx;
   const float samples_per_frame = SOUND_WAVE_SAMPLES_PER_SECOND / FPS;
+  float samples_per_pixel = samples_per_frame * frames_per_pixel;
 
   /* Align strip start with nearest pixel to prevent waveform flickering. */
   const float x1_aligned = align_frame_with_pixel(x1, frames_per_pixel);
@@ -439,17 +440,15 @@ static void draw_seq_waveform_overlay(
   size_t wave_data_len = 0;
 
   /* Offset must be also aligned, otherwise waveform flickers when moving left handle. */
-  float start_frame = SEQ_time_left_handle_frame_get(scene, seq);
-
+  const float strip_offset = align_frame_with_pixel(seq->startofs + seq->anim_startofs,
+                                                    frames_per_pixel);
+  float start_sample = strip_offset * samples_per_frame;
+  start_sample += seq->sound->offset_time * SOUND_WAVE_SAMPLES_PER_SECOND;
   /* Add off-screen part of strip to offset. */
-  start_frame += (frame_start - x1_aligned);
-  start_frame += seq->sound->offset_time / FPS;
+  start_sample += (frame_start - x1_aligned) * samples_per_frame;
 
   for (int i = 0; i < pixels_to_draw; i++) {
-    float timeline_frame = start_frame + i * frames_per_pixel;
-    /* TODO: Use linear interpolation between frames to avoid bad drawing quality. */
-    float frame_index = SEQ_give_frame_index(scene, seq, timeline_frame);
-    float sample = frame_index * samples_per_frame;
+    float sample = start_sample + i * samples_per_pixel;
     int sample_index = round_fl_to_int(sample);
 
     if (sample_index < 0) {
@@ -470,8 +469,6 @@ static void draw_seq_waveform_overlay(
       value_min = (1.0f - f) * value_min + f * waveform->data[sample_index * 3 + 3];
       value_max = (1.0f - f) * value_max + f * waveform->data[sample_index * 3 + 4];
       rms = (1.0f - f) * rms + f * waveform->data[sample_index * 3 + 5];
-
-      float samples_per_pixel = samples_per_frame * frames_per_pixel;
       if (samples_per_pixel > 1.0f) {
         /* We need to sum up the values we skip over until the next step. */
         float next_pos = sample + samples_per_pixel;
@@ -703,11 +700,10 @@ static void draw_seq_handle(const Scene *scene,
     BLF_set_default();
 
     /* Calculate if strip is wide enough for showing the labels. */
-    numstr_len = BLI_snprintf_rlen(numstr,
-                                   sizeof(numstr),
-                                   "%d%d",
-                                   SEQ_time_left_handle_frame_get(scene, seq),
-                                   SEQ_time_right_handle_frame_get(scene, seq));
+    numstr_len = SNPRINTF_RLEN(numstr,
+                               "%d%d",
+                               SEQ_time_left_handle_frame_get(scene, seq),
+                               SEQ_time_right_handle_frame_get(scene, seq));
     float tot_width = BLF_width(fontid, numstr, numstr_len);
 
     if ((x2 - x1) / pixelx > 20 + tot_width) {
@@ -715,14 +711,12 @@ static void draw_seq_handle(const Scene *scene,
       float text_margin = 1.2f * handsize_clamped;
 
       if (direction == SEQ_LEFTHANDLE) {
-        numstr_len = BLI_snprintf_rlen(
-            numstr, sizeof(numstr), "%d", SEQ_time_left_handle_frame_get(scene, seq));
+        numstr_len = SNPRINTF_RLEN(numstr, "%d", SEQ_time_left_handle_frame_get(scene, seq));
         x1 += text_margin;
         y1 += 0.09f;
       }
       else {
-        numstr_len = BLI_snprintf_rlen(
-            numstr, sizeof(numstr), "%d", SEQ_time_right_handle_frame_get(scene, seq) - 1);
+        numstr_len = SNPRINTF_RLEN(numstr, "%d", SEQ_time_right_handle_frame_get(scene, seq) - 1);
         x1 = x2 - (text_margin + pixelx * BLF_width(fontid, numstr, numstr_len));
         y1 += 0.09f;
       }
@@ -801,7 +795,7 @@ static const char *draw_seq_text_get_name(Sequence *seq)
   return name;
 }
 
-static void draw_seq_text_get_source(Sequence *seq, char *r_source, size_t source_len)
+static void draw_seq_text_get_source(Sequence *seq, char *r_source, size_t source_maxncpy)
 {
   *r_source = '\0';
 
@@ -809,48 +803,49 @@ static void draw_seq_text_get_source(Sequence *seq, char *r_source, size_t sourc
   switch (seq->type) {
     case SEQ_TYPE_IMAGE:
     case SEQ_TYPE_MOVIE: {
-      BLI_path_join(r_source, source_len, seq->strip->dir, seq->strip->stripdata->name);
+      BLI_path_join(
+          r_source, source_maxncpy, seq->strip->dirpath, seq->strip->stripdata->filename);
       break;
     }
     case SEQ_TYPE_SOUND_RAM: {
       if (seq->sound != NULL) {
-        BLI_strncpy(r_source, seq->sound->filepath, source_len);
+        BLI_strncpy(r_source, seq->sound->filepath, source_maxncpy);
       }
       break;
     }
     case SEQ_TYPE_MULTICAM: {
-      BLI_snprintf(r_source, source_len, "Channel: %d", seq->multicam_source);
+      BLI_snprintf(r_source, source_maxncpy, "Channel: %d", seq->multicam_source);
       break;
     }
     case SEQ_TYPE_TEXT: {
       const TextVars *textdata = seq->effectdata;
-      BLI_strncpy(r_source, textdata->text, source_len);
+      BLI_strncpy(r_source, textdata->text, source_maxncpy);
       break;
     }
     case SEQ_TYPE_SCENE: {
       if (seq->scene != NULL) {
         if (seq->scene_camera != NULL) {
           BLI_snprintf(r_source,
-                       source_len,
+                       source_maxncpy,
                        "%s (%s)",
                        seq->scene->id.name + 2,
                        seq->scene_camera->id.name + 2);
         }
         else {
-          BLI_strncpy(r_source, seq->scene->id.name + 2, source_len);
+          BLI_strncpy(r_source, seq->scene->id.name + 2, source_maxncpy);
         }
       }
       break;
     }
     case SEQ_TYPE_MOVIECLIP: {
       if (seq->clip != NULL) {
-        BLI_strncpy(r_source, seq->clip->id.name + 2, source_len);
+        BLI_strncpy(r_source, seq->clip->id.name + 2, source_maxncpy);
       }
       break;
     }
     case SEQ_TYPE_MASK: {
       if (seq->mask != NULL) {
-        BLI_strncpy(r_source, seq->mask->id.name + 2, source_len);
+        BLI_strncpy(r_source, seq->mask->id.name + 2, source_maxncpy);
       }
       break;
     }

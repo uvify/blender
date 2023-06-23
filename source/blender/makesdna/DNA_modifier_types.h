@@ -12,11 +12,11 @@
 
 #ifdef __cplusplus
 namespace blender::bke::sim {
-class ModifierSimulationCache;
+struct ModifierSimulationCachePtr;
 }
-using ModifierSimulationCacheHandle = blender::bke::sim::ModifierSimulationCache;
+using ModifierSimulationCachePtrHandle = blender::bke::sim::ModifierSimulationCachePtr;
 #else
-typedef struct ModifierSimulationCacheHandle ModifierSimulationCacheHandle;
+typedef struct ModifierSimulationCachePtrHandle ModifierSimulationCachePtrHandle;
 #endif
 
 #ifdef __cplusplus
@@ -2319,6 +2319,11 @@ typedef struct NodesModifierData {
   ModifierData modifier;
   struct bNodeTree *node_group;
   struct NodesModifierSettings settings;
+  /**
+   * Directory where baked simulation states are stored. This may be relative to the .blend file.
+   */
+  char *simulation_bake_directory;
+  void *_pad;
 
   /**
    * Contains logged information from the last evaluation.
@@ -2326,7 +2331,12 @@ typedef struct NodesModifierData {
    */
   void *runtime_eval_log;
 
-  ModifierSimulationCacheHandle *simulation_cache;
+  /**
+   * Simulation cache that is shared between original and evaluated modifiers. This allows the
+   * original modifier to be removed, without also removing the simulation state which may still be
+   * used by the evaluated modifier.
+   */
+  ModifierSimulationCachePtrHandle *simulation_cache;
 } NodesModifierData;
 
 typedef struct MeshToVolumeModifierData {

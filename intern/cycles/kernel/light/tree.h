@@ -316,7 +316,7 @@ ccl_device void light_tree_node_importance(KernelGlobals kg,
       return;
     }
     point_to_centroid = -bcone.axis;
-    cos_theta_u = fast_cosf(bcone.theta_o);
+    cos_theta_u = fast_cosf(bcone.theta_o + bcone.theta_e);
     distance = 1.0f;
   }
   else {
@@ -509,6 +509,19 @@ ccl_device void sample_resevoir(const int current_index,
     return;
   }
   total_weight += current_weight;
+
+  /* When `-ffast-math` is used it is possible that the threshold is almost 1 but not quite.
+   * For this case we check the first assignment explicitly (instead of relying on the threshold to
+   * be 1, giving it certain probability). */
+  if (selected_index == -1) {
+    selected_index = current_index;
+    selected_weight = current_weight;
+    /* The threshold is expected to be 1 in this case with strict mathematics, so no need to divide
+     * the rand. In fact, division in such case could lead the rand to exceed 1 because of division
+     * by something smaller than 1. */
+    return;
+  }
+
   float thresh = current_weight / total_weight;
   if (rand <= thresh) {
     selected_index = current_index;
@@ -518,8 +531,10 @@ ccl_device void sample_resevoir(const int current_index,
   else {
     rand = (rand - thresh) / (1.0f - thresh);
   }
-  kernel_assert(rand >= 0.0f && rand <= 1.0f);
-  return;
+
+  /* Ensure the `rand` is always within 0..1 range, which could be violated above when
+   * `-ffast-math` is used. */
+  rand = saturatef(rand);
 }
 
 /* Pick an emitter from a leaf node using resevoir sampling, keep two reservoirs for upper and
@@ -739,7 +754,7 @@ ccl_device float light_tree_pdf(
 
   ccl_global const KernelLightTreeEmitter *kemitter = &kernel_data_fetch(light_tree_emitters,
                                                                          target);
-  int root_index, target_leaf;
+  int root_index;
   uint bit_trail, target_emitter;
 
   if (is_triangle(kemitter)) {
@@ -748,7 +763,6 @@ ccl_device float light_tree_pdf(
     target_emitter = kernel_data_fetch(object_to_tree, object);
     ccl_global const KernelLightTreeEmitter *kmesh = &kernel_data_fetch(light_tree_emitters,
                                                                         target_emitter);
-    target_leaf = kmesh->parent_index;
     root_index = kmesh->mesh.node_id;
     ccl_global const KernelLightTreeNode *kroot = &kernel_data_fetch(light_tree_nodes, root_index);
     bit_trail = kroot->bit_trail;
@@ -759,8 +773,7 @@ ccl_device float light_tree_pdf(
   }
   else {
     root_index = 0;
-    target_leaf = kemitter->parent_index;
-    bit_trail = kernel_data_fetch(light_tree_nodes, target_leaf).bit_trail;
+    bit_trail = kemitter->bit_trail;
     target_emitter = target;
   }
 
@@ -772,18 +785,14 @@ ccl_device float light_tree_pdf(
     const ccl_global KernelLightTreeNode *knode = &kernel_data_fetch(light_tree_nodes, node_index);
 
     if (is_leaf(knode)) {
-      kernel_assert(node_index == target_leaf);
-      ccl_global const KernelLightTreeNode *kleaf = &kernel_data_fetch(light_tree_nodes,
-                                                                       target_leaf);
-
       /* Iterate through leaf node to find the probability of sampling the target emitter. */
       float target_max_importance = 0.0f;
       float target_min_importance = 0.0f;
       float total_max_importance = 0.0f;
       float total_min_importance = 0.0f;
       int num_has_importance = 0;
-      for (int i = 0; i < kleaf->num_emitters; i++) {
-        const int emitter = kleaf->leaf.first_emitter + i;
+      for (int i = 0; i < knode->num_emitters; i++) {
+        const int emitter = knode->leaf.first_emitter + i;
         float max_importance, min_importance;
         light_tree_emitter_importance<false>(
             kg, P, N, 0, has_transmission, emitter, max_importance, min_importance);
@@ -813,12 +822,10 @@ ccl_device float light_tree_pdf(
         node_index = root_index;
         root_index = 0;
         target_emitter = target;
-        target_leaf = kemitter->parent_index;
-        bit_trail = kernel_data_fetch(light_tree_nodes, target_leaf).bit_trail;
+        bit_trail = kemitter->bit_trail;
         continue;
       }
       else {
-        kernel_assert(node_index == target_leaf);
         return pdf;
       }
     }

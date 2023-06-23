@@ -168,6 +168,7 @@ add_blender_test(
   blendfile_library_overrides
   --python ${CMAKE_CURRENT_LIST_DIR}/bl_blendfile_library_overrides.py --
   --output-dir ${TEST_OUT_DIR}/blendfile_io/
+  --test-dir "${TEST_SRC_DIR}/libraries_and_linking"
 )
 
 # ------------------------------------------------------------------------------
@@ -646,7 +647,7 @@ add_blender_test(
 endif()
 
 # SVG Import
-if(True)
+if(TRUE)
   if(NOT OPENIMAGEIO_IDIFF)
     message(WARNING "Disabling SVG tests because OIIO idiff does not exist")
   else()

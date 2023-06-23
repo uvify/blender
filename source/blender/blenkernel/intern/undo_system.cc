@@ -119,7 +119,7 @@ static void undosys_id_ref_store(void * /*user_data*/, UndoRefID *id_ref)
 {
   BLI_assert(id_ref->name[0] == '\0');
   if (id_ref->ptr) {
-    BLI_strncpy(id_ref->name, id_ref->ptr->name, sizeof(id_ref->name));
+    STRNCPY(id_ref->name, id_ref->ptr->name);
     /* Not needed, just prevents stale data access. */
     id_ref->ptr = nullptr;
   }
@@ -384,7 +384,7 @@ UndoStep *BKE_undosys_stack_init_or_active_with_type(UndoStack *ustack, const Un
 void BKE_undosys_stack_limit_steps_and_memory(UndoStack *ustack, int steps, size_t memory_limit)
 {
   UNDO_NESTED_ASSERT(false);
-  if ((steps == -1) && (memory_limit != 0)) {
+  if ((steps == -1) && (memory_limit == 0)) {
     return;
   }
 
@@ -398,6 +398,12 @@ void BKE_undosys_stack_limit_steps_and_memory(UndoStack *ustack, int steps, size
     if (memory_limit) {
       data_size_all += us->data_size;
       if (data_size_all > memory_limit) {
+        CLOG_INFO(&LOG,
+                  1,
+                  "At step %zu: data_size_all=%zu >= memory_limit=%zu",
+                  us_count,
+                  data_size_all,
+                  memory_limit);
         break;
       }
     }
@@ -410,6 +416,8 @@ void BKE_undosys_stack_limit_steps_and_memory(UndoStack *ustack, int steps, size
       }
     }
   }
+
+  CLOG_INFO(&LOG, 1, "Total steps %zu: data_size_all=%zu", us_count, data_size_all);
 
   if (us) {
 #ifdef WITH_GLOBAL_UNDO_KEEP_ONE
@@ -456,7 +464,7 @@ UndoStep *BKE_undosys_step_push_init_with_type(UndoStack *ustack,
 
     UndoStep *us = static_cast<UndoStep *>(MEM_callocN(ut->step_size, __func__));
     if (name != nullptr) {
-      BLI_strncpy(us->name, name, sizeof(us->name));
+      STRNCPY(us->name, name);
     }
     us->type = ut;
     ustack->step_init = us;
@@ -541,7 +549,7 @@ eUndoPushReturn BKE_undosys_step_push_with_type(UndoStack *ustack,
                        static_cast<UndoStep *>(MEM_callocN(ut->step_size, __func__));
     ustack->step_init = nullptr;
     if (us->name[0] == '\0') {
-      BLI_strncpy(us->name, name, sizeof(us->name));
+      STRNCPY(us->name, name);
     }
     us->type = ut;
     /* True by default, code needs to explicitly set it to false if necessary. */

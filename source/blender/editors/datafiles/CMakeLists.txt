@@ -508,6 +508,7 @@ set(ICON_NAMES
   ipo_ease_out
   ipo_ease_in_out
   normalize_fcurves
+  orientation_parent
   vertexsel
   edgesel
   facesel
@@ -871,7 +872,6 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.sculpt.mask_by_color
   ops.sculpt.mesh_filter
   ops.sequencer.blade
-  ops.sequencer.retime
   ops.transform.bone_envelope
   ops.transform.bone_size
   ops.transform.edge_slide

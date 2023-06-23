@@ -27,19 +27,20 @@
 
 /* FILE_MAXDIR + FILE_MAXFILE */
 
-int BLI_windows_get_executable_dir(char *str)
+int BLI_windows_get_executable_dir(char r_dirpath[/*FILE_MAXDIR*/])
 {
-  char dir[FILE_MAXDIR];
+  char filepath[FILE_MAX];
+  char dir[FILE_MAX];
   int a;
   /* Change to utf support. */
-  GetModuleFileName(NULL, str, FILE_MAX);
-  BLI_path_split_dir_part(str, dir, sizeof(dir)); /* shouldn't be relative */
+  GetModuleFileName(NULL, filepath, sizeof(filepath));
+  BLI_path_split_dir_part(filepath, dir, sizeof(dir)); /* shouldn't be relative */
   a = strlen(dir);
   if (dir[a - 1] == '\\') {
     dir[a - 1] = 0;
   }
 
-  strcpy(str, dir);
+  BLI_strncpy(r_dirpath, dir, FILE_MAXDIR);
 
   return 1;
 }
@@ -112,7 +113,7 @@ bool BLI_windows_register_blend_extension(const bool background)
                            &hkey,
                            &dwd);
   if (lresult == ERROR_SUCCESS) {
-    BLI_snprintf(buffer, sizeof(buffer), "\"%s\" \"%%1\"", BlPath);
+    SNPRINTF(buffer, "\"%s\" \"%%1\"", BlPath);
     lresult = RegSetValueEx(hkey, NULL, 0, REG_SZ, (BYTE *)buffer, strlen(buffer) + 1);
     RegCloseKey(hkey);
   }
@@ -131,7 +132,7 @@ bool BLI_windows_register_blend_extension(const bool background)
                            &hkey,
                            &dwd);
   if (lresult == ERROR_SUCCESS) {
-    BLI_snprintf(buffer, sizeof(buffer), "\"%s\", 1", BlPath);
+    SNPRINTF(buffer, "\"%s\", 1", BlPath);
     lresult = RegSetValueEx(hkey, NULL, 0, REG_SZ, (BYTE *)buffer, strlen(buffer) + 1);
     RegCloseKey(hkey);
   }
@@ -169,12 +170,10 @@ bool BLI_windows_register_blend_extension(const bool background)
   RegCloseKey(root);
   printf("success (%s)\n", usr_mode ? "user" : "system");
   if (!background) {
-    BLI_snprintf(MBox,
-                 sizeof(MBox),
-                 "File extension registered for %s.",
-                 usr_mode ?
-                     "the current user. To register for all users, run as an administrator" :
-                     "all users");
+    SNPRINTF(MBox,
+             "File extension registered for %s.",
+             usr_mode ? "the current user. To register for all users, run as an administrator" :
+                        "all users");
     MessageBox(0, MBox, "Blender", MB_OK | MB_ICONINFORMATION);
   }
   return true;

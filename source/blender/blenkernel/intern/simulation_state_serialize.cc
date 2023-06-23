@@ -25,7 +25,7 @@ namespace blender::bke::sim {
 
 /**
  * Turn the name into something that can be used as file name. It does not necessarily have to be
- * human readible, but it can help if it is at least partially readible.
+ * human readable, but it can help if it is at least partially readable.
  */
 static std::string escape_name(const StringRef name)
 {
@@ -42,26 +42,18 @@ static std::string escape_name(const StringRef name)
   return ss.str();
 }
 
-static std::string get_blendcache_directory(const Main &bmain)
+static std::string get_blend_file_name(const Main &bmain)
 {
-  StringRefNull blend_file_path = BKE_main_blendfile_path(&bmain);
-  char blend_directory[FILE_MAX];
+  const StringRefNull blend_file_path = BKE_main_blendfile_path(&bmain);
   char blend_name[FILE_MAX];
-  BLI_path_split_dir_file(blend_file_path.c_str(),
-                          blend_directory,
-                          sizeof(blend_directory),
-                          blend_name,
-                          sizeof(blend_name));
+
+  BLI_path_split_file_part(blend_file_path.c_str(), blend_name, sizeof(blend_name));
   const int64_t type_start_index = StringRef(blend_name).rfind(".");
   if (type_start_index == StringRef::not_found) {
     return "";
   }
   blend_name[type_start_index] = '\0';
-  const std::string blendcache_name = "blendcache_" + StringRef(blend_name);
-
-  char blendcache_dir[FILE_MAX];
-  BLI_path_join(blendcache_dir, sizeof(blendcache_dir), blend_directory, blendcache_name.c_str());
-  return blendcache_dir;
+  return "blendcache_" + StringRef(blend_name);
 }
 
 static std::string get_modifier_sim_name(const Object &object, const ModifierData &md)
@@ -71,29 +63,18 @@ static std::string get_modifier_sim_name(const Object &object, const ModifierDat
   return "sim_" + object_name_escaped + "_" + modifier_name_escaped;
 }
 
-std::string get_bake_directory(const Main &bmain, const Object &object, const ModifierData &md)
+std::string get_default_modifier_bake_directory(const Main &bmain,
+                                                const Object &object,
+                                                const ModifierData &md)
 {
-  char bdata_dir[FILE_MAX];
-  BLI_path_join(bdata_dir,
-                sizeof(bdata_dir),
-                get_blendcache_directory(bmain).c_str(),
+  char dir[FILE_MAX];
+  /* Make path that's relative to the .blend file. */
+  BLI_path_join(dir,
+                sizeof(dir),
+                "//",
+                get_blend_file_name(bmain).c_str(),
                 get_modifier_sim_name(object, md).c_str());
-  return bdata_dir;
-}
-
-std::string get_bdata_directory(const Main &bmain, const Object &object, const ModifierData &md)
-{
-  char bdata_dir[FILE_MAX];
-  BLI_path_join(
-      bdata_dir, sizeof(bdata_dir), get_bake_directory(bmain, object, md).c_str(), "bdata");
-  return bdata_dir;
-}
-
-std::string get_meta_directory(const Main &bmain, const Object &object, const ModifierData &md)
-{
-  char meta_dir[FILE_MAX];
-  BLI_path_join(meta_dir, sizeof(meta_dir), get_bake_directory(bmain, object, md).c_str(), "meta");
-  return meta_dir;
+  return dir;
 }
 
 std::shared_ptr<DictionaryValue> BDataSlice::serialize() const
@@ -835,8 +816,7 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
       {
         io_state_item->append_str("type", "GEOMETRY");
 
-        const GeometrySet &geometry = geometry_state_item->geometry();
-
+        const GeometrySet &geometry = geometry_state_item->geometry;
         auto io_geometry = serialize_geometry_set(geometry, bdata_writer, bdata_sharing);
         io_state_item->append("data", io_geometry);
       }

@@ -35,7 +35,7 @@ class MTLStorageBuf : public StorageBuf {
   } storage_source_ = MTL_STORAGE_BUF_TYPE_DEFAULT;
 
   union {
-    /* Own alloation. */
+    /** Own allocation. */
     gpu::MTLBuffer *metal_buffer_;
     /* Wrapped type. */
     MTLUniformBuf *uniform_buffer_;
@@ -71,7 +71,7 @@ class MTLStorageBuf : public StorageBuf {
   void init();
 
   id<MTLBuffer> get_metal_buffer();
-  int get_size();
+  size_t get_size();
   const char *get_name()
   {
     return name_;

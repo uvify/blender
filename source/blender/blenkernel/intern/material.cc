@@ -57,7 +57,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.h"
 #include "BKE_scene.h"
@@ -148,8 +148,9 @@ static void material_free_data(ID *id)
 
   MEM_SAFE_FREE(material->gp_style);
 
-  BKE_icon_id_delete((ID *)material);
   BKE_previewimg_free(&material->preview);
+
+  BKE_icon_id_delete((ID *)material);
 }
 
 static void material_foreach_id(ID *id, LibraryForeachIDData *data)
@@ -759,6 +760,10 @@ Material *BKE_object_material_get_eval(Object *ob, short act)
 int BKE_object_material_count_eval(Object *ob)
 {
   BLI_assert(DEG_is_evaluated_object(ob));
+  if (ob->type == OB_EMPTY) {
+    return 0;
+  }
+  BLI_assert(ob->data != nullptr);
   ID *id = get_evaluated_object_data_with_materials(ob);
   const short *len_p = BKE_id_material_len_p(id);
   return len_p ? *len_p : 0;
@@ -1556,7 +1561,7 @@ void BKE_texpaint_slot_refresh_cache(Scene *scene, Material *ma, const struct Ob
       ma->texpaintslot = static_cast<TexPaintSlot *>(
           MEM_callocN(sizeof(TexPaintSlot) * count, "texpaint_slots"));
 
-      bNode *active_node = nodeGetActivePaintCanvas(ma->nodetree);
+      bNode *active_node = blender::bke::nodeGetActivePaintCanvas(ma->nodetree);
 
       fill_texpaint_slots_recursive(ma->nodetree, active_node, ob, ma, count, slot_filter);
 
@@ -1893,75 +1898,6 @@ void ramp_blend(int type, float r_col[3], const float fac, const float col[3])
   }
 }
 
-/**
- * \brief copy/paste buffer, if we had a proper py api that would be better
- * \note matcopybuf.nodetree does _NOT_ use ID's
- * \todo matcopybuf.nodetree's  node->id's are NOT validated, this will crash!
- */
-static Material matcopybuf;
-static short matcopied = 0;
-
-void BKE_material_copybuf_clear(void)
-{
-  matcopybuf = blender::dna::shallow_zero_initialize();
-  matcopied = 0;
-}
-
-void BKE_material_copybuf_free(void)
-{
-  if (matcopybuf.nodetree) {
-    ntreeFreeLocalTree(matcopybuf.nodetree);
-    BLI_assert(!matcopybuf.nodetree->id.py_instance); /* Or call #BKE_libblock_free_data_py. */
-    MEM_freeN(matcopybuf.nodetree);
-    matcopybuf.nodetree = nullptr;
-  }
-
-  matcopied = 0;
-}
-
-void BKE_material_copybuf_copy(Main *bmain, Material *ma)
-{
-  if (matcopied) {
-    BKE_material_copybuf_free();
-  }
-
-  matcopybuf = blender::dna::shallow_copy(*ma);
-
-  if (ma->nodetree != nullptr) {
-    matcopybuf.nodetree = ntreeCopyTree_ex(ma->nodetree, bmain, false);
-  }
-
-  matcopybuf.preview = nullptr;
-  BLI_listbase_clear(&matcopybuf.gpumaterial);
-  /* TODO: Duplicate Engine Settings and set runtime to nullptr. */
-  matcopied = 1;
-}
-
-void BKE_material_copybuf_paste(Main *bmain, Material *ma)
-{
-  ID id;
-
-  if (matcopied == 0) {
-    return;
-  }
-
-  /* Free gpu material before the ntree */
-  GPU_material_free(&ma->gpumaterial);
-
-  if (ma->nodetree) {
-    ntreeFreeEmbeddedTree(ma->nodetree);
-    MEM_freeN(ma->nodetree);
-  }
-
-  id = (ma->id);
-  *ma = blender::dna::shallow_copy(matcopybuf);
-  (ma->id) = id;
-
-  if (matcopybuf.nodetree != nullptr) {
-    ma->nodetree = ntreeCopyTree_ex(matcopybuf.nodetree, bmain, false);
-  }
-}
-
 void BKE_material_eval(struct Depsgraph *depsgraph, Material *material)
 {
   DEG_debug_print_eval(depsgraph, __func__, material->id.name, material);
@@ -1997,7 +1933,7 @@ static void material_default_surface_init(Material *ma)
 {
   strcpy(ma->id.name, "MADefault Surface");
 
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
   ma->use_nodes = true;
 
@@ -2025,7 +1961,7 @@ static void material_default_volume_init(Material *ma)
 {
   strcpy(ma->id.name, "MADefault Volume");
 
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
   ma->use_nodes = true;
 
@@ -2050,7 +1986,7 @@ static void material_default_holdout_init(Material *ma)
 {
   strcpy(ma->id.name, "MADefault Holdout");
 
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
   ma->use_nodes = true;
 

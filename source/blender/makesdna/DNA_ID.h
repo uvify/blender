@@ -337,6 +337,12 @@ enum {
    * resync process.
    */
   LIBOVERRIDE_TAG_RESYNC_ISOLATED_FROM_ROOT = 1 << 2,
+  /**
+   * This override was detected as needing resync outside of the resync process (it is a 'really
+   * need resync' case, not a 'need resync for hierarchy reasons' one). Temporarily used during
+   * resync process.
+   */
+  LIBOVERRIDE_TAG_NEED_RESYNC_ORIGINAL = 1 << 3,
 };
 
 /* Main container for all overriding data info of a data-block. */
@@ -703,6 +709,15 @@ enum {
    * was kept around (because e.g. detected as user-edited).
    */
   LIB_LIB_OVERRIDE_RESYNC_LEFTOVER = 1 << 13,
+  /**
+   * This `id` was explicitly copied as part of a clipboard copy operation.
+   * When reading the clipboard back, this can be used to check which ID's are
+   * intended to be part of the clipboard, compared with ID's that were indirectly referenced.
+   *
+   * While the flag is typically cleared, a saved file may have this set for some data-blocks,
+   * so it must be treated as dirty.
+   */
+  LIB_CLIPBOARD_MARK = 1 << 14,
 };
 
 /**
@@ -799,6 +814,9 @@ enum {
   /**
    * ID is a library override that needs re-sync to its linked reference.
    *
+   * \note Also used by readfile code when creating a missing ID placeholder if it is detected as
+   * being a linked liboverride ID.
+   *
    * RESET_NEVER
    */
   LIB_TAG_LIBOVERRIDE_NEED_RESYNC = 1 << 8,
@@ -846,11 +864,13 @@ enum {
   LIB_TAG_NEED_LINK = 1 << 16,
   /**
    * ID is being re-used from the old Main (instead of read from memfile), during memfile undo
-   * processing.
+   * processing, because it was detected as unchanged.
+   *
+   * \note: Also means that such ID does not need to be lib-linked during undo readfile process.
    *
    * RESET_AFTER_USE
    */
-  LIB_TAG_UNDO_OLD_ID_REUSED = 1 << 17,
+  LIB_TAG_UNDO_OLD_ID_REUSED_UNCHANGED = 1 << 17,
   /**
    * ID has be re-read in-place, the ID address is the same as in the old BMain, but the content is
    * different.
@@ -1177,7 +1197,7 @@ typedef enum IDRecalcFlag {
  * required to address all remaining relationship cases.
  * See e.g. how #BKE_library_unused_linked_data_set_tag is doing this.
  */
-enum {
+typedef enum eID_Index {
   /* Special case: Library, should never ever depend on any other type. */
   INDEX_ID_LI = 0,
 
@@ -1257,8 +1277,9 @@ enum {
 
   /* Special values. */
   INDEX_ID_NULL,
-  INDEX_ID_MAX,
-};
+} eID_Index;
+
+#define INDEX_ID_MAX (INDEX_ID_NULL + 1)
 
 #ifdef __cplusplus
 }

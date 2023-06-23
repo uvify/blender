@@ -715,6 +715,10 @@ static eSnapTargetOP snap_target_select_from_spacetype(TransInfo *t)
           /* Exclude editmesh when using proportional edit */
           ret |= SCE_SNAP_TARGET_NOT_EDITED;
         }
+        /* UV editing must never snap to the selection as this is what is transformed. */
+        if (t->spacetype == SPACE_IMAGE) {
+          ret |= SCE_SNAP_TARGET_NOT_SELECTED;
+        }
       }
       else if (ELEM(obedit_type, OB_ARMATURE, OB_CURVES_LEGACY, OB_SURF, OB_LATTICE, OB_MBALL)) {
         /* Temporary limited to edit mode armature, curves, surfaces, lattices, and metaballs. */
@@ -1384,7 +1388,7 @@ eSnapMode snapObjectsTransform(
   SnapObjectParams snap_object_params{};
   snap_object_params.snap_target_select = t->tsnap.target_operation;
   snap_object_params.edit_mode_type = (t->flag & T_EDIT) != 0 ? SNAP_GEOM_EDIT : SNAP_GEOM_FINAL;
-  snap_object_params.use_occlusion_test = t->settings->snap_mode != SCE_SNAP_MODE_FACE_RAYCAST;
+  snap_object_params.use_occlusion_test = true;
   snap_object_params.use_backface_culling = (t->tsnap.flag & SCE_SNAP_BACKFACE_CULLING) != 0;
 
   float *target = (t->tsnap.status & SNAP_SOURCE_FOUND) ? t->tsnap.snap_source : t->center_global;

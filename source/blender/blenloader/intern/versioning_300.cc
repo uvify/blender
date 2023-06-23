@@ -65,8 +65,9 @@
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_screen.h"
+#include "BKE_simulation_state_serialize.hh"
 #include "BKE_workspace.h"
 
 #include "RNA_access.h"
@@ -80,7 +81,6 @@
 #include "SEQ_channels.h"
 #include "SEQ_effects.h"
 #include "SEQ_iterator.h"
-#include "SEQ_retiming.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 
@@ -682,30 +682,16 @@ static bool seq_speed_factor_set(Sequence *seq, void *user_data)
       seq_speed_factor_fix_rna_path(seq, &scene->adt->drivers);
     }
 
+    /* Pitch value of 0 has been found in some files. This would cause problems. */
+    if (seq->pitch <= 0.0f) {
+      seq->pitch = 1.0f;
+    }
+
     seq->speed_factor = seq->pitch;
   }
   else {
     seq->speed_factor = 1.0f;
   }
-  return true;
-}
-
-static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *user_data)
-{
-  const Scene *scene = static_cast<const Scene *>(user_data);
-
-  if (seq->speed_factor == 1 || !SEQ_retiming_is_allowed(seq)) {
-    return true;
-  }
-
-  const int content_length = SEQ_time_strip_length_get(scene, seq);
-
-  SEQ_retiming_data_ensure(seq);
-
-  SeqRetimingHandle *handle = &seq->retiming_handles[seq->retiming_handle_num - 1];
-  handle->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);
-  seq->speed_factor = 0.0f;
-
   return true;
 }
 
@@ -923,7 +909,7 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
         store_attribute_name_input->default_value);
     const char *uv_map_name = node->type == GEO_NODE_MESH_PRIMITIVE_ICO_SPHERE ? "UVMap" :
                                                                                  "uv_map";
-    BLI_strncpy(name_value->value, uv_map_name, sizeof(name_value->value));
+    STRNCPY(name_value->value, uv_map_name);
 
     nodeAddLink(&ntree,
                 node,
@@ -940,7 +926,7 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
     BLI_addhead(&ntree.nodes, node);
   }
   if (!new_nodes.is_empty()) {
-    nodeRebuildIDVector(&ntree);
+    blender::bke::nodeRebuildIDVector(&ntree);
   }
 }
 
@@ -1074,7 +1060,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
     BLI_addhead(&ntree.nodes, node);
   }
   if (!new_nodes.is_empty()) {
-    nodeRebuildIDVector(&ntree);
+    blender::bke::nodeRebuildIDVector(&ntree);
   }
 }
 
@@ -1355,18 +1341,6 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 306, 6)) {
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      Editing *ed = SEQ_editing_get(scene);
-      if (ed == nullptr) {
-        continue;
-      }
-
-      SEQ_for_each_callback(
-          &scene->ed->seqbase, do_versions_sequencer_init_retiming_tool_data, scene);
-    }
-  }
-
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -1397,7 +1371,7 @@ static void version_switch_node_input_prefix(Main *bmain)
 
             /* Replace "A" and "B", but keep the unique number suffix at the end. */
             char number_suffix[8];
-            BLI_strncpy(number_suffix, socket->identifier + 1, sizeof(number_suffix));
+            STRNCPY(number_suffix, socket->identifier + 1);
             BLI_string_join(
                 socket->identifier, sizeof(socket->identifier), socket->name, number_suffix);
           }
@@ -1576,22 +1550,14 @@ static void version_geometry_nodes_add_attribute_input_settings(NodesModifierDat
     }
 
     char use_attribute_prop_name[MAX_IDPROP_NAME];
-    BLI_snprintf(use_attribute_prop_name,
-                 sizeof(use_attribute_prop_name),
-                 "%s%s",
-                 property->name,
-                 "_use_attribute");
+    SNPRINTF(use_attribute_prop_name, "%s%s", property->name, "_use_attribute");
 
     IDPropertyTemplate idprop = {0};
     IDProperty *use_attribute_prop = IDP_New(IDP_INT, &idprop, use_attribute_prop_name);
     IDP_AddToGroup(nmd->settings.properties, use_attribute_prop);
 
     char attribute_name_prop_name[MAX_IDPROP_NAME];
-    BLI_snprintf(attribute_name_prop_name,
-                 sizeof(attribute_name_prop_name),
-                 "%s%s",
-                 property->name,
-                 "_attribute_name");
+    SNPRINTF(attribute_name_prop_name, "%s%s", property->name, "_attribute_name");
 
     IDProperty *attribute_prop = IDP_New(IDP_STRING, &idprop, attribute_name_prop_name);
     IDP_AddToGroup(nmd->settings.properties, attribute_prop);
@@ -1791,6 +1757,17 @@ static bool version_set_seq_single_frame_content(Sequence *seq, void * /*user_da
   {
     seq->flag |= SEQ_SINGLE_FRAME_CONTENT;
   }
+  return true;
+}
+
+static bool version_seq_fix_broken_sound_strips(Sequence *seq, void * /*user_data*/)
+{
+  if (seq->type != SEQ_TYPE_SOUND_RAM || seq->speed_factor != 0.0f) {
+    return true;
+  }
+
+  seq->speed_factor = 1.0f;
+  seq->startofs = 0.0f;
   return true;
 }
 
@@ -2308,6 +2285,73 @@ static void version_ensure_missing_regions(ScrArea *area, SpaceLink *sl)
 
       break;
     }
+  }
+}
+
+/**
+ * Change override RNA path from `frame_{start,end}` to `frame_{start,end}_raw`.
+ * See #102662.
+ */
+static void version_liboverride_nla_strip_frame_start_end(IDOverrideLibrary *liboverride,
+                                                          const char *parent_rna_path,
+                                                          NlaStrip *strip)
+{
+  if (!strip) {
+    return;
+  }
+
+  /* Escape the strip name for inclusion in the RNA path. */
+  char name_esc_strip[sizeof(strip->name) * 2];
+  BLI_str_escape(name_esc_strip, strip->name, sizeof(name_esc_strip));
+
+  const std::string rna_path_strip = std::string(parent_rna_path) + ".strips[\"" + name_esc_strip +
+                                     "\"]";
+
+  { /* Rename .frame_start -> .frame_start_raw: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_start";
+    BKE_lib_override_library_property_rna_path_change(
+        liboverride, rna_path_prop.c_str(), (rna_path_prop + "_raw").c_str());
+  }
+
+  { /* Rename .frame_end -> .frame_end_raw: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_end";
+    BKE_lib_override_library_property_rna_path_change(
+        liboverride, rna_path_prop.c_str(), (rna_path_prop + "_raw").c_str());
+  }
+
+  { /* Remove .frame_start_ui: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_start_ui";
+    BKE_lib_override_library_property_search_and_delete(liboverride, rna_path_prop.c_str());
+  }
+
+  { /* Remove .frame_end_ui: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_end_ui";
+    BKE_lib_override_library_property_search_and_delete(liboverride, rna_path_prop.c_str());
+  }
+
+  /* Handle meta-strip contents. */
+  LISTBASE_FOREACH (NlaStrip *, substrip, &strip->strips) {
+    version_liboverride_nla_strip_frame_start_end(liboverride, rna_path_strip.c_str(), substrip);
+  }
+}
+
+/** Fix the `frame_start` and `frame_end` overrides on NLA strips. See #102662. */
+static void version_liboverride_nla_frame_start_end(ID *id, AnimData *adt, void * /*user_data*/)
+{
+  IDOverrideLibrary *liboverride = id->override_library;
+  if (!liboverride) {
+    return;
+  }
+
+  int track_index;
+  LISTBASE_FOREACH_INDEX (NlaTrack *, track, &adt->nla_tracks, track_index) {
+    char *rna_path_track = BLI_sprintfN("animation_data.nla_tracks[%d]", track_index);
+
+    LISTBASE_FOREACH (NlaStrip *, strip, &track->strips) {
+      version_liboverride_nla_strip_frame_start_end(liboverride, rna_path_track, strip);
+    }
+
+    MEM_freeN(rna_path_track);
   }
 }
 
@@ -4329,83 +4373,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
     /* Rename Grease Pencil weight draw brush. */
     do_versions_rename_id(bmain, ID_BR, "Draw Weight", "Weight Draw");
-
-    /* Identifier generation for simulation node sockets changed.
-     * Update identifiers so links are not removed during validation.
-     * This only affects files that have been created using simulation nodes before they were first
-     * officially released. */
-    if (!DNA_struct_elem_find(fd->filesdna, "NodeSimulationItem", "int", "identifier")) {
-      static auto set_socket_identifiers =
-          [](bNode *node, const bNode *output_node, int extra_outputs) {
-            const NodeGeometrySimulationOutput *output_data =
-                static_cast<const NodeGeometrySimulationOutput *>(output_node->storage);
-            /* Includes extension socket. */
-            BLI_assert(BLI_listbase_count(&node->inputs) == output_data->items_num + 1);
-            /* Includes extension socket. */
-            BLI_assert(BLI_listbase_count(&node->outputs) ==
-                       output_data->items_num + 1 + extra_outputs);
-
-            int i;
-            LISTBASE_FOREACH_INDEX (bNodeSocket *, sock, &node->inputs, i) {
-              /* Skip extension socket. */
-              if (i >= output_data->items_num) {
-                break;
-              }
-              BLI_snprintf(sock->identifier,
-                           sizeof(sock->identifier),
-                           "Item_%d",
-                           output_data->items[i].identifier);
-            }
-            LISTBASE_FOREACH_INDEX (bNodeSocket *, sock, &node->outputs, i) {
-              const int item_i = i - extra_outputs;
-              /* Skip extra outputs. */
-              if (i < extra_outputs) {
-                continue;
-              }
-              /* Skip extension socket. */
-              if (item_i >= output_data->items_num) {
-                break;
-              }
-              BLI_snprintf(sock->identifier,
-                           sizeof(sock->identifier),
-                           "Item_%d",
-                           output_data->items[i - extra_outputs].identifier);
-            }
-          };
-
-      LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-        if (ntree->type == NTREE_GEOMETRY) {
-          /* Initialize item identifiers. */
-          LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-            if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
-              NodeGeometrySimulationOutput *data = static_cast<NodeGeometrySimulationOutput *>(
-                  node->storage);
-              for (int i = 0; i < data->items_num; ++i) {
-                data->items[i].identifier = i;
-              }
-              data->next_identifier = data->items_num;
-            }
-          }
-
-          LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-            if (node->type == GEO_NODE_SIMULATION_INPUT) {
-              const NodeGeometrySimulationInput *input_data =
-                  static_cast<const NodeGeometrySimulationInput *>(node->storage);
-              LISTBASE_FOREACH (bNode *, output_node, &ntree->nodes) {
-                if (output_node->identifier == input_data->output_node_id) {
-                  /* 'Delta Time' socket in input nodes */
-                  set_socket_identifiers(node, output_node, 1);
-                  break;
-                }
-              }
-            }
-            if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
-              set_socket_identifiers(node, node, 0);
-            }
-          }
-        }
-      }
-    }
   }
 
   /* fcm->name was never used to store modifier name so it has always been an empty string. Now
@@ -4421,10 +4388,102 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
   }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 8)) {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      ob->flag |= OB_FLAG_USE_SIMULATION_CACHE;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 9)) {
+    /* Fix sound strips with speed factor set to 0. See #107289. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, version_seq_fix_broken_sound_strips, nullptr);
+      }
+    }
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_ACTION) {
+            SpaceAction *saction = reinterpret_cast<SpaceAction *>(sl);
+            saction->cache_display |= TIME_CACHE_SIMULATION_NODES;
+          }
+        }
+      }
+    }
+
+    /* Enable the iTaSC ITASC_TRANSLATE_ROOT_BONES flag for backward compatibility.
+     * See #104606. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->type != OB_ARMATURE || ob->pose == nullptr) {
+        continue;
+      }
+      bPose *pose = ob->pose;
+      if (pose->iksolver != IKSOLVER_ITASC || pose->ikparam == nullptr) {
+        continue;
+      }
+      bItasc *ikparam = (bItasc *)pose->ikparam;
+      ikparam->flag |= ITASC_TRANSLATE_ROOT_BONES;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 10)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      /* Set default values for new members. */
+      scene->toolsettings->snap_mode_tools = SCE_SNAP_MODE_GEOM;
+      scene->toolsettings->plane_axis = 2;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 11)) {
+    BKE_animdata_main_cb(bmain, version_liboverride_nla_frame_start_end, NULL);
+
+    /* Store simulation bake directory in geometry nodes modifier. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+        if (md->type != eModifierType_Nodes) {
+          continue;
+        }
+        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+        if (nmd->simulation_bake_directory) {
+          continue;
+        }
+        const std::string bake_dir = blender::bke::sim::get_default_modifier_bake_directory(
+            *bmain, *ob, *md);
+        nmd->simulation_bake_directory = BLI_strdup(bake_dir.c_str());
+      }
+    }
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          /* #107870: Movie Clip Editor hangs in "Clip" view */
+          if (sl->spacetype == SPACE_CLIP) {
+            const ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                         &sl->regionbase;
+            ARegion *region_main = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                       RGN_TYPE_WINDOW);
+            region_main->flag &= ~RGN_FLAG_HIDDEN;
+            ARegion *region_tools = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                        RGN_TYPE_TOOLS);
+            region_tools->alignment = RGN_ALIGN_LEFT;
+            if (!(region_tools->flag & RGN_FLAG_HIDDEN_BY_USER)) {
+              region_tools->flag &= ~RGN_FLAG_HIDDEN;
+            }
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
    * \note Be sure to check when bumping the version:
+   * - #do_versions_after_linking_300 in this file.
    * - "versioning_userdef.c", #blo_do_versions_userdef
    * - "versioning_userdef.c", #do_versions_theme
    *

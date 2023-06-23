@@ -335,6 +335,9 @@ struct VolumeGrid {
       catch (const openvdb::IoError &e) {
         entry->error_msg = e.what();
       }
+      catch (...) {
+        entry->error_msg = "Unknown error reading VDB file";
+      }
     });
 
     std::atomic_thread_fence(std::memory_order_release);
@@ -515,7 +518,7 @@ static void volume_init_data(ID *id)
 
   BKE_volume_init_grids(volume);
 
-  BLI_strncpy(volume->velocity_grid, "velocity", sizeof(volume->velocity_grid));
+  STRNCPY(volume->velocity_grid, "velocity");
 }
 
 static void volume_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
@@ -793,7 +796,7 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
   const StringRefNull ref_base_name = base_name;
 
   if (BKE_volume_grid_find_for_read(volume, base_name)) {
-    BLI_strncpy(volume->velocity_grid, base_name, sizeof(volume->velocity_grid));
+    STRNCPY(volume->velocity_grid, base_name);
     volume->runtime.velocity_x_grid[0] = '\0';
     volume->runtime.velocity_y_grid[0] = '\0';
     volume->runtime.velocity_z_grid[0] = '\0';
@@ -818,16 +821,10 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
     }
 
     /* Save the base name as well. */
-    BLI_strncpy(volume->velocity_grid, base_name, sizeof(volume->velocity_grid));
-    BLI_strncpy(volume->runtime.velocity_x_grid,
-                (ref_base_name + postfix[0]).c_str(),
-                sizeof(volume->runtime.velocity_x_grid));
-    BLI_strncpy(volume->runtime.velocity_y_grid,
-                (ref_base_name + postfix[1]).c_str(),
-                sizeof(volume->runtime.velocity_y_grid));
-    BLI_strncpy(volume->runtime.velocity_z_grid,
-                (ref_base_name + postfix[2]).c_str(),
-                sizeof(volume->runtime.velocity_z_grid));
+    STRNCPY(volume->velocity_grid, base_name);
+    STRNCPY(volume->runtime.velocity_x_grid, (ref_base_name + postfix[0]).c_str());
+    STRNCPY(volume->runtime.velocity_y_grid, (ref_base_name + postfix[1]).c_str());
+    STRNCPY(volume->runtime.velocity_z_grid, (ref_base_name + postfix[2]).c_str());
     return true;
   }
 
@@ -885,7 +882,7 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
 
   try {
     /* Disable delay loading and file copying, this has poor performance
-     * on network drivers. */
+     * on network drives. */
     const bool delay_load = false;
     file.setCopyMaxBytes(0);
     file.open(delay_load);
@@ -894,6 +891,10 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
   }
   catch (const openvdb::IoError &e) {
     grids.error_msg = e.what();
+    CLOG_INFO(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
+  }
+  catch (...) {
+    grids.error_msg = "Unknown error reading VDB file";
     CLOG_INFO(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
   }
 
@@ -963,6 +964,10 @@ bool BKE_volume_save(const Volume *volume,
   }
   catch (const openvdb::IoError &e) {
     BKE_reportf(reports, RPT_ERROR, "Could not write volume: %s", e.what());
+    return false;
+  }
+  catch (...) {
+    BKE_reportf(reports, RPT_ERROR, "Could not write volume: Unknown error writing VDB file");
     return false;
   }
 

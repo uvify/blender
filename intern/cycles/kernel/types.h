@@ -79,11 +79,6 @@ CCL_NAMESPACE_BEGIN
 #define __VISIBILITY_FLAG__
 #define __VOLUME__
 
-/* TODO: solve internal compiler perf issue and enable light tree on Metal/AMD. */
-#if defined(__KERNEL_METAL_AMD__)
-#  undef __LIGHT_TREE__
-#endif
-
 /* Device specific features */
 #ifdef WITH_OSL
 #  define __OSL__
@@ -103,6 +98,13 @@ CCL_NAMESPACE_BEGIN
  * in spill buffer allocation sizing. */
 #if !defined(__KERNEL_METAL__) || (__KERNEL_METAL_MACOS__ >= 13)
 #  define __MNEE__
+#endif
+
+#if defined(__KERNEL_METAL_AMD__)
+/* Disabled due to internal compiler perf issue and enable light tree on Metal/AMD. */
+#  undef __LIGHT_TREE__
+/* Disabled due to compiler crash on Metal/AMD. */
+#  undef __MNEE__
 #endif
 
 /* Scene-based selective features compilation. */
@@ -1172,11 +1174,16 @@ typedef enum KernelBVHLayout {
   BVH_LAYOUT_HIPRT = (1 << 8),
   BVH_LAYOUT_MULTI_HIPRT = (1 << 9),
   BVH_LAYOUT_MULTI_HIPRT_EMBREE = (1 << 10),
+  BVH_LAYOUT_EMBREEGPU = (1 << 11),
+  BVH_LAYOUT_MULTI_EMBREEGPU = (1 << 12),
+  BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE = (1 << 13),
 
   /* Default BVH layout to use for CPU. */
   BVH_LAYOUT_AUTO = BVH_LAYOUT_EMBREE,
   BVH_LAYOUT_ALL = BVH_LAYOUT_BVH2 | BVH_LAYOUT_EMBREE | BVH_LAYOUT_OPTIX | BVH_LAYOUT_METAL |
-                   BVH_LAYOUT_HIPRT | BVH_LAYOUT_MULTI_HIPRT | BVH_LAYOUT_MULTI_HIPRT_EMBREE,
+                   BVH_LAYOUT_HIPRT | BVH_LAYOUT_MULTI_HIPRT | BVH_LAYOUT_MULTI_HIPRT_EMBREE |
+                   BVH_LAYOUT_EMBREEGPU | BVH_LAYOUT_MULTI_EMBREEGPU |
+                   BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE,
 } KernelBVHLayout;
 
 /* Specialized struct that can become constants in dynamic compilation. */
@@ -1441,8 +1448,8 @@ typedef struct KernelLightTreeEmitter {
 
   MeshLight mesh_light;
 
-  /* Parent. */
-  int parent_index;
+  /* Bit trail from root node to leaf node containing emitter. */
+  int bit_trail;
 } KernelLightTreeEmitter;
 static_assert_align(KernelLightTreeEmitter, 16);
 

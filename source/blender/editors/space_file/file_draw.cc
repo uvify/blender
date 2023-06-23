@@ -226,7 +226,7 @@ static void file_draw_string(int sx,
   const uiStyle *style = UI_style_get();
   fs = style->widget;
 
-  BLI_strncpy(filename, string, FILE_MAXFILE);
+  STRNCPY(filename, string);
   UI_text_clip_middle_ex(&fs, filename, width, UI_ICON_SIZE, sizeof(filename), '\0');
 
   /* no text clipping needed, UI_fontstyle_draw does it but is a bit too strict
@@ -405,21 +405,21 @@ static void file_draw_preview(const FileDirEntry *file,
 
   /* the large image */
 
-  float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  float document_img_col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   if (is_icon) {
     if (file->typeflag & FILE_TYPE_DIR) {
-      UI_GetThemeColor4fv(TH_ICON_FOLDER, col);
+      UI_GetThemeColor4fv(TH_ICON_FOLDER, document_img_col);
     }
     else {
-      UI_GetThemeColor4fv(TH_TEXT, col);
+      UI_GetThemeColor4fv(TH_TEXT, document_img_col);
     }
   }
   else if (file->typeflag & FILE_TYPE_FTFONT) {
-    UI_GetThemeColor4fv(TH_TEXT, col);
+    UI_GetThemeColor4fv(TH_TEXT, document_img_col);
   }
 
   if (dimmed) {
-    col[3] *= 0.3f;
+    document_img_col[3] *= 0.3f;
   }
 
   if (!is_icon && file->typeflag & FILE_TYPE_BLENDERLIB) {
@@ -440,7 +440,7 @@ static void file_draw_preview(const FileDirEntry *file,
                                 scale,
                                 1.0f,
                                 1.0f,
-                                col);
+                                document_img_col);
 
   GPU_blend(GPU_BLEND_ALPHA);
 
@@ -450,9 +450,7 @@ static void file_draw_preview(const FileDirEntry *file,
     const float icon_size = 16.0f / icon_aspect * UI_SCALE_FAC;
     float icon_opacity = 0.3f;
     uchar icon_color[4] = {0, 0, 0, 255};
-    float bgcolor[4];
-    UI_GetThemeColor4fv(TH_ICON_FOLDER, bgcolor);
-    if (rgb_to_grayscale(bgcolor) < 0.5f) {
+    if (rgb_to_grayscale(document_img_col) < 0.5f) {
       icon_color[0] = 255;
       icon_color[1] = 255;
       icon_color[2] = 255;
@@ -599,7 +597,7 @@ static void renamebutton_cb(bContext *C, void * /*arg1*/, char *oldname)
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
 
   BLI_path_join(orgname, sizeof(orgname), params->dir, oldname);
-  BLI_strncpy(filename, params->renamefile, sizeof(filename));
+  STRNCPY(filename, params->renamefile);
   BLI_path_make_safe_filename(filename);
   BLI_path_join(newname, sizeof(newname), params->dir, filename);
 
@@ -612,7 +610,7 @@ static void renamebutton_cb(bContext *C, void * /*arg1*/, char *oldname)
       }
       else {
         /* If rename is successful, scroll to newly renamed entry. */
-        BLI_strncpy(params->renamefile, filename, sizeof(params->renamefile));
+        STRNCPY(params->renamefile, filename);
         file_params_invoke_rename_postscroll(wm, win, sfile);
       }
 
@@ -621,7 +619,7 @@ static void renamebutton_cb(bContext *C, void * /*arg1*/, char *oldname)
     }
     else {
       /* Renaming failed, reset the name for further renaming handling. */
-      BLI_strncpy(params->renamefile, oldname, sizeof(params->renamefile));
+      STRNCPY(params->renamefile, oldname);
     }
 
     ED_region_tag_redraw(region);
@@ -813,13 +811,9 @@ static const char *filelist_get_details_column_string(
               nullptr, file->time, small_size, time, date, &is_today, &is_yesterday);
 
           if (is_today || is_yesterday) {
-            BLI_strncpy(date, is_today ? N_("Today") : N_("Yesterday"), sizeof(date));
+            STRNCPY(date, is_today ? N_("Today") : N_("Yesterday"));
           }
-          BLI_snprintf(file->draw_data.datetime_str,
-                       sizeof(file->draw_data.datetime_str),
-                       "%s %s",
-                       date,
-                       time);
+          SNPRINTF(file->draw_data.datetime_str, "%s %s", date, time);
         }
 
         return file->draw_data.datetime_str;

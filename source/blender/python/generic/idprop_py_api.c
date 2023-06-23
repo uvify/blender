@@ -261,12 +261,12 @@ static int BPy_IDGroup_SetName(BPy_IDProperty *self, PyObject *value, void *UNUS
 
   name = PyUnicode_AsUTF8AndSize(value, &name_size);
 
-  if (name_size >= MAX_IDPROP_NAME) {
+  if (name_size + 1 > MAX_IDPROP_NAME) {
     PyErr_SetString(PyExc_TypeError, "string length cannot exceed 63 characters!");
     return -1;
   }
 
-  memcpy(self->prop->name, name, name_size);
+  memcpy(self->prop->name, name, name_size + 1);
   return 0;
 }
 
@@ -1553,7 +1553,7 @@ static PyObject *BPy_IDGroup_update(BPy_IDProperty *self, PyObject *value)
 PyDoc_STRVAR(BPy_IDGroup_to_dict_doc,
              ".. method:: to_dict()\n"
              "\n"
-             "   Return a purely python version of the group.\n");
+             "   Return a purely Python version of the group.\n");
 static PyObject *BPy_IDGroup_to_dict(BPy_IDProperty *self)
 {
   return BPy_IDGroup_MapDataToPy(self->prop);

@@ -9,6 +9,7 @@
 #include "DNA_node_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "BLI_binary_search.hh"
 #include "BLI_fileops.hh"
 #include "BLI_hash_md5.h"
 #include "BLI_path_util.h"
@@ -16,7 +17,7 @@
 namespace blender::bke::sim {
 
 GeometrySimulationStateItem::GeometrySimulationStateItem(GeometrySet geometry)
-    : geometry_(std::move(geometry))
+    : geometry(std::move(geometry))
 {
 }
 
@@ -37,19 +38,24 @@ StringSimulationStateItem::StringSimulationStateItem(std::string value) : value_
 {
 }
 
-void ModifierSimulationCache::try_discover_bake(const StringRefNull meta_dir,
-                                                const StringRefNull bdata_dir)
+void ModifierSimulationCache::try_discover_bake(const StringRefNull absolute_bake_dir)
 {
   if (failed_finding_bake_) {
     return;
   }
-  if (!BLI_is_dir(meta_dir.c_str()) || !BLI_is_dir(bdata_dir.c_str())) {
+
+  char meta_dir[FILE_MAX];
+  BLI_path_join(meta_dir, sizeof(meta_dir), absolute_bake_dir.c_str(), "meta");
+  char bdata_dir[FILE_MAX];
+  BLI_path_join(bdata_dir, sizeof(bdata_dir), absolute_bake_dir.c_str(), "bdata");
+
+  if (!BLI_is_dir(meta_dir) || !BLI_is_dir(bdata_dir)) {
     failed_finding_bake_ = true;
     return;
   }
 
   direntry *dir_entries = nullptr;
-  const int dir_entries_num = BLI_filelist_dir_contents(meta_dir.c_str(), &dir_entries);
+  const int dir_entries_num = BLI_filelist_dir_contents(meta_dir, &dir_entries);
   BLI_SCOPED_DEFER([&]() { BLI_filelist_free(dir_entries, dir_entries_num); });
 
   if (dir_entries_num == 0) {
@@ -59,65 +65,94 @@ void ModifierSimulationCache::try_discover_bake(const StringRefNull meta_dir,
 
   this->reset();
 
-  for (const int i : IndexRange(dir_entries_num)) {
-    const direntry &dir_entry = dir_entries[i];
-    const StringRefNull dir_entry_path = dir_entry.path;
-    if (!dir_entry_path.endswith(".json")) {
-      continue;
+  {
+    std::lock_guard lock(states_at_frames_mutex_);
+
+    for (const int i : IndexRange(dir_entries_num)) {
+      const direntry &dir_entry = dir_entries[i];
+      const StringRefNull dir_entry_path = dir_entry.path;
+      if (!dir_entry_path.endswith(".json")) {
+        continue;
+      }
+      char modified_file_name[FILE_MAX];
+      STRNCPY(modified_file_name, dir_entry.relname);
+      BLI_str_replace_char(modified_file_name, '_', '.');
+
+      const SubFrame frame = std::stof(modified_file_name);
+
+      auto new_state_at_frame = std::make_unique<ModifierSimulationStateAtFrame>();
+      new_state_at_frame->frame = frame;
+      new_state_at_frame->state.bdata_dir_ = bdata_dir;
+      new_state_at_frame->state.meta_path_ = dir_entry.path;
+      new_state_at_frame->state.owner_ = this;
+      states_at_frames_.append(std::move(new_state_at_frame));
     }
-    char modified_file_name[FILENAME_MAX];
-    BLI_strncpy(modified_file_name, dir_entry.relname, sizeof(modified_file_name));
-    BLI_str_replace_char(modified_file_name, '_', '.');
 
-    const SubFrame frame = std::stof(modified_file_name);
-
-    auto new_state_at_frame = std::make_unique<ModifierSimulationStateAtFrame>();
-    new_state_at_frame->frame = frame;
-    new_state_at_frame->state.bdata_dir_ = bdata_dir;
-    new_state_at_frame->state.meta_path_ = dir_entry.path;
-    new_state_at_frame->state.owner_ = this;
-    states_at_frames_.append(std::move(new_state_at_frame));
+    bdata_sharing_ = std::make_unique<BDataSharing>();
+    cache_state_ = CacheState::Baked;
   }
+}
 
-  bdata_sharing_ = std::make_unique<BDataSharing>();
+static int64_t find_state_at_frame(
+    const Span<std::unique_ptr<ModifierSimulationStateAtFrame>> states, const SubFrame &frame)
+{
+  const int64_t i = binary_search::find_predicate_begin(
+      states, [&](const auto &item) { return item->frame >= frame; });
+  if (i == states.size()) {
+    return -1;
+  }
+  return i;
+}
 
-  cache_state_ = CacheState::Baked;
+static int64_t find_state_at_frame_exact(
+    const Span<std::unique_ptr<ModifierSimulationStateAtFrame>> states, const SubFrame &frame)
+{
+  const int64_t i = find_state_at_frame(states, frame);
+  if (i == -1) {
+    return -1;
+  }
+  if (states[i]->frame != frame) {
+    return -1;
+  }
+  return i;
 }
 
 bool ModifierSimulationCache::has_state_at_frame(const SubFrame &frame) const
 {
-  for (const auto &item : states_at_frames_) {
-    if (item->frame == frame) {
-      return true;
-    }
-  }
-  return false;
+  std::lock_guard lock(states_at_frames_mutex_);
+  return find_state_at_frame_exact(states_at_frames_, frame) != -1;
 }
 
 bool ModifierSimulationCache::has_states() const
 {
+  std::lock_guard lock(states_at_frames_mutex_);
   return !states_at_frames_.is_empty();
 }
 
 const ModifierSimulationState *ModifierSimulationCache::get_state_at_exact_frame(
     const SubFrame &frame) const
 {
-  for (const auto &item : states_at_frames_) {
-    if (item->frame == frame) {
-      return &item->state;
-    }
+  std::lock_guard lock(states_at_frames_mutex_);
+  const int64_t i = find_state_at_frame_exact(states_at_frames_, frame);
+  if (i == -1) {
+    return nullptr;
   }
-  return nullptr;
+  return &states_at_frames_[i]->state;
 }
 
 ModifierSimulationState &ModifierSimulationCache::get_state_at_frame_for_write(
     const SubFrame &frame)
 {
-  for (const auto &item : states_at_frames_) {
-    if (item->frame == frame) {
-      return item->state;
-    }
+  std::lock_guard lock(states_at_frames_mutex_);
+  const int64_t i = find_state_at_frame_exact(states_at_frames_, frame);
+  if (i != -1) {
+    return states_at_frames_[i]->state;
   }
+
+  if (!states_at_frames_.is_empty()) {
+    BLI_assert(frame > states_at_frames_.last()->frame);
+  }
+
   states_at_frames_.append(std::make_unique<ModifierSimulationStateAtFrame>());
   states_at_frames_.last()->frame = frame;
   states_at_frames_.last()->state.owner_ = this;
@@ -126,23 +161,23 @@ ModifierSimulationState &ModifierSimulationCache::get_state_at_frame_for_write(
 
 StatesAroundFrame ModifierSimulationCache::get_states_around_frame(const SubFrame &frame) const
 {
-  StatesAroundFrame states_around_frame;
-  for (const auto &item : states_at_frames_) {
-    if (item->frame < frame) {
-      if (states_around_frame.prev == nullptr || item->frame > states_around_frame.prev->frame) {
-        states_around_frame.prev = item.get();
-      }
+  std::lock_guard lock(states_at_frames_mutex_);
+  const int64_t i = find_state_at_frame(states_at_frames_, frame);
+  StatesAroundFrame states_around_frame{};
+  if (i == -1) {
+    if (!states_at_frames_.is_empty() && states_at_frames_.last()->frame < frame) {
+      states_around_frame.prev = states_at_frames_.last().get();
     }
-    if (item->frame == frame) {
-      if (states_around_frame.current == nullptr) {
-        states_around_frame.current = item.get();
-      }
-    }
-    if (item->frame > frame) {
-      if (states_around_frame.next == nullptr || item->frame < states_around_frame.next->frame) {
-        states_around_frame.next = item.get();
-      }
-    }
+    return states_around_frame;
+  }
+  if (states_at_frames_[i]->frame == frame) {
+    states_around_frame.current = states_at_frames_[i].get();
+  }
+  if (i > 0) {
+    states_around_frame.prev = states_at_frames_[i - 1].get();
+  }
+  if (i < states_at_frames_.size() - 2) {
+    states_around_frame.next = states_at_frames_[i + 1].get();
   }
   return states_around_frame;
 }
@@ -193,8 +228,18 @@ void ModifierSimulationState::ensure_bake_loaded() const
   bake_loaded_ = true;
 }
 
+void ModifierSimulationCache::clear_prev_states()
+{
+  std::lock_guard lock(states_at_frames_mutex_);
+  std::unique_ptr<ModifierSimulationStateAtFrame> temp = std::move(states_at_frames_.last());
+  states_at_frames_.clear_and_shrink();
+  bdata_sharing_.reset();
+  states_at_frames_.append(std::move(temp));
+}
+
 void ModifierSimulationCache::reset()
 {
+  std::lock_guard lock(states_at_frames_mutex_);
   states_at_frames_.clear();
   bdata_sharing_.reset();
   cache_state_ = CacheState::Valid;

@@ -15,6 +15,8 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
@@ -42,8 +44,8 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "curves_sculpt_intern.h"
-#include "paint_intern.h"
+#include "curves_sculpt_intern.hh"
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 /* Brush operators */
@@ -228,7 +230,7 @@ static int brush_add_gpencil_exec(bContext *C, wmOperator * /*op*/)
 
     /* Capitalize Brush name first letter using the tool name. */
     char name[64];
-    BLI_strncpy(name, tool->runtime->data_block, sizeof(name));
+    STRNCPY(name, tool->runtime->data_block);
     BLI_str_tolower_ascii(name, sizeof(name));
     name[0] = BLI_toupper_ascii(name[0]);
 
@@ -1009,6 +1011,8 @@ static void PAINT_OT_brush_select(wmOperatorType *ot)
     const char *prop_id = BKE_paint_get_tool_prop_id_from_paintmode(paint_mode);
     prop = RNA_def_enum(
         ot->srna, prop_id, BKE_paint_get_tool_enum_from_paintmode(paint_mode), 0, prop_id, "");
+    RNA_def_property_translation_context(
+        prop, BKE_paint_get_tool_enum_translation_context_from_paintmode(paint_mode));
     RNA_def_property_flag(prop, PROP_HIDDEN);
   }
 

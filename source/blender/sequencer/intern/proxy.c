@@ -98,7 +98,8 @@ double SEQ_rendersize_to_scale_factor(int render_size)
 
 bool seq_proxy_get_custom_file_fname(Sequence *seq, char *filepath, const int view_id)
 {
-  char filepath_temp[FILE_MAXFILE];
+  /* Ideally this would be #PROXY_MAXFILE however BLI_path_abs clamps to #FILE_MAX. */
+  char filepath_temp[FILE_MAX];
   char suffix[24];
   StripProxy *proxy = seq->strip->proxy;
 
@@ -106,11 +107,11 @@ bool seq_proxy_get_custom_file_fname(Sequence *seq, char *filepath, const int vi
     return false;
   }
 
-  BLI_path_join(filepath_temp, PROXY_MAXFILE, proxy->dir, proxy->file);
+  BLI_path_join(filepath_temp, sizeof(filepath_temp), proxy->dirpath, proxy->filename);
   BLI_path_abs(filepath_temp, BKE_main_blendfile_path_from_global());
 
   if (view_id > 0) {
-    BLI_snprintf(suffix, sizeof(suffix), "_%d", view_id);
+    SNPRINTF(suffix, "_%d", view_id);
     /* TODO(sergey): This will actually append suffix after extension
      * which is weird but how was originally coded in multi-view branch.
      */
@@ -130,7 +131,7 @@ static bool seq_proxy_get_fname(Scene *scene,
                                 char *filepath,
                                 const int view_id)
 {
-  char dir[PROXY_MAXFILE];
+  char dirpath[PROXY_MAXFILE];
   char suffix[24] = {'\0'};
   Editing *ed = SEQ_editing_get(scene);
   StripProxy *proxy = seq->strip->proxy;
@@ -141,7 +142,7 @@ static bool seq_proxy_get_fname(Scene *scene,
 
   /* Multi-view suffix. */
   if (view_id > 0) {
-    BLI_snprintf(suffix, sizeof(suffix), "_%d", view_id);
+    SNPRINTF(suffix, "_%d", view_id);
   }
 
   /* Per strip with Custom file situation is handled separately. */
@@ -156,20 +157,20 @@ static bool seq_proxy_get_fname(Scene *scene,
   if (ed->proxy_storage == SEQ_EDIT_PROXY_DIR_STORAGE) {
     /* Per project default. */
     if (ed->proxy_dir[0] == 0) {
-      BLI_strncpy(dir, "//BL_proxy", sizeof(dir));
+      STRNCPY(dirpath, "//BL_proxy");
     }
-    else { /* Per project with custom dir. */
-      BLI_strncpy(dir, ed->proxy_dir, sizeof(dir));
+    else { /* Per project with custom dirpath. */
+      STRNCPY(dirpath, ed->proxy_dir);
     }
     BLI_path_abs(filepath, BKE_main_blendfile_path_from_global());
   }
   else {
     /* Pre strip with custom dir. */
     if (proxy->storage & SEQ_STORAGE_PROXY_CUSTOM_DIR) {
-      BLI_strncpy(dir, seq->strip->proxy->dir, sizeof(dir));
+      STRNCPY(dirpath, seq->strip->proxy->dirpath);
     }
     else { /* Per strip default. */
-      BLI_snprintf(dir, PROXY_MAXFILE, "%s" SEP_STR "BL_proxy", seq->strip->dir);
+      SNPRINTF(dirpath, "%s" SEP_STR "BL_proxy", seq->strip->dirpath);
     }
   }
 
@@ -178,10 +179,10 @@ static bool seq_proxy_get_fname(Scene *scene,
 
   BLI_snprintf(filepath,
                PROXY_MAXFILE,
-               "%s/images/%d/%s_proxy%s.jpg",
-               dir,
+               "%s" SEP_STR "images" SEP_STR "%d" SEP_STR "%s_proxy%s.jpg",
+               dirpath,
                proxy_size_number,
-               SEQ_render_give_stripelem(scene, seq, timeline_frame)->name,
+               SEQ_render_give_stripelem(scene, seq, timeline_frame)->filename,
                suffix);
   BLI_path_abs(filepath, BKE_main_blendfile_path_from_global());
   return true;
@@ -210,7 +211,7 @@ ImBuf *seq_proxy_fetch(const SeqRenderData *context, Sequence *seq, int timeline
   }
 
   if (proxy->storage & SEQ_STORAGE_PROXY_CUSTOM_FILE) {
-    int frameno = (int)SEQ_give_frame_index(context->scene, seq, timeline_frame) +
+    int frameno = (int)seq_give_frame_index(context->scene, seq, timeline_frame) +
                   seq->anim_startofs;
     if (proxy->anim == NULL) {
       if (seq_proxy_get_fname(
@@ -313,35 +314,51 @@ static void seq_proxy_build_frame(const SeqRenderData *context,
 }
 
 /**
- * Returns whether the file this context would read from even exist,
- * if not, don't create the context
+ * Cache the result of #BKE_scene_multiview_view_prefix_get.
  */
-static bool seq_proxy_multiview_context_invalid(Sequence *seq, Scene *scene, const int view_id)
+typedef struct MultiViewPrefixVars {
+  char prefix[FILE_MAX];
+  const char *ext;
+} MultiViewPrefixVars;
+
+/**
+ * Returns whether the file this context would read from even exist,
+ * if not, don't create the context.
+ *
+ * \param prefix_vars: Stores prefix variables for reuse,
+ * these variables are for internal use, the caller must not depend on them.
+ *
+ * \note This function must first a `view_id` of zero, to initialize `prefix_vars`
+ * for use with other views.
+ */
+static bool seq_proxy_multiview_context_invalid(Sequence *seq,
+                                                Scene *scene,
+                                                const int view_id,
+                                                MultiViewPrefixVars *prefix_vars)
 {
   if ((scene->r.scemode & R_MULTIVIEW) == 0) {
     return false;
   }
 
   if ((seq->type == SEQ_TYPE_IMAGE) && (seq->views_format == R_IMF_VIEWS_INDIVIDUAL)) {
-    static char prefix[FILE_MAX];
-    static const char *ext = NULL;
     char str[FILE_MAX];
 
     if (view_id == 0) {
+      /* Clear on first use. */
+      prefix_vars->prefix[0] = '\0';
+      prefix_vars->ext = NULL;
+
       char path[FILE_MAX];
-      BLI_path_join(path, sizeof(path), seq->strip->dir, seq->strip->stripdata->name);
+      BLI_path_join(path, sizeof(path), seq->strip->dirpath, seq->strip->stripdata->filename);
       BLI_path_abs(path, BKE_main_blendfile_path_from_global());
-      BKE_scene_multiview_view_prefix_get(scene, path, prefix, &ext);
-    }
-    else {
-      prefix[0] = '\0';
+      BKE_scene_multiview_view_prefix_get(scene, path, prefix_vars->prefix, &prefix_vars->ext);
     }
 
-    if (prefix[0] == '\0') {
+    if (prefix_vars->prefix[0] == '\0') {
       return view_id != 0;
     }
 
-    seq_multiview_name(scene, view_id, prefix, ext, str, FILE_MAX);
+    seq_multiview_name(scene, view_id, prefix_vars->prefix, prefix_vars->ext, str, FILE_MAX);
 
     if (BLI_access(str, R_OK) == 0) {
       return false;
@@ -424,8 +441,9 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
 
   num_files = seq_proxy_context_count(seq, scene);
 
+  MultiViewPrefixVars prefix_vars; /* Initialized by #seq_proxy_multiview_context_invalid. */
   for (i = 0; i < num_files; i++) {
-    if (seq_proxy_multiview_context_invalid(seq, scene, i)) {
+    if (seq_proxy_multiview_context_invalid(seq, scene, i, &prefix_vars)) {
       continue;
     }
 

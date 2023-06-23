@@ -18,6 +18,8 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_global.h"
+
 #include "BLI_array.hh"
 #include "BLI_convexhull_2d.h"
 #include "BLI_linklist.h"
@@ -54,11 +56,13 @@
 #include "PIL_time.h"
 
 #include "UI_interface.h"
+#include "UI_resources.h"
 #include "UI_view2d.h"
 
 #include "ED_image.h"
 #include "ED_mesh.h"
 #include "ED_screen.h"
+#include "ED_undo.h"
 #include "ED_uvedit.h"
 #include "ED_view3d.h"
 
@@ -168,6 +172,14 @@ void blender::geometry::UVPackIsland_Params::setUDIMOffsetFromSpaceImage(const S
   }
 }
 /** \} */
+
+bool blender::geometry::UVPackIsland_Params::isCancelled() const
+{
+  if (stop) {
+    return *stop;
+  }
+  return false;
+}
 
 /* -------------------------------------------------------------------- */
 /** \name Parametrizer Conversion
@@ -824,7 +836,7 @@ static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interac
     blender::geometry::uv_parametrizer_flush(ms->handle);
 
     if (area) {
-      BLI_snprintf(str, sizeof(str), TIP_("Minimize Stretch. Blend %.2f"), ms->blend);
+      SNPRINTF(str, TIP_("Minimize Stretch. Blend %.2f"), ms->blend);
       ED_area_status_text(area, str);
       ED_workspace_status_text(C, TIP_("Press + and -, or scroll wheel to set blending"));
     }
@@ -1141,6 +1153,7 @@ static bool island_has_pins(const Scene *scene,
  * This is needed to perform UV packing on objects that aren't in edit-mode.
  * \param udim_source_closest: UDIM source SpaceImage.
  * \param original_selection: Pack to original selection.
+ * \param notify_wm: Notify the WM of any changes. (UI thread only.)
  * \param params: Parameters and options to pass to the packing engine.
  */
 static void uvedit_pack_islands_multi(const Scene *scene,
@@ -1149,9 +1162,11 @@ static void uvedit_pack_islands_multi(const Scene *scene,
                                       BMesh **bmesh_override,
                                       const SpaceImage *udim_source_closest,
                                       const bool original_selection,
+                                      const bool notify_wm,
                                       blender::geometry::UVPackIsland_Params *params)
 {
   blender::Vector<FaceIsland *> island_vector;
+  blender::Vector<bool> pinned_vector;
 
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
@@ -1175,7 +1190,8 @@ static void uvedit_pack_islands_multi(const Scene *scene,
 
     bool only_selected_faces = params->only_selected_faces;
     bool only_selected_uvs = params->only_selected_uvs;
-    if (params->ignore_pinned && params->pin_unselected) {
+    const bool ignore_pinned = params->pin_method == ED_UVPACK_PIN_IGNORE;
+    if (ignore_pinned && params->pin_unselected) {
       only_selected_faces = false;
       only_selected_uvs = false;
     }
@@ -1192,12 +1208,14 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     /* Remove from linked list and append to blender::Vector. */
     LISTBASE_FOREACH_MUTABLE (struct FaceIsland *, island, &island_list) {
       BLI_remlink(&island_list, island);
-      if (params->ignore_pinned && island_has_pins(scene, island, params)) {
+      const bool pinned = island_has_pins(scene, island, params);
+      if (ignore_pinned && pinned) {
         MEM_freeN(island->faces);
         MEM_freeN(island);
         continue;
       }
       island_vector.append(island);
+      pinned_vector.append(pinned);
     }
   }
 
@@ -1227,6 +1245,8 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     if ((selection_max_co[0] - selection_min_co[0]) * (selection_max_co[1] - selection_min_co[1]) >
         1e-40f)
     {
+      copy_v2_v2(params->udim_base_offset, selection_min_co);
+      params->target_extent = selection_max_co[1] - selection_min_co[1];
       params->target_aspect_y = (selection_max_co[0] - selection_min_co[0]) /
                                 (selection_max_co[1] - selection_min_co[1]);
     }
@@ -1241,6 +1261,7 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     blender::geometry::PackIsland *pack_island = new blender::geometry::PackIsland();
     pack_island->caller_index = i;
     pack_island->aspect_y = face_island->aspect_y;
+    pack_island->pinned = pinned_vector[i];
     pack_island_vector.append(pack_island);
 
     for (int i = 0; i < face_island->faces_len; i++) {
@@ -1266,6 +1287,7 @@ static void uvedit_pack_islands_multi(const Scene *scene,
   BLI_memarena_free(arena);
 
   const float scale = pack_islands(pack_island_vector, *params);
+  const bool is_cancelled = params->isCancelled();
 
   float base_offset[2] = {0.0f, 0.0f};
   copy_v2_v2(base_offset, params->udim_base_offset);
@@ -1304,10 +1326,14 @@ static void uvedit_pack_islands_multi(const Scene *scene,
   float matrix[2][2];
   float matrix_inverse[2][2];
   float pre_translate[2];
-  for (int64_t i : pack_island_vector.index_range()) {
+  for (const int64_t i : pack_island_vector.index_range()) {
+    if (is_cancelled) {
+      continue;
+    }
     blender::geometry::PackIsland *pack_island = pack_island_vector[i];
     FaceIsland *island = island_vector[pack_island->caller_index];
-    pack_island->build_transformation(scale, pack_island->angle, matrix);
+    const float island_scale = pack_island->can_scale_(*params) ? scale : 1.0f;
+    pack_island->build_transformation(island_scale, pack_island->angle, matrix);
     invert_m2_m2(matrix_inverse, matrix);
 
     /* Add base_offset, post transform. */
@@ -1319,30 +1345,21 @@ static void uvedit_pack_islands_multi(const Scene *scene,
 
     /* Perform the transformation. */
     island_uv_transform(island, matrix, pre_translate);
+  }
 
-    if (original_selection) {
-      const float rescale_x = (selection_max_co[0] - selection_min_co[0]) /
-                              params->target_aspect_y;
-      const float rescale_y = (selection_max_co[1] - selection_min_co[1]);
-      const float rescale = params->scale_to_fit ? std::min(rescale_x, rescale_y) : 1.0f;
-      matrix[0][0] = rescale;
-      matrix[0][1] = 0.0f;
-      matrix[1][0] = 0.0f;
-      matrix[1][1] = rescale;
-      pre_translate[0] = selection_min_co[0] / rescale;
-      pre_translate[1] = selection_min_co[1] / rescale;
-      island_uv_transform(island, matrix, pre_translate);
-    }
-
+  for (const int64_t i : pack_island_vector.index_range()) {
+    blender::geometry::PackIsland *pack_island = pack_island_vector[i];
     /* Cleanup memory. */
     pack_island_vector[i] = nullptr;
     delete pack_island;
   }
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
-    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_GEOMETRY);
-    WM_main_add_notifier(NC_GEOM | ND_DATA, obedit->data);
+  if (notify_wm && !is_cancelled) {
+    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+      Object *obedit = objects[ob_index];
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_GEOMETRY);
+      WM_main_add_notifier(NC_GEOM | ND_DATA, obedit->data);
+    }
   }
 
   for (FaceIsland *island : island_vector) {
@@ -1355,12 +1372,85 @@ static void uvedit_pack_islands_multi(const Scene *scene,
 /** \name Pack UV Islands Operator
  * \{ */
 
+/* TODO: support this, interaction with the job-system needs to be handled carefully. */
+// #define USE_INTERACTIVE_PACK
+
 /* Packing targets. */
 enum {
   PACK_UDIM_SRC_CLOSEST = 0,
   PACK_UDIM_SRC_ACTIVE,
   PACK_ORIGINAL_AABB,
 };
+
+struct UVPackIslandsData {
+  wmWindowManager *wm;
+
+  const Scene *scene;
+
+  Object **objects;
+  uint objects_len;
+  const SpaceImage *sima;
+  int udim_source;
+
+  bContext *undo_context;
+  const char *undo_str;
+  bool use_job;
+
+  blender::geometry::UVPackIsland_Params pack_island_params;
+};
+
+static void pack_islands_startjob(void *pidv, bool *stop, bool *do_update, float *progress)
+{
+  if (progress != nullptr) {
+    *progress = 0.02f;
+  }
+
+  UVPackIslandsData *pid = static_cast<UVPackIslandsData *>(pidv);
+
+  pid->pack_island_params.stop = stop;
+  pid->pack_island_params.do_update = do_update;
+  pid->pack_island_params.progress = progress;
+
+  uvedit_pack_islands_multi(pid->scene,
+                            pid->objects,
+                            pid->objects_len,
+                            nullptr,
+                            (pid->udim_source == PACK_UDIM_SRC_CLOSEST) ? pid->sima : nullptr,
+                            (pid->udim_source == PACK_ORIGINAL_AABB),
+                            !pid->use_job,
+                            &pid->pack_island_params);
+
+  if (progress != nullptr) {
+    *progress = 0.99f;
+  }
+  if (do_update != nullptr) {
+    *do_update = true;
+  }
+}
+
+static void pack_islands_endjob(void *pidv)
+{
+  UVPackIslandsData *pid = static_cast<UVPackIslandsData *>(pidv);
+  for (uint ob_index = 0; ob_index < pid->objects_len; ob_index++) {
+    Object *obedit = pid->objects[ob_index];
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_GEOMETRY);
+    WM_main_add_notifier(NC_GEOM | ND_DATA, obedit->data);
+  }
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_IMAGE, NULL);
+
+  if (pid->undo_str) {
+    ED_undo_push(pid->undo_context, pid->undo_str);
+  }
+}
+
+static void pack_islands_freejob(void *pidv)
+{
+  WM_cursor_wait(false);
+  UVPackIslandsData *pid = static_cast<UVPackIslandsData *>(pidv);
+  MEM_freeN(pid->objects);
+  WM_set_locked_interface(pid->wm, false);
+  MEM_freeN(pid);
+}
 
 static int pack_islands_exec(bContext *C, wmOperator *op)
 {
@@ -1394,12 +1484,41 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
     RNA_float_set(op->ptr, "margin", scene->toolsettings->uvcalc_margin);
   }
 
-  blender::geometry::UVPackIsland_Params pack_island_params;
+  UVPackIslandsData *pid = static_cast<UVPackIslandsData *>(
+      MEM_callocN(sizeof(UVPackIslandsData), "pack_islands_data"));
+  pid->use_job = op->flag & OP_IS_INVOKE;
+  pid->scene = scene;
+  pid->objects = objects;
+  pid->objects_len = objects_len;
+  pid->sima = sima;
+  pid->udim_source = udim_source;
+  pid->wm = CTX_wm_manager(C);
+
+  blender::geometry::UVPackIsland_Params &pack_island_params = pid->pack_island_params;
+  {
+    /* Call default constructor and copy the defaults. */
+    blender::geometry::UVPackIsland_Params default_params;
+    pack_island_params = default_params;
+  }
+
   pack_island_params.setFromUnwrapOptions(options);
-  pack_island_params.rotate = RNA_boolean_get(op->ptr, "rotate");
+  if (RNA_boolean_get(op->ptr, "rotate")) {
+    pack_island_params.rotate_method = eUVPackIsland_RotationMethod(
+        RNA_enum_get(op->ptr, "rotate_method"));
+  }
+  else {
+    pack_island_params.rotate_method = ED_UVPACK_ROTATION_NONE;
+  }
   pack_island_params.scale_to_fit = RNA_boolean_get(op->ptr, "scale");
   pack_island_params.merge_overlap = RNA_boolean_get(op->ptr, "merge_overlap");
-  pack_island_params.ignore_pinned = false;
+
+  if (RNA_boolean_get(op->ptr, "pin")) {
+    pack_island_params.pin_method = eUVPackIsland_PinMethod(RNA_enum_get(op->ptr, "pin_method"));
+  }
+  else {
+    pack_island_params.pin_method = ED_UVPACK_PIN_NONE;
+  }
+
   pack_island_params.margin_method = eUVPackIsland_MarginMethod(
       RNA_enum_get(op->ptr, "margin_method"));
   pack_island_params.margin = RNA_float_get(op->ptr, "margin");
@@ -1410,15 +1529,32 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
     pack_island_params.setUDIMOffsetFromSpaceImage(sima);
   }
 
-  uvedit_pack_islands_multi(scene,
-                            objects,
-                            objects_len,
-                            nullptr,
-                            (udim_source == PACK_UDIM_SRC_CLOSEST) ? sima : nullptr,
-                            (udim_source == PACK_ORIGINAL_AABB),
-                            &pack_island_params);
+  if (pid->use_job) {
+    /* Setup job. */
+    if (pid->wm->op_undo_depth == 0) {
+      /* The job must do it's own undo push. */
+      pid->undo_context = C;
+      pid->undo_str = op->type->name;
+    }
 
-  MEM_freeN(objects);
+    wmJob *wm_job = WM_jobs_get(
+        pid->wm, CTX_wm_window(C), scene, "Packing UVs", WM_JOB_PROGRESS, WM_JOB_TYPE_UV_PACK);
+    WM_jobs_customdata_set(wm_job, pid, pack_islands_freejob);
+    WM_jobs_timer(wm_job, 0.1, 0, 0);
+    WM_set_locked_interface(pid->wm, true);
+    WM_jobs_callbacks(wm_job, pack_islands_startjob, nullptr, nullptr, pack_islands_endjob);
+
+    WM_cursor_wait(true);
+    G.is_break = false;
+    WM_jobs_start(CTX_wm_manager(C), wm_job);
+    return OPERATOR_FINISHED;
+  }
+
+  pack_islands_startjob(pid, nullptr, nullptr, nullptr);
+  pack_islands_endjob(pid);
+  pack_islands_freejob(pid);
+
+  MEM_freeN(pid);
   return OPERATOR_FINISHED;
 }
 
@@ -1437,13 +1573,76 @@ static const EnumPropertyItem pack_margin_method_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static const EnumPropertyItem pack_shape_method_items[] = {
-    {ED_UVPACK_SHAPE_CONCAVE, "CONCAVE", 0, "Exact shape (Concave)", "Uses exact geometry"},
-    {ED_UVPACK_SHAPE_CONVEX, "CONVEX", 0, "Boundary shape (Convex)", "Uses convex hull"},
+static const EnumPropertyItem pack_rotate_method_items[] = {
     RNA_ENUM_ITEM_SEPR,
-    {ED_UVPACK_SHAPE_AABB, "AABB", 0, "Bounding box", "Uses bounding boxes"},
+    {ED_UVPACK_ROTATION_AXIS_ALIGNED,
+     "AXIS_ALIGNED",
+     0,
+     "Axis-aligned",
+     "Rotated to a minimal rectangle, either vertical or horizontal"},
+    {ED_UVPACK_ROTATION_CARDINAL,
+     "CARDINAL",
+     0,
+     "Cardinal",
+     "Only 90 degree rotations are allowed"},
+    {ED_UVPACK_ROTATION_ANY, "ANY", 0, "Any", "Any angle is allowed for rotation"},
     {0, nullptr, 0, nullptr, nullptr},
 };
+
+static const EnumPropertyItem pack_shape_method_items[] = {
+    {ED_UVPACK_SHAPE_CONCAVE, "CONCAVE", 0, "Exact Shape (Concave)", "Uses exact geometry"},
+    {ED_UVPACK_SHAPE_CONVEX, "CONVEX", 0, "Boundary Shape (Convex)", "Uses convex hull"},
+    RNA_ENUM_ITEM_SEPR,
+    {ED_UVPACK_SHAPE_AABB, "AABB", 0, "Bounding Box", "Uses bounding boxes"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+/**
+ * \note #ED_UVPACK_PIN_NONE is exposed as a boolean "pin".
+ * \note #ED_UVPACK_PIN_IGNORE is intentionally not exposed as it is confusing from the UI level
+ * (users can simply not select these islands).
+ * The option is kept kept internally because it's used for live unwrap.
+ */
+static const EnumPropertyItem pinned_islands_method_items[] = {
+    {ED_UVPACK_PIN_LOCK_SCALE, "SCALE", 0, "Scale", "Pinned islands won't rescale"},
+    {ED_UVPACK_PIN_LOCK_ROTATION, "ROTATION", 0, "Rotation", "Pinned islands won't rotate"},
+    {ED_UVPACK_PIN_LOCK_ROTATION_SCALE,
+     "ROTATION_SCALE",
+     0,
+     "Rotation and Scale",
+     "Pinned islands will translate only"},
+    {ED_UVPACK_PIN_LOCK_ALL, "LOCKED", 0, "All", "Pinned islands are locked in place"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static void uv_pack_islands_ui(bContext * /*C*/, wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+  uiItemR(layout, op->ptr, "shape_method", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "scale", 0, nullptr, ICON_NONE);
+  {
+    uiItemR(layout, op->ptr, "rotate", 0, nullptr, ICON_NONE);
+    uiLayout *sub = uiLayoutRow(layout, true);
+    uiLayoutSetActive(sub, RNA_boolean_get(op->ptr, "rotate"));
+    uiItemR(sub, op->ptr, "rotate_method", 0, nullptr, ICON_NONE);
+    uiItemS(layout);
+  }
+  uiItemR(layout, op->ptr, "margin_method", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "margin", 0, nullptr, ICON_NONE);
+  uiItemS(layout);
+  {
+    uiItemR(layout, op->ptr, "pin", 0, nullptr, ICON_NONE);
+    uiLayout *sub = uiLayoutRow(layout, true);
+    uiLayoutSetActive(sub, RNA_boolean_get(op->ptr, "pin"));
+    uiItemR(sub, op->ptr, "pin_method", 0, IFACE_("Lock Method"), ICON_NONE);
+    uiItemS(layout);
+  }
+  uiItemR(layout, op->ptr, "merge_overlap", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "udim_source", 0, nullptr, ICON_NONE);
+  uiItemS(layout);
+}
 
 void UV_OT_pack_islands(wmOperatorType *ot)
 {
@@ -1467,18 +1666,36 @@ void UV_OT_pack_islands(wmOperatorType *ot)
   ot->description =
       "Transform all islands so that they fill up the UV/UDIM space as much as possible";
 
+#ifdef USE_INTERACTIVE_PACK
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+#else
+  /* The operator will handle undo, so the job system can push() it after the job completes. */
+  ot->flag = OPTYPE_REGISTER;
+#endif
 
   /* api callbacks */
   ot->exec = pack_islands_exec;
+
+#ifdef USE_INTERACTIVE_PACK
+  ot->invoke = WM_operator_props_popup_call;
+#else
+  ot->invoke = WM_operator_props_popup_confirm;
+#endif
+  ot->ui = uv_pack_islands_ui;
   ot->poll = ED_operator_uvedit;
 
   /* properties */
   RNA_def_enum(ot->srna, "udim_source", pack_target, PACK_UDIM_SRC_CLOSEST, "Pack to", "");
-  RNA_def_boolean(ot->srna, "rotate", true, "Rotate", "Rotate islands for best fit");
+  RNA_def_boolean(ot->srna, "rotate", true, "Rotate", "Rotate islands to improve layout");
+  RNA_def_enum(ot->srna,
+               "rotate_method",
+               pack_rotate_method_items,
+               ED_UVPACK_ROTATION_ANY,
+               "Rotation Method",
+               "");
   RNA_def_boolean(ot->srna, "scale", true, "Scale", "Scale islands to fill unit square");
   RNA_def_boolean(
-      ot->srna, "merge_overlap", false, "Merge Overlapped", "Overlapping islands stick together");
+      ot->srna, "merge_overlap", false, "Merge Overlapping", "Overlapping islands stick together");
   RNA_def_enum(ot->srna,
                "margin_method",
                pack_margin_method_items,
@@ -1487,6 +1704,17 @@ void UV_OT_pack_islands(wmOperatorType *ot)
                "");
   RNA_def_float_factor(
       ot->srna, "margin", 0.001f, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
+  RNA_def_boolean(ot->srna,
+                  "pin",
+                  false,
+                  "Lock Pinned Islands",
+                  "Constrain islands containing any pinned UV's");
+  RNA_def_enum(ot->srna,
+               "pin_method",
+               pinned_islands_method_items,
+               ED_UVPACK_PIN_LOCK_ALL,
+               "Pin Method",
+               "");
   RNA_def_enum(ot->srna,
                "shape_method",
                pack_shape_method_items,
@@ -2202,13 +2430,13 @@ void ED_uvedit_live_unwrap(const Scene *scene, Object **objects, int objects_len
 
     blender::geometry::UVPackIsland_Params pack_island_params;
     pack_island_params.setFromUnwrapOptions(options);
-    pack_island_params.rotate = true;
-    pack_island_params.ignore_pinned = true;
+    pack_island_params.rotate_method = ED_UVPACK_ROTATION_ANY;
+    pack_island_params.pin_method = ED_UVPACK_PIN_IGNORE;
     pack_island_params.margin_method = ED_UVPACK_MARGIN_SCALED;
     pack_island_params.margin = scene->toolsettings->uvcalc_margin;
 
     uvedit_pack_islands_multi(
-        scene, objects, objects_len, nullptr, nullptr, false, &pack_island_params);
+        scene, objects, objects_len, nullptr, nullptr, false, true, &pack_island_params);
   }
 }
 
@@ -2344,14 +2572,14 @@ static int unwrap_exec(bContext *C, wmOperator *op)
 
   blender::geometry::UVPackIsland_Params pack_island_params;
   pack_island_params.setFromUnwrapOptions(options);
-  pack_island_params.rotate = true;
-  pack_island_params.ignore_pinned = true;
+  pack_island_params.rotate_method = ED_UVPACK_ROTATION_ANY;
+  pack_island_params.pin_method = ED_UVPACK_PIN_IGNORE;
   pack_island_params.margin_method = eUVPackIsland_MarginMethod(
       RNA_enum_get(op->ptr, "margin_method"));
   pack_island_params.margin = RNA_float_get(op->ptr, "margin");
 
   uvedit_pack_islands_multi(
-      scene, objects, objects_len, nullptr, nullptr, false, &pack_island_params);
+      scene, objects, objects_len, nullptr, nullptr, false, true, &pack_island_params);
 
   MEM_freeN(objects);
 
@@ -2724,7 +2952,7 @@ static int smart_project_exec(bContext *C, wmOperator *op)
     const bool correct_aspect = RNA_boolean_get(op->ptr, "correct_aspect");
 
     blender::geometry::UVPackIsland_Params params;
-    params.rotate = true;
+    params.rotate_method = ED_UVPACK_ROTATION_ANY;
     params.only_selected_uvs = only_selected_uvs;
     params.only_selected_faces = true;
     params.correct_aspect = correct_aspect;
@@ -2733,7 +2961,7 @@ static int smart_project_exec(bContext *C, wmOperator *op)
     params.margin = RNA_float_get(op->ptr, "island_margin");
 
     uvedit_pack_islands_multi(
-        scene, objects_changed, object_changed_len, nullptr, nullptr, false, &params);
+        scene, objects_changed, object_changed_len, nullptr, nullptr, false, true, &params);
 
     /* #uvedit_pack_islands_multi only supports `per_face_aspect = false`. */
     const bool per_face_aspect = false;
@@ -3713,7 +3941,7 @@ void ED_uvedit_add_simple_uvs(Main *bmain, const Scene *scene, Object *ob)
 
   /* Pack UVs. */
   blender::geometry::UVPackIsland_Params params;
-  params.rotate = true;
+  params.rotate_method = ED_UVPACK_ROTATION_ANY;
   params.only_selected_uvs = false;
   params.only_selected_faces = false;
   params.correct_aspect = false;
@@ -3721,7 +3949,7 @@ void ED_uvedit_add_simple_uvs(Main *bmain, const Scene *scene, Object *ob)
   params.margin_method = ED_UVPACK_MARGIN_SCALED;
   params.margin = 0.001f;
 
-  uvedit_pack_islands_multi(scene, &ob, 1, &bm, nullptr, false, &params);
+  uvedit_pack_islands_multi(scene, &ob, 1, &bm, nullptr, false, true, &params);
 
   /* Write back from BMesh to Mesh. */
   BMeshToMeshParams bm_to_me_params{};
