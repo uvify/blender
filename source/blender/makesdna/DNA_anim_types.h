@@ -1200,3 +1200,108 @@ typedef struct IdAdtTemplate {
 #define SELECT 1
 
 /* ************************************************ */
+/* Layered Animation data-types. */
+
+/* Forward declarations so the actual declarations can happen top-down. */
+struct AnimationLayer;
+struct AnimationOutput;
+struct AnimationStrip;
+
+/** Container of layered animation data. */
+typedef struct Animation {
+  ID id;
+  ListBase /* AnimationLayer */ layers;
+  ListBase /* AnimationOutput */ outputs;
+} Animation;
+
+typedef struct AnimationLayer {
+  struct AnimationLayer *next, *prev;
+
+  /** User-Visible identifier, unique within the Animation. `MAX_ID_NAME - 2`. */
+  char name[64];
+
+  float influence; /* [0-1] */
+
+  /** eAnimationLayer_Flags. */
+  uint8_t flags;
+
+  /** eAnimationLayer_MixMode. */
+  uint8_t mix_mode;
+
+  uint8_t _pad0[2];
+
+  /**
+   * There is always at least one strip.
+   * If there is only one, it can be infinite. This is the default for new layers. */
+  ListBase /* AnimationStrip */ strips;
+  ListBase /* AnimationLayer */ child_layers;
+
+  ListBase /* AnimationOutput */ outputs;
+} AnimationLayer;
+
+typedef enum eAnimationLayer_MixMode {
+  OVERRIDE = 0,
+  COMBINE = 1,
+  ADD = 2,
+  SUBTRACT = 3,
+  MULTIPLY = 4,
+} eAnimationLayer_MixMode;
+
+typedef enum eAnimationLayer_Flags {
+  /* Set by default, cleared to mute. */
+  ANIM_LAYER_ENABLED = (1 << 0),
+
+  /* When set, only one child layer can be enabled at a time. */
+  ANIM_LAYER_CHILD_SOLO = (1 << 1),
+} eAnimationLayer_Flags;
+ENUM_OPERATORS(eAnimationLayer_Flags, ANIM_LAYER_ENABLED);
+
+typedef struct AnimationOutput_runtime {
+  ID *id; /* The ID that is animated by this output. */
+} AnimationOutput_runtime;
+
+typedef struct AnimationOutput {
+  uint64_t stable_index;
+  char fallback[64]; /* Fallback string for remapping outputs. */
+
+  /**
+   * Type of ID-blocks that this output can be assigned to.
+   * If 0, will be set to whatever ID is first assigned.
+   */
+  int idtype;
+
+  uint8_t _pad0[4];
+  struct AnimationOutput_runtime runtime;
+
+  void *_pad1;
+} AnimationOutput;
+
+typedef struct AnimationStrip {
+  struct AnimationStrip *next, *prev;
+
+  /** eAnimationStrip_type */
+  uint8_t type;
+  uint8_t _pad0[3];
+
+  float frame_start;
+  float frame_end;
+  float frame_offset;
+} AnimationStrip;
+
+typedef struct KeyframeAnimationStrip {
+  AnimationStrip strip;
+
+  ListBase /* ChannelsForOutput */ outputs;
+} KeyframeAnimationStrip;
+
+typedef enum eAnimationStrip_type {
+  ANIM_STRIP_TYPE_KEYFRAME = 0,
+} eAnimationStrip_type;
+
+typedef struct AnimationChannelsForOutput {
+  uint64_t output_stable_index;
+  ListBase /* FCurve */ fcurves;
+
+  /* TODO: Design & implement a way to integrate other channel types as well,
+   * and still have them map to a certain output */
+} ChannelsForOutput;
