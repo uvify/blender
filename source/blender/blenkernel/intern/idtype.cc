@@ -217,6 +217,7 @@ uint64_t BKE_idtype_idcode_to_idfilter(const short idcode)
 
   switch ((ID_Type)idcode) {
     CASE_IDFILTER(AC);
+    CASE_IDFILTER(AN);
     CASE_IDFILTER(AR);
     CASE_IDFILTER(BR);
     CASE_IDFILTER(CA);
@@ -331,6 +332,7 @@ int BKE_idtype_idcode_to_index(const short idcode)
 
   switch ((ID_Type)idcode) {
     CASE_IDINDEX(AC);
+    CASE_IDINDEX(AN);
     CASE_IDINDEX(AR);
     CASE_IDINDEX(BR);
     CASE_IDINDEX(CA);

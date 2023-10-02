@@ -212,6 +212,7 @@ typedef struct Main {
   ListBase collections;
   ListBase armatures;
   ListBase actions;
+  ListBase animations;
   ListBase nodetrees;
   ListBase brushes;
   ListBase particles;

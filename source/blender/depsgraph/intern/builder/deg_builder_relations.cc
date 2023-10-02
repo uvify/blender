@@ -512,6 +512,9 @@ void DepsgraphRelationBuilder::build_id(ID *id)
     case ID_AC:
       build_action((bAction *)id);
       break;
+    case ID_AN:
+      build_animation((Animation *)id);
+      break;
     case ID_AR:
       build_armature((bArmature *)id);
       break;
@@ -1724,6 +1727,23 @@ void DepsgraphRelationBuilder::build_action(bAction *action)
     ComponentKey animation_key(&action->id, NodeType::ANIMATION);
     add_relation(time_src_key, animation_key, "TimeSrc -> Animation");
   }
+}
+
+void DepsgraphRelationBuilder::build_animation(Animation *animation)
+{
+  if (built_map_.checkIsBuiltAndTag(animation)) {
+    return;
+  }
+
+  const BuilderStack::ScopedEntry stack_entry = stack_.trace(animation->id);
+
+  build_idproperties(animation->id.properties);
+  // TODO: implement:
+  // if (!BLI_listbase_is_empty(&animation->curves)) {
+  //   TimeSourceKey time_src_key;
+  //   ComponentKey animation_key(&animation->id, NodeType::ANIMATION);
+  //   add_relation(time_src_key, animation_key, "TimeSrc -> Animation");
+  // }
 }
 
 void DepsgraphRelationBuilder::build_driver(ID *id, FCurve *fcu)

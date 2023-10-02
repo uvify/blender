@@ -81,6 +81,7 @@ const char *BLT_translate_do_new_dataname(const char *msgctxt, const char *msgid
 /* ID-types contexts. */
 /* WARNING! Keep it in sync with idtypes in blenkernel/intern/idcode.c */
 #define BLT_I18NCONTEXT_ID_ACTION "Action"
+#define BLT_I18NCONTEXT_ID_ANIMATION "Animation"
 #define BLT_I18NCONTEXT_ID_ARMATURE "Armature"
 #define BLT_I18NCONTEXT_ID_BRUSH "Brush"
 #define BLT_I18NCONTEXT_ID_CACHEFILE "CacheFile"

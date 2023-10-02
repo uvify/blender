@@ -555,6 +555,9 @@ void DepsgraphNodeBuilder::build_id(ID *id)
     case ID_AC:
       build_action((bAction *)id);
       break;
+    case ID_AN:
+      build_animation((Animation *)id);
+      break;
     case ID_AR:
       build_armature((bArmature *)id);
       break;
@@ -1251,6 +1254,15 @@ void DepsgraphNodeBuilder::build_action(bAction *action)
   }
   build_idproperties(action->id.properties);
   add_operation_node(&action->id, NodeType::ANIMATION, OperationCode::ANIMATION_EVAL);
+}
+
+void DepsgraphNodeBuilder::build_animation(Animation *animation)
+{
+  if (built_map_.checkIsBuiltAndTag(animation)) {
+    return;
+  }
+  build_idproperties(animation->id.properties);
+  add_operation_node(&animation->id, NodeType::ANIMATION, OperationCode::ANIMATION_EVAL);
 }
 
 void DepsgraphNodeBuilder::build_driver(ID *id, FCurve *fcurve, int driver_index)

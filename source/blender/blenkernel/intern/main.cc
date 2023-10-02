@@ -571,6 +571,8 @@ ListBase *which_libbase(Main *bmain, short type)
       return &(bmain->armatures);
     case ID_AC:
       return &(bmain->actions);
+    case ID_AN:
+      return &(bmain->animations);
     case ID_NT:
       return &(bmain->nodetrees);
     case ID_BR:

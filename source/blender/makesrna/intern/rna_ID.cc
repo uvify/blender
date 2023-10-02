@@ -471,6 +471,11 @@ StructRNA *ID_code_to_RNA_type(short idcode)
   switch ((ID_Type)idcode) {
     case ID_AC:
       return &RNA_Action;
+    case ID_AN:
+#  ifdef WITH_ANIMATION_ID
+      // return &RNA_Animation;
+#  endif
+      break;
     case ID_AR:
       return &RNA_Armature;
     case ID_BR:

@@ -59,6 +59,7 @@ set(SRC
   intern/anim_path.cc
   intern/anim_sys.cc
   intern/anim_visualization.cc
+  intern/animation.cc
   intern/anonymous_attribute_id.cc
   intern/appdir.cc
   intern/armature.cc

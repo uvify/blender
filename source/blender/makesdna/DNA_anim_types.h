@@ -1210,6 +1210,8 @@ struct AnimationStrip;
 /** Container of layered animation data. */
 typedef struct Animation {
   ID id;
+  uint64_t next_output_stable_index;
+
   ListBase /* AnimationLayer */ layers;
   ListBase /* AnimationOutput */ outputs;
 } Animation;
@@ -1235,8 +1237,6 @@ typedef struct AnimationLayer {
    * If there is only one, it can be infinite. This is the default for new layers. */
   ListBase /* AnimationStrip */ strips;
   ListBase /* AnimationLayer */ child_layers;
-
-  ListBase /* AnimationOutput */ outputs;
 } AnimationLayer;
 
 typedef enum eAnimationLayer_MixMode {
@@ -1288,10 +1288,11 @@ typedef struct AnimationStrip {
   float frame_offset;
 } AnimationStrip;
 
+/* AnimationStrip::type = ANIM_STRIP_TYPE_KEYFRAME. */
 typedef struct KeyframeAnimationStrip {
   AnimationStrip strip;
 
-  ListBase /* ChannelsForOutput */ outputs;
+  ListBase /* AnimationChannelsForOutput */ channels_for_output;
 } KeyframeAnimationStrip;
 
 typedef enum eAnimationStrip_type {

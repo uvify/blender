@@ -508,6 +508,9 @@ uint64_t BKE_library_id_can_use_filter_id(const ID *owner_id, const bool include
     case ID_CF:
       /* Those types never use/reference other IDs... */
       return 0;
+    case ID_AN:
+      /* Animation doesn't directly reference other IDs, it does so via the outputs system. */
+      return 0;
     case ID_IP:
       /* Deprecated... */
       return 0;

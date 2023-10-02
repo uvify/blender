@@ -31,6 +31,7 @@
 #include "intern/node/deg_node_id.hh"
 #include "intern/node/deg_node_operation.hh"
 
+struct Animation;
 struct CacheFile;
 struct Camera;
 struct Collection;
@@ -173,6 +174,7 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   virtual void build_animdata_force(ID *id);
   virtual void build_animation_images(ID *id);
   virtual void build_action(bAction *action);
+  virtual void build_animation(Animation *animation);
   virtual void build_driver(ID *id, FCurve *fcurve);
   virtual void build_driver_data(ID *id, FCurve *fcurve);
   virtual void build_driver_variables(ID *id, FCurve *fcurve);
