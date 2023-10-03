@@ -1471,9 +1471,22 @@ static void rna_def_animdata(BlenderRNA *brna)
 
 /* --- */
 
+static void rna_def_animation(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "Animation", "ID");
+  RNA_def_struct_sdna(srna, "Animation");
+  RNA_def_struct_ui_text(srna, "Animation", "A collection of animation layers");
+  RNA_def_struct_ui_icon(srna, ICON_ACTION);
+}
+
 void RNA_def_animation(BlenderRNA *brna)
 {
   rna_def_animdata(brna);
+
+  rna_def_animation(brna);
 
   rna_def_keyingset(brna);
   rna_def_keyingset_path(brna);

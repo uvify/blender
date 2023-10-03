@@ -90,6 +90,7 @@ static void rna_Main_filepath_set(PointerRNA *ptr, const char *value)
     }
 
 RNA_MAIN_LISTBASE_FUNCS_DEF(actions)
+RNA_MAIN_LISTBASE_FUNCS_DEF(animations)
 RNA_MAIN_LISTBASE_FUNCS_DEF(armatures)
 RNA_MAIN_LISTBASE_FUNCS_DEF(brushes)
 RNA_MAIN_LISTBASE_FUNCS_DEF(cachefiles)
@@ -172,7 +173,7 @@ void RNA_def_main(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  /* Plural must match ID-types in `readblenentry.cc`. */
+  /* See the RNA_MAIN_LISTBASE_FUNCS_DEF calls above for the rna_Main_..._begin functions. */
   MainCollectionDef lists[] = {
       {"cameras",
        "Camera",
@@ -319,6 +320,12 @@ void RNA_def_main(BlenderRNA *brna)
        "Actions",
        "Action data-blocks",
        RNA_def_main_actions},
+      {"animations",
+       "Animation",
+       "rna_Main_animations_begin",
+       "animations",
+       "Animation data-blocks",
+       RNA_def_main_animations},
       {"particles",
        "ParticleSettings",
        "rna_Main_particles_begin",

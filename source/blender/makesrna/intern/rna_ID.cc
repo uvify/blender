@@ -121,6 +121,7 @@ static const EnumPropertyItem rna_enum_override_library_property_operation_items
 const IDFilterEnumPropertyItem rna_enum_id_type_filter_items[] = {
     /* Datablocks */
     {FILTER_ID_AC, "filter_action", ICON_ACTION, "Actions", "Show Action data-blocks"},
+    {FILTER_ID_AN, "filter_animation", ICON_ACTION, "Animations", "Show Animation data-blocks"},
     {FILTER_ID_AR,
      "filter_armature",
      ICON_ARMATURE_DATA,

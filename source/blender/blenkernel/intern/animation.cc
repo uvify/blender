@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-/** \file
+/** \file Animation data-block.
  * \ingroup bke
  */
 
@@ -12,6 +12,7 @@
 
 #include "BLO_read_write.hh"
 
+#include "BKE_fcurve.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
@@ -33,7 +34,6 @@ static AnimationStrip *anim_strip_duplicate_keyframe(const AnimationStrip *strip
 
 static void anim_layer_free_data(AnimationLayer *layer);
 static void anim_strip_free_data(AnimationStrip *strip);
-static void anim_strip_free_data_common(AnimationStrip *strip);
 static void anim_strip_free_data_keyframe(AnimationStrip *strip);
 
 using anim_strip_duplicator = AnimationStrip *(*)(const AnimationStrip *strip_src);
@@ -59,14 +59,14 @@ static anim_strip_freeer get_strip_freeer(const eAnimationStrip_type strip_type)
    * was added to the enum and forgotten here. */
   switch (strip_type) {
     case ANIM_STRIP_TYPE_KEYFRAME:
-      return anim_strip_free_keyframe;
+      return anim_strip_free_data_keyframe;
   }
   BLI_assert(!"unfreeable strip type!");
   return nullptr;
 }
 
 /** Deep copy an Animation data-block. */
-static void animation_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
+static void animation_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
 {
   Animation *anim_dst = (Animation *)id_dst;
   const Animation *anim_src = (const Animation *)id_src;
@@ -96,19 +96,12 @@ static AnimationLayer *anim_layer_duplicate(const AnimationLayer *layer_src)
     BLI_addtail(&layer_dst->strips, strip_dst);
   }
 
-  /* Children. */
-  BLI_listbase_clear(&layer_dst->child_layers);
-  for (const AnimationLayer *layer_src :
-       ConstListBaseWrapper<AnimationLayer>(&layer_src->child_layers))
-  {
-    AnimationLayer *layer_dst = anim_layer_duplicate(layer_src);
-    BLI_addtail(&layer_dst->child_layers, layer_dst);
-  }
+  return layer_dst;
 }
 
 static AnimationStrip *anim_strip_duplicate(const AnimationStrip *strip_src)
 {
-  anim_strip_duplicator duplicator = get_strip_duplicator(strip_src->type);
+  anim_strip_duplicator duplicator = get_strip_duplicator(eAnimationStrip_type(strip_src->type));
   return duplicator(strip_src);
 }
 
@@ -123,7 +116,7 @@ static AnimationStrip *anim_strip_duplicate_keyframe(const AnimationStrip *strip
                  "wrong type of strip for this function");
 
   AnimationStrip *strip_dst = anim_strip_duplicate_common(strip_src);
-  KeyframeAnimationStrip key_strip_dst = static_cast<KeyframeAnimationStrip *>(strip_dst);
+  KeyframeAnimationStrip *key_strip_dst = reinterpret_cast<KeyframeAnimationStrip *>(strip_dst);
 
   BLI_duplicatelist(&key_strip_dst->channels_for_output, &key_strip_dst->channels_for_output);
   for (auto *channels :
@@ -135,11 +128,11 @@ static AnimationStrip *anim_strip_duplicate_keyframe(const AnimationStrip *strip
      * parallel), just copy to a separate listbase and reassign. The original listbase items are
      * still owned by strip_src. */
     ListBase fcurves_copy = {0};
-    BKE_fcurves_copy(&fcurves_copy, channels->fcurves);
+    BKE_fcurves_copy(&fcurves_copy, &channels->fcurves);
     channels->fcurves = fcurves_copy;
   }
 
-  return key_strip_dst
+  return &key_strip_dst->strip;
 }
 
 /** Free (or release) any data used by this animation (does not free the animation itself). */
@@ -148,21 +141,38 @@ static void animation_free_data(ID *id)
   Animation *animation = (Animation *)id;
 
   BLI_freelistN(&animation->outputs);
+
   for (AnimationLayer *layer : ListBaseWrapper<AnimationLayer>(&animation->layers)) {
     anim_layer_free_data(layer);
   }
-  BLI_freelistN(&anim_dst->layers);
+  BLI_freelistN(&animation->layers);
+}
 
-  // /* Free F-Curves. */
-  // BKE_fcurves_free(&animation->curves);
+static void anim_layer_free_data(AnimationLayer *layer)
+{
+  for (AnimationStrip *strip : ListBaseWrapper<AnimationStrip>(&layer->strips)) {
+    anim_strip_free_data(strip);
+  }
+  BLI_freelistN(&layer->strips);
+}
 
-  // /* Free groups. */
-  // BLI_freelistN(&animation->groups);
+static void anim_strip_free_data(AnimationStrip *strip)
+{
+  anim_strip_freeer freeer = get_strip_freeer(eAnimationStrip_type(strip->type));
+  return freeer(strip);
+}
 
-  // /* Free pose-references (aka local markers). */
-  // BLI_freelistN(&animation->markers);
+static void anim_strip_free_data_keyframe(AnimationStrip *strip)
+{
+  BLI_assert_msg(strip->type == ANIM_STRIP_TYPE_KEYFRAME, "wrong type of strip for this function");
+  KeyframeAnimationStrip *key_strip = reinterpret_cast<KeyframeAnimationStrip *>(strip);
 
-  // BKE_previewimg_free(&animation->preview);
+  for (AnimationChannelsForOutput *chans_for_out :
+       ListBaseWrapper<AnimationChannelsForOutput>(&key_strip->channels_for_output))
+  {
+    BKE_fcurves_free(&chans_for_out->fcurves);
+  }
+  BLI_freelistN(&key_strip->channels_for_output);
 }
 
 static void animation_foreach_id(ID *id, LibraryForeachIDData *data)
@@ -265,3 +275,9 @@ IDTypeInfo IDType_ID_AN = {
 
     /*lib_override_apply_post*/ nullptr,
 };
+
+Animation *BKE_animation_add(Main *bmain, const char name[])
+{
+  Animation *anim = static_cast<Animation *>(BKE_id_new(bmain, ID_AN, name));
+  return anim;
+}

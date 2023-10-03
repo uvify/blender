@@ -499,6 +499,7 @@ void RNA_def_main_speakers(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_sounds(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_armatures(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_actions(BlenderRNA *brna, PropertyRNA *cprop);
+void RNA_def_main_animations(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_particles(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_palettes(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_gpencil_legacy(BlenderRNA *brna, PropertyRNA *cprop);

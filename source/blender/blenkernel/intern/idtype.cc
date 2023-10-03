@@ -79,6 +79,7 @@ static void id_type_init()
   INIT_TYPE(ID_GR);
   INIT_TYPE(ID_AR);
   INIT_TYPE(ID_AC);
+  INIT_TYPE(ID_AN);
   INIT_TYPE(ID_NT);
   INIT_TYPE(ID_BR);
   INIT_TYPE(ID_PA);
