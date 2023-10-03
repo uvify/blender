@@ -1236,7 +1236,6 @@ typedef struct AnimationLayer {
    * There is always at least one strip.
    * If there is only one, it can be infinite. This is the default for new layers. */
   ListBase /* AnimationStrip */ strips;
-  ListBase /* AnimationLayer */ child_layers;
 } AnimationLayer;
 
 typedef enum eAnimationLayer_MixMode {
@@ -1250,17 +1249,18 @@ typedef enum eAnimationLayer_MixMode {
 typedef enum eAnimationLayer_Flags {
   /* Set by default, cleared to mute. */
   ANIM_LAYER_ENABLED = (1 << 0),
-
-  /* When set, only one child layer can be enabled at a time. */
-  ANIM_LAYER_CHILD_SOLO = (1 << 1),
 } eAnimationLayer_Flags;
 ENUM_OPERATORS(eAnimationLayer_Flags, ANIM_LAYER_ENABLED);
 
 typedef struct AnimationOutput_runtime {
-  ID *id; /* The ID that is animated by this output. */
+  ID **id;
+  uint16_t num_ids;
+  uint8_t _pad0[6];
 } AnimationOutput_runtime;
 
 typedef struct AnimationOutput {
+  struct AnimationOutput *next, *prev;
+
   uint64_t stable_index;
   char fallback[64]; /* Fallback string for remapping outputs. */
 
@@ -1288,6 +1288,10 @@ typedef struct AnimationStrip {
   float frame_offset;
 } AnimationStrip;
 
+typedef enum eAnimationStrip_type {
+  ANIM_STRIP_TYPE_KEYFRAME = 0,
+} eAnimationStrip_type;
+
 /* AnimationStrip::type = ANIM_STRIP_TYPE_KEYFRAME. */
 typedef struct KeyframeAnimationStrip {
   AnimationStrip strip;
@@ -1295,11 +1299,9 @@ typedef struct KeyframeAnimationStrip {
   ListBase /* AnimationChannelsForOutput */ channels_for_output;
 } KeyframeAnimationStrip;
 
-typedef enum eAnimationStrip_type {
-  ANIM_STRIP_TYPE_KEYFRAME = 0,
-} eAnimationStrip_type;
-
 typedef struct AnimationChannelsForOutput {
+  struct AnimationChannelsForOutput *next, *prev;
+
   uint64_t output_stable_index;
   ListBase /* FCurve */ fcurves;
 
