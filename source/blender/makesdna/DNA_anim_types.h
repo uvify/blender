@@ -1210,7 +1210,9 @@ struct AnimationStrip;
 /** Container of layered animation data. */
 typedef struct Animation {
   ID id;
-  uint64_t next_output_stable_index;
+  int next_output_stable_index;
+
+  uint8_t _pad0[4];
 
   ListBase /* AnimationLayer */ layers;
   ListBase /* AnimationOutput */ outputs;
@@ -1261,7 +1263,7 @@ typedef struct AnimationOutput_runtime {
 typedef struct AnimationOutput {
   struct AnimationOutput *next, *prev;
 
-  uint64_t stable_index;
+  int stable_index;
   char fallback[64]; /* Fallback string for remapping outputs. */
 
   /**
@@ -1270,7 +1272,6 @@ typedef struct AnimationOutput {
    */
   int idtype;
 
-  uint8_t _pad0[4];
   struct AnimationOutput_runtime runtime;
 
   void *_pad1;
@@ -1302,7 +1303,9 @@ typedef struct KeyframeAnimationStrip {
 typedef struct AnimationChannelsForOutput {
   struct AnimationChannelsForOutput *next, *prev;
 
-  uint64_t output_stable_index;
+  int output_stable_index;
+  uint8_t _pad0[4];
+
   ListBase /* FCurve */ fcurves;
 
   /* TODO: Design & implement a way to integrate other channel types as well,
