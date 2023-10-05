@@ -1210,7 +1210,7 @@ struct AnimationStrip;
 /** Container of layered animation data. */
 typedef struct Animation {
   ID id;
-  int next_output_stable_index;
+  int32_t last_output_stable_index;
 
   uint8_t _pad0[4];
 
@@ -1263,7 +1263,7 @@ typedef struct AnimationOutput_runtime {
 typedef struct AnimationOutput {
   struct AnimationOutput *next, *prev;
 
-  int stable_index;
+  int32_t stable_index;
   char fallback[64]; /* Fallback string for remapping outputs. */
 
   /**

@@ -15,9 +15,11 @@ set(INC_SYS
 )
 
 set(SRC
+  intern/animation.cc
   intern/bone_collections.cc
   intern/bonecolor.cc
 
+  ANIM_animation.hh
   ANIM_bone_collections.h
   ANIM_bone_collections.hh
   ANIM_bonecolor.hh
@@ -29,6 +31,7 @@ set(LIB
   bf::dna
   PRIVATE bf_editor_interface
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::intern::atomic
 )
 
 

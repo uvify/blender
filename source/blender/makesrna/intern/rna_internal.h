@@ -140,6 +140,7 @@ extern BlenderRNA BLENDER_RNA;
 void RNA_def_ID(struct BlenderRNA *brna);
 void RNA_def_action(struct BlenderRNA *brna);
 void RNA_def_animation(struct BlenderRNA *brna);
+void RNA_def_animation_id(struct BlenderRNA *brna);
 void RNA_def_animviz(struct BlenderRNA *brna);
 void RNA_def_armature(struct BlenderRNA *brna);
 void RNA_def_attribute(struct BlenderRNA *brna);
