@@ -14,6 +14,17 @@
 /* clang-format off */
 
 /* -------------------------------------------------------------------- */
+/** \name AnimationLayer Struct
+ * \{ */
+
+#define _DNA_DEFAULT_AnimationLayer \
+  { \
+    .influence = 1.0f, \
+  }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name AnimationStrip Struct
  * \{ */
 

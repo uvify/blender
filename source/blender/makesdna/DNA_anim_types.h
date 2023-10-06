@@ -1216,6 +1216,8 @@ typedef struct Animation {
 
   ListBase /* AnimationLayer */ layers;
   ListBase /* AnimationOutput */ outputs;
+
+  struct AnimationLayer *active_layer;
 } Animation;
 
 typedef struct AnimationLayer {
@@ -1277,6 +1279,13 @@ typedef struct AnimationOutput {
   void *_pad1;
 } AnimationOutput;
 
+#ifdef __cplusplus
+namespace blender::animrig {
+class AnimationStrip;
+class KeyframeAnimationStrip;
+}  // namespace blender::animrig
+#endif
+
 typedef struct AnimationStrip {
   struct AnimationStrip *next, *prev;
 
@@ -1287,6 +1296,17 @@ typedef struct AnimationStrip {
   float frame_start;
   float frame_end;
   float frame_offset;
+
+#ifdef __cplusplus
+  blender::animrig::AnimationStrip &wrap()
+  {
+    return *reinterpret_cast<blender::animrig::AnimationStrip *>(this);
+  }
+  const blender::animrig::AnimationStrip &wrap() const
+  {
+    return *reinterpret_cast<const blender::animrig::AnimationStrip *>(this);
+  }
+#endif
 } AnimationStrip;
 
 typedef enum eAnimationStrip_type {
@@ -1298,6 +1318,17 @@ typedef struct KeyframeAnimationStrip {
   AnimationStrip strip;
 
   ListBase /* AnimationChannelsForOutput */ channels_for_output;
+
+#ifdef __cplusplus
+  blender::animrig::KeyframeAnimationStrip &wrap()
+  {
+    return *reinterpret_cast<blender::animrig::KeyframeAnimationStrip *>(this);
+  }
+  const blender::animrig::KeyframeAnimationStrip &wrap() const
+  {
+    return *reinterpret_cast<const blender::animrig::KeyframeAnimationStrip *>(this);
+  }
+#endif
 } KeyframeAnimationStrip;
 
 typedef struct AnimationChannelsForOutput {

@@ -9,6 +9,13 @@ set(INC
   ../blenkernel
   ../blentranslation
   ../editors/include
+
+  # Just for being able to include 'ED_keyframing.hh', which includes 'RNA_types.hh'.
+  #
+  # The functionality in 'ED_keyframing.hh' that is actually used in this module
+  # should be moved into this module instead, after which this path can be
+  # removed.
+  ../makesrna
 )
 
 set(INC_SYS
@@ -42,6 +49,7 @@ if(WITH_GTESTS)
   set(TEST_INC
   )
   set(TEST_SRC
+    intern/animation_test.cc
     intern/bone_collections_test.cc
   )
   set(TEST_LIB

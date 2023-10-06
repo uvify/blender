@@ -135,11 +135,8 @@ static AnimationStrip *anim_strip_duplicate_keyframe(const AnimationStrip *strip
   return &key_strip_dst->strip;
 }
 
-/** Free (or release) any data used by this animation (does not free the animation itself). */
-static void animation_free_data(ID *id)
+void BKE_animation_free_data(Animation *animation)
 {
-  Animation *animation = (Animation *)id;
-
   for (AnimationOutput *output : ListBaseWrapper<AnimationOutput>(&animation->outputs)) {
     /* TODO: Move freeing of Output runtime data to another function. */
     MEM_freeN(output->runtime.id);
@@ -150,6 +147,12 @@ static void animation_free_data(ID *id)
     anim_layer_free_data(layer);
   }
   BLI_freelistN(&animation->layers);
+}
+
+/** Free (or release) any data used by this animation (does not free the animation itself). */
+static void animation_free_data(ID *id)
+{
+  BKE_animation_free_data((Animation *)id);
 }
 
 static void anim_layer_free_data(AnimationLayer *layer)
