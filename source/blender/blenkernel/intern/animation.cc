@@ -140,6 +140,10 @@ static void animation_free_data(ID *id)
 {
   Animation *animation = (Animation *)id;
 
+  for (AnimationOutput *output : ListBaseWrapper<AnimationOutput>(&animation->outputs)) {
+    /* TODO: Move freeing of Output runtime data to another function. */
+    MEM_freeN(output->runtime.id);
+  }
   BLI_freelistN(&animation->outputs);
 
   for (AnimationLayer *layer : ListBaseWrapper<AnimationLayer>(&animation->layers)) {

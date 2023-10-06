@@ -117,6 +117,10 @@ static void rna_def_animation_output(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna,
                          "Animation Output",
                          "Reference to a data-block that will be animated by this Animation");
+
+  prop = RNA_def_property(srna, "stable_index", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "stable_index");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
 void RNA_def_animation_id(BlenderRNA *brna)

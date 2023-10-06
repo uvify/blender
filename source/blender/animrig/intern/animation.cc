@@ -4,6 +4,7 @@
 
 #include "DNA_anim_types.h"
 
+#include "BLI_listbase.h"
 #include "BLI_string_utf8.h"
 
 #include "MEM_guardedalloc.h"
@@ -24,6 +25,8 @@ AnimationOutput *animation_add_output(Animation *anim, ID *animated_id)
   output->runtime.id = MEM_new<ID *>(__func__);
   output->runtime.num_ids = 1;
   *(output->runtime.id) = animated_id;
+
+  BLI_addtail(&anim->outputs, output);
 
   return output;
 }
