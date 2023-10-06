@@ -44,7 +44,6 @@
 using namespace blender;
 
 static AnimationOutput *rna_Animation_outputs_new(Animation *anim,
-                                                  Main *bmain,
                                                   ReportList *reports,
                                                   ID *animated_id)
 {
@@ -59,6 +58,13 @@ static AnimationOutput *rna_Animation_outputs_new(Animation *anim,
   AnimationOutput *output = animrig::animation_add_output(anim, animated_id);
   // TODO: notifiers.
   return output;
+}
+
+static AnimationLayer *rna_Animation_layers_new(Animation *anim, const char *name)
+{
+  AnimationLayer *layer = animrig::animation_add_layer(anim, name);
+  // TODO: notifiers.
+  return layer;
 }
 
 #else
@@ -78,12 +84,38 @@ static void rna_def_animation_outputs(BlenderRNA *brna, PropertyRNA *cprop)
   /* Animation.outputs.new(...) */
   func = RNA_def_function(srna, "new", "rna_Animation_outputs_new");
   RNA_def_function_ui_description(func, "Add an output to the animation");
-  RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_MAIN);
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_pointer(
       func, "animated_id", "ID", "Data-Block", "Data-block that will be animated by this output");
 
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "output", "AnimationOutput", "", "Newly created animation output");
+  RNA_def_function_return(func, parm);
+}
+
+static void rna_def_animation_layers(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_property_srna(cprop, "AnimationLayers");
+  srna = RNA_def_struct(brna, "AnimationLayers", nullptr);
+  RNA_def_struct_sdna(srna, "Animation");
+  RNA_def_struct_ui_text(srna, "Animation Layers", "Collection of animation layers");
+
+  /* Animation.layers.new(...) */
+  func = RNA_def_function(srna, "new", "rna_Animation_layers_new");
+  RNA_def_function_ui_description(func, "Add a layer to the animation");
+  parm = RNA_def_string(func,
+                        "name",
+                        nullptr,
+                        sizeof(AnimationLayer::name) - 1,
+                        "Name",
+                        "Name of the layer, unique within the Animation data-block");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "layer", "AnimationLayer", "", "Newly created animation layer");
   RNA_def_function_return(func, parm);
 }
 
@@ -101,11 +133,18 @@ static void rna_def_animation(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, nullptr, "last_output_stable_index");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
+  /* Collection properties .*/
   prop = RNA_def_property(srna, "outputs", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "outputs", nullptr);
   RNA_def_property_struct_type(prop, "AnimationOutput");
   RNA_def_property_ui_text(prop, "Outputs", "The list of data-blocks animated by this Animation");
   rna_def_animation_outputs(brna, prop);
+
+  prop = RNA_def_property(srna, "layers", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "layers", nullptr);
+  RNA_def_property_struct_type(prop, "AnimationLayer");
+  RNA_def_property_ui_text(prop, "Layers", "The list of layers that make up this Animation");
+  rna_def_animation_layers(brna, prop);
 }
 
 static void rna_def_animation_output(BlenderRNA *brna)
@@ -123,10 +162,23 @@ static void rna_def_animation_output(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
+static void rna_def_animation_layer(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "AnimationLayer", nullptr);
+  RNA_def_struct_ui_text(srna, "Animation Layer", "");
+
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_struct_name_property(srna, prop);
+}
+
 void RNA_def_animation_id(BlenderRNA *brna)
 {
   rna_def_animation(brna);
   rna_def_animation_output(brna);
+  rna_def_animation_layer(brna);
 }
 
 #endif
