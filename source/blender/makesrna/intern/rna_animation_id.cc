@@ -67,6 +67,24 @@ static AnimationLayer *rna_Animation_layers_new(Animation *anim, const char *nam
   return layer;
 }
 
+static FCurve *rna_AnimationStrip_keyframe_insert(AnimationStrip *strip,
+                                                  ReportList *reports,
+                                                  AnimationOutput *output,
+                                                  const char *rna_path,
+                                                  const int array_index,
+                                                  const float value,
+                                                  const float time)
+{
+  if (output == nullptr) {
+    BKE_report(reports, RPT_ERROR, "output cannot be None");
+    return nullptr;
+  }
+
+  FCurve *fcurve = animrig::keyframe_insert(
+      &strip->wrap(), output, rna_path, array_index, value, time, BEZT_KEYTYPE_KEYFRAME);
+  return fcurve;
+}
+
 #else
 
 static void rna_def_animation_outputs(BlenderRNA *brna, PropertyRNA *cprop)
@@ -162,6 +180,19 @@ static void rna_def_animation_output(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
+static void rna_def_animation_strips(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+
+  // FunctionRNA *func;
+  // PropertyRNA *parm;
+
+  RNA_def_property_srna(cprop, "AnimationStrips");
+  srna = RNA_def_struct(brna, "AnimationStrips", nullptr);
+  RNA_def_struct_sdna(srna, "AnimationLayer");
+  RNA_def_struct_ui_text(srna, "Animation Strips", "Collection of animation strips");
+}
+
 static void rna_def_animation_layer(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -172,6 +203,75 @@ static void rna_def_animation_layer(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_name_property(srna, prop);
+
+  /* Collection properties .*/
+  prop = RNA_def_property(srna, "strips", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "strips", nullptr);
+  RNA_def_property_struct_type(prop, "AnimationStrip");
+  RNA_def_property_ui_text(prop, "Strips", "The list of strips that are on this animation layer");
+  rna_def_animation_strips(brna, prop);
+}
+
+static void rna_def_animation_strip(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  // PropertyRNA *prop;
+
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  srna = RNA_def_struct(brna, "AnimationStrip", nullptr);
+  RNA_def_struct_ui_text(srna, "Animation Strip", "");
+
+  /* Strip.keyframe_insert(...). */
+  func = RNA_def_function(srna, "keyframe_insert", "rna_AnimationStrip_keyframe_insert");
+  // RNA_def_function_ui_description(func, "");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func,
+                         "output",
+                         "AnimationOutput",
+                         "Output",
+                         "The output that identifies which 'thing' should be keyed");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_string(func, "data_path", nullptr, 0, "Data Path", "F-Curve data path");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_int(func,
+                     "array_index",
+                     -1,
+                     -INT_MAX,
+                     INT_MAX,
+                     "Array Index",
+                     "Index of the animated array element, or -1 if the property is not an array",
+                     -1,
+                     4);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_float(func,
+                       "value",
+                       0.0,
+                       -FLT_MAX,
+                       FLT_MAX,
+                       "Value to key",
+                       "Value of the animated property",
+                       -FLT_MAX,
+                       FLT_MAX);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_float(func,
+                       "time",
+                       0.0,
+                       -FLT_MAX,
+                       FLT_MAX,
+                       "Time of the key",
+                       "Time, in frames, of the key",
+                       -FLT_MAX,
+                       FLT_MAX);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_pointer(func, "fcurve", "FCurve", "", "The FCurve this key was inserted on");
+  RNA_def_function_return(func, parm);
 }
 
 void RNA_def_animation_id(BlenderRNA *brna)
@@ -179,6 +279,7 @@ void RNA_def_animation_id(BlenderRNA *brna)
   rna_def_animation(brna);
   rna_def_animation_output(brna);
   rna_def_animation_layer(brna);
+  rna_def_animation_strip(brna);
 }
 
 #endif
