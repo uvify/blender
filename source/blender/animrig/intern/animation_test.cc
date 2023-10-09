@@ -32,7 +32,7 @@ TEST(ANIM_animation_layers, add_layer)
   ASSERT_EQ(1, BLI_listbase_count(&layer->strips))
       << "Expected newly added layer to have a single strip.";
 
-  AnimationStrip *strip = static_cast<AnimationStrip *>(layer->strips.first);
+  Strip *strip = static_cast<Strip *>(layer->strips.first);
   constexpr float inf = std::numeric_limits<float>::infinity();
   EXPECT_EQ(-inf, strip->frame_start) << "Expected strip to be infinite.";
   EXPECT_EQ(inf, strip->frame_end) << "Expected strip to be infinite.";
@@ -65,7 +65,7 @@ TEST(ANIM_animation_layers, keyframe_insert)
   STRNCPY_UTF8(cube.name, "OBKüüübus");
   AnimationOutput *out = animation_add_output(&anim, &cube);
   AnimationLayer *layer = anim.layer_add("Kübus layer");
-  AnimationStrip *strip = static_cast<AnimationStrip *>(layer->strips.first);
+  Strip *strip = static_cast<Strip *>(layer->strips.first);
 
   FCurve *fcurve_loc_a = keyframe_insert(
       strip, out, "location", 0, 47.0f, 1.0f, BEZT_KEYTYPE_KEYFRAME);
@@ -73,10 +73,10 @@ TEST(ANIM_animation_layers, keyframe_insert)
       << "Expect all the necessary data structures to be created on insertion of a key";
 
   /* Check the strip was created correctly, with the channels for the output. */
-  KeyframeAnimationStrip *key_strip = strip->wrap().as<KeyframeAnimationStrip>();
-  ASSERT_EQ(1, BLI_listbase_count(&key_strip->channels_for_output));
+  KeyframeStrip &key_strip = strip->wrap().as<KeyframeStrip>();
+  ASSERT_EQ(1, BLI_listbase_count(&key_strip.channels_for_output));
   AnimationChannelsForOutput *chan_for_out = static_cast<AnimationChannelsForOutput *>(
-      key_strip->channels_for_output.first);
+      key_strip.channels_for_output.first);
   EXPECT_EQ(out->stable_index, chan_for_out->output_stable_index);
 
   /* Insert a second key, should insert into the same FCurve as before. */

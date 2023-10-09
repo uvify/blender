@@ -1206,6 +1206,17 @@ typedef struct IdAdtTemplate {
 /* ************************************************ */
 /* Layered Animation data-types. */
 
+/* Declarations of C++ wrappers. See ANIM_animation.hh for the actual classes. */
+#ifdef __cplusplus
+namespace blender::animrig {
+class Animation;
+class Layer;
+class Output;
+class Strip;
+class KeyframeStrip;
+}  // namespace blender::animrig
+#endif
+
 /* Forward declarations so the actual declarations can happen top-down. */
 struct AnimationLayer;
 struct AnimationOutput;
@@ -1220,20 +1231,13 @@ typedef struct Animation {
 
   struct AnimationLayer **layer_array; /* Array of 'layer_array_num' layers. */
   ListBase /*AnimationOutput*/ outputs;
-  // struct AnimationOutput **output_array; /* Array of 'output_array_num' outputs. */
 
   int layer_array_num;
   int layer_active_index; /* Index into layer_array, -1 means 'no active'. */
-  // int output_array_num;
 
 #ifdef __cplusplus
-  /* Animation Layers read/write access. */
-  blender::Span<const AnimationLayer *> layers() const;
-  blender::MutableSpan<AnimationLayer *> layers();
-  const AnimationLayer *layer(int64_t index) const;
-  AnimationLayer *layer(int64_t index);
-
-  AnimationLayer *layer_add(const char *name);
+  blender::animrig::Animation &wrap();
+  const blender::animrig::Animation &wrap() const;
 #endif
 } Animation;
 
@@ -1255,6 +1259,11 @@ typedef struct AnimationLayer {
    * There is always at least one strip.
    * If there is only one, it can be infinite. This is the default for new layers. */
   ListBase /* AnimationStrip */ strips;
+
+#ifdef __cplusplus
+  blender::animrig::Layer &wrap();
+  const blender::animrig::Layer &wrap() const;
+#endif
 } AnimationLayer;
 
 typedef enum eAnimationLayer_MixMode {
@@ -1292,14 +1301,12 @@ typedef struct AnimationOutput {
   struct AnimationOutput_runtime runtime;
 
   void *_pad1;
-} AnimationOutput;
 
 #ifdef __cplusplus
-namespace blender::animrig {
-class AnimationStrip;
-class KeyframeAnimationStrip;
-}  // namespace blender::animrig
+  blender::animrig::Output &wrap();
+  const blender::animrig::Output &wrap() const;
 #endif
+} AnimationOutput;
 
 typedef struct AnimationStrip {
   struct AnimationStrip *next, *prev;
@@ -1313,14 +1320,8 @@ typedef struct AnimationStrip {
   float frame_offset;
 
 #ifdef __cplusplus
-  blender::animrig::AnimationStrip &wrap()
-  {
-    return *reinterpret_cast<blender::animrig::AnimationStrip *>(this);
-  }
-  const blender::animrig::AnimationStrip &wrap() const
-  {
-    return *reinterpret_cast<const blender::animrig::AnimationStrip *>(this);
-  }
+  blender::animrig::Strip &wrap();
+  const blender::animrig::Strip &wrap() const;
 #endif
 } AnimationStrip;
 
@@ -1335,14 +1336,8 @@ typedef struct KeyframeAnimationStrip {
   ListBase /* AnimationChannelsForOutput */ channels_for_output;
 
 #ifdef __cplusplus
-  blender::animrig::KeyframeAnimationStrip &wrap()
-  {
-    return *reinterpret_cast<blender::animrig::KeyframeAnimationStrip *>(this);
-  }
-  const blender::animrig::KeyframeAnimationStrip &wrap() const
-  {
-    return *reinterpret_cast<const blender::animrig::KeyframeAnimationStrip *>(this);
-  }
+  blender::animrig::KeyframeStrip &wrap();
+  const blender::animrig::KeyframeStrip &wrap() const;
 #endif
 } KeyframeAnimationStrip;
 
@@ -1352,6 +1347,8 @@ typedef struct AnimationChannelsForOutput {
   int output_stable_index;
   uint8_t _pad0[4];
 
+  /* TODO: when converting this listbase to array, make sure the fcurve next/prev pointers are nil
+   * to avoid accidental 'compatibility' with LISTBASE_FOREACH and friends. */
   ListBase /* FCurve */ fcurves;
 
   /* TODO: Design & implement a way to integrate other channel types as well,

@@ -43,9 +43,9 @@
 
 using namespace blender;
 
-static Animation *rna_animation(const PointerRNA *ptr)
+static animrig::Animation &rna_animation(const PointerRNA *ptr)
 {
-  return reinterpret_cast<Animation *>(ptr->owner_id);
+  return reinterpret_cast<Animation *>(ptr->owner_id)->wrap();
 }
 
 static AnimationOutput *rna_Animation_outputs_new(Animation *anim,
@@ -60,15 +60,15 @@ static AnimationOutput *rna_Animation_outputs_new(Animation *anim,
     return nullptr;
   }
 
-  AnimationOutput *output = animrig::animation_add_output(anim, animated_id);
+  AnimationOutput *output = animrig::animation_add_output(&anim->wrap(), animated_id);
   // TODO: notifiers.
   return output;
 }
 
 static void rna_iterator_animation_layers_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
-  Animation *anim = rna_animation(ptr);
-  blender::Span<AnimationLayer *> layers = anim->layers();
+  animrig::Animation &anim = rna_animation(ptr);
+  Span<animrig::Layer *> layers = anim.layers();
 
   rna_iterator_array_begin(
       iter, (void *)layers.data(), sizeof(AnimationLayer *), layers.size(), 0, nullptr);
@@ -76,13 +76,13 @@ static void rna_iterator_animation_layers_begin(CollectionPropertyIterator *iter
 
 static int rna_iterator_animation_layers_length(PointerRNA *ptr)
 {
-  Animation *anim = rna_animation(ptr);
-  return anim->layers().size();
+  animrig::Animation anim = rna_animation(ptr);
+  return anim.layers().size();
 }
 
 static AnimationLayer *rna_Animation_layers_new(Animation *anim, const char *name)
 {
-  AnimationLayer *layer = anim->layer_add(name);
+  AnimationLayer *layer = anim->wrap().layer_add(name);
   // TODO: notifiers.
   return layer;
 }
