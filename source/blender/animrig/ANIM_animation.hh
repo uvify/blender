@@ -37,6 +37,14 @@ class Animation : public ::Animation {
   Layer *layer(int64_t index);
 
   Layer *layer_add(const char *name);
+
+  /* Animation Output access. */
+  blender::Span<const Output *> outputs() const;
+  blender::MutableSpan<Output *> outputs();
+  const Output *output(int64_t index) const;
+  Output *output(int64_t index);
+
+  Output *output_add(ID *animated_id);
 };
 static_assert(sizeof(Animation) == sizeof(::Animation));
 
@@ -87,8 +95,6 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
 };
 
 template<> KeyframeStrip &Strip::as<KeyframeStrip>();
-
-AnimationOutput *animation_add_output(Animation *anim, ID *animated_id);
 
 FCurve *keyframe_insert(Strip *strip,
                         const AnimationOutput *out,

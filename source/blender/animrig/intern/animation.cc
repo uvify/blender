@@ -68,6 +68,25 @@ template<typename T> static void grow_array(T **array, int *num, const int add_n
 
 /* ----- Animation C++ implementation ----------- */
 
+blender::Span<const Layer *> Animation::layers() const
+{
+  return blender::Span<Layer *>{reinterpret_cast<Layer **>(this->layer_array),
+                                this->layer_array_num};
+}
+blender::MutableSpan<Layer *> Animation::layers()
+{
+  return blender::MutableSpan<Layer *>{reinterpret_cast<Layer **>(this->layer_array),
+                                       this->layer_array_num};
+}
+const Layer *Animation::layer(const int64_t index) const
+{
+  return &this->layer_array[index]->wrap();
+}
+Layer *Animation::layer(const int64_t index)
+{
+  return &this->layer_array[index]->wrap();
+}
+
 Layer *Animation::layer_add(const char *name)
 {
   using namespace blender::animrig;
@@ -89,47 +108,47 @@ Layer *Animation::layer_add(const char *name)
   return new_layer;
 }
 
-/* ----- Layer C++ implementation ----------- */
-
-blender::Span<const Layer *> Animation::layers() const
+blender::Span<const Output *> Animation::outputs() const
 {
-  return blender::Span<Layer *>{reinterpret_cast<Layer **>(this->layer_array),
-                                this->layer_array_num};
+  return blender::Span<Output *>{reinterpret_cast<Output **>(this->output_array),
+                                 this->output_array_num};
 }
-blender::MutableSpan<Layer *> Animation::layers()
+blender::MutableSpan<Output *> Animation::outputs()
 {
-  return blender::MutableSpan<Layer *>{reinterpret_cast<Layer **>(this->layer_array),
-                                       this->layer_array_num};
+  return blender::MutableSpan<Output *>{reinterpret_cast<Output **>(this->output_array),
+                                        this->output_array_num};
 }
-const Layer *Animation::layer(const int64_t index) const
+const Output *Animation::output(const int64_t index) const
 {
-  return &this->layer_array[index]->wrap();
+  return &this->output_array[index]->wrap();
 }
-Layer *Animation::layer(const int64_t index)
+Output *Animation::output(const int64_t index)
 {
-  return &this->layer_array[index]->wrap();
+  return &this->output_array[index]->wrap();
 }
 
-AnimationOutput *animation_add_output(Animation *anim, ID *animated_id)
+Output *Animation::output_add(ID *animated_id)
 {
-  AnimationOutput *output = MEM_new<AnimationOutput>(__func__);
+  Output &output = MEM_new<AnimationOutput>(__func__)->wrap();
 
-  output->idtype = GS(animated_id->name);
-  output->stable_index = atomic_add_and_fetch_int32(&anim->last_output_stable_index, 1);
+  output.idtype = GS(animated_id->name);
+  output.stable_index = atomic_add_and_fetch_int32(&this->last_output_stable_index, 1);
 
   /* The ID type bytes can be stripped from the name, as that information is
-   * already stored in output->idtype. This also makes it easier to combine
+   * already stored in output.idtype. This also makes it easier to combine
    * names when multiple IDs share the same output. */
-  STRNCPY_UTF8(output->fallback, animated_id->name + 2);
+  STRNCPY_UTF8(output.fallback, animated_id->name + 2);
 
   // TODO: turn this into an actually nice function.
-  output->runtime.id = MEM_new<ID *>(__func__);
-  output->runtime.num_ids = 1;
-  *(output->runtime.id) = animated_id;
+  output.runtime.id = MEM_new<ID *>(__func__);
+  output.runtime.num_ids = 1;
+  *(output.runtime.id) = animated_id;
 
-  BLI_addtail(&anim->outputs, output);
+  /* Add the new output to the output array. */
+  grow_array<::AnimationOutput *>(&this->output_array, &this->output_array_num, 1);
+  this->output_array[this->output_array_num - 1] = &output;
 
-  return output;
+  return &output;
 }
 
 template<> KeyframeStrip &Strip::as<KeyframeStrip>()

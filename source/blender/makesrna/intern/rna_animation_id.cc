@@ -48,7 +48,7 @@ static animrig::Animation &rna_animation(const PointerRNA *ptr)
   return reinterpret_cast<Animation *>(ptr->owner_id)->wrap();
 }
 
-static AnimationOutput *rna_Animation_outputs_new(Animation *anim,
+static AnimationOutput *rna_Animation_outputs_new(Animation *anim_id,
                                                   ReportList *reports,
                                                   ID *animated_id)
 {
@@ -60,7 +60,8 @@ static AnimationOutput *rna_Animation_outputs_new(Animation *anim,
     return nullptr;
   }
 
-  AnimationOutput *output = animrig::animation_add_output(&anim->wrap(), animated_id);
+  animrig::Animation &anim = anim_id->wrap();
+  animrig::Output *output = anim.output_add(animated_id);
   // TODO: notifiers.
   return output;
 }
@@ -78,6 +79,21 @@ static int rna_iterator_animation_layers_length(PointerRNA *ptr)
 {
   animrig::Animation anim = rna_animation(ptr);
   return anim.layers().size();
+}
+
+static void rna_iterator_animation_outputs_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  animrig::Animation &anim = rna_animation(ptr);
+  Span<animrig::Output *> outputs = anim.outputs();
+
+  rna_iterator_array_begin(
+      iter, (void *)outputs.data(), sizeof(AnimationOutput *), outputs.size(), 0, nullptr);
+}
+
+static int rna_iterator_animation_outputs_length(PointerRNA *ptr)
+{
+  animrig::Animation anim = rna_animation(ptr);
+  return anim.outputs().size();
 }
 
 static AnimationLayer *rna_Animation_layers_new(Animation *anim, const char *name)
@@ -173,8 +189,16 @@ static void rna_def_animation(BlenderRNA *brna)
 
   /* Collection properties .*/
   prop = RNA_def_property(srna, "outputs", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, nullptr, "outputs", nullptr);
   RNA_def_property_struct_type(prop, "AnimationOutput");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_iterator_animation_outputs_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_dereference_get",
+                                    "rna_iterator_animation_outputs_length",
+                                    nullptr, /* TODO */
+                                    nullptr, /* TODO */
+                                    nullptr);
   RNA_def_property_ui_text(prop, "Outputs", "The list of data-blocks animated by this Animation");
   rna_def_animation_outputs(brna, prop);
 

@@ -1229,11 +1229,14 @@ typedef struct Animation {
 
   uint8_t _pad0[4];
 
-  struct AnimationLayer **layer_array; /* Array of 'layer_array_num' layers. */
-  ListBase /*AnimationOutput*/ outputs;
+  struct AnimationLayer **layer_array;   /* Array of 'layer_array_num' layers. */
+  struct AnimationOutput **output_array; /* Array of 'output_array_num` outputs. */
 
   int layer_array_num;
   int layer_active_index; /* Index into layer_array, -1 means 'no active'. */
+  int output_array_num;
+
+  uint8_t _pad1[4];
 
 #ifdef __cplusplus
   blender::animrig::Animation &wrap();
@@ -1287,8 +1290,6 @@ typedef struct AnimationOutput_runtime {
 } AnimationOutput_runtime;
 
 typedef struct AnimationOutput {
-  struct AnimationOutput *next, *prev;
-
   int32_t stable_index;
   char fallback[64]; /* Fallback string for remapping outputs. */
 

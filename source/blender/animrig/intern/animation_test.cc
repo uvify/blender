@@ -47,7 +47,7 @@ TEST(ANIM_animation_layers, add_output)
   ID cube = {};
   STRNCPY_UTF8(cube.name, "OBKüüübus");
 
-  AnimationOutput *out = animation_add_output(&anim, &cube);
+  Output *out = anim.output_add(&cube);
   EXPECT_EQ(1, anim.last_output_stable_index);
   EXPECT_EQ(1, out->stable_index);
   EXPECT_EQ("Küüübus", std::string(out->fallback));
@@ -63,8 +63,8 @@ TEST(ANIM_animation_layers, keyframe_insert)
   Animation anim = {};
   ID cube = {};
   STRNCPY_UTF8(cube.name, "OBKüüübus");
-  AnimationOutput *out = animation_add_output(&anim, &cube);
-  AnimationLayer *layer = anim.layer_add("Kübus layer");
+  Output *out = anim.output_add(&cube);
+  Layer *layer = anim.layer_add("Kübus layer");
   Strip *strip = static_cast<Strip *>(layer->strips.first);
 
   FCurve *fcurve_loc_a = keyframe_insert(

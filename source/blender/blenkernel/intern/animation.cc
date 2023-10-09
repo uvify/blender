@@ -32,6 +32,7 @@ struct BlendWriter;
 struct BlendDataReader;
 
 static AnimationLayer *anim_layer_duplicate(const AnimationLayer *layer_src);
+static AnimationOutput *anim_output_duplicate(const AnimationOutput *output_src);
 static AnimationStrip *anim_strip_duplicate(const AnimationStrip *strip_src);
 static AnimationStrip *anim_strip_duplicate_common(const AnimationStrip *strip_src);
 static AnimationStrip *anim_strip_duplicate_keyframe(const AnimationStrip *strip_src);
@@ -75,7 +76,7 @@ static void animation_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, 
   Animation *anim_dst = (Animation *)id_dst;
   const Animation *anim_src = (const Animation *)id_src;
 
-  /* Layers. **/
+  /* Layers. */
   anim_dst->layer_array_num = anim_src->layer_array_num;
   anim_dst->layer_array = MEM_cnew_array<AnimationLayer *>(anim_src->layer_array_num, __func__);
   for (int i = 0; i < anim_src->layer_array_num; i++) {
@@ -83,7 +84,13 @@ static void animation_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, 
     anim_dst->layer_array[i] = anim_layer_duplicate(layer_src);
   }
 
-  BLI_duplicatelist(&anim_dst->outputs, &anim_src->outputs);
+  /* Outputs. */
+  anim_dst->output_array_num = anim_src->output_array_num;
+  anim_dst->output_array = MEM_cnew_array<AnimationOutput *>(anim_src->output_array_num, __func__);
+  for (int i = 0; i < anim_src->output_array_num; i++) {
+    const AnimationOutput *output_src = anim_src->output_array[i];
+    anim_dst->output_array[i] = anim_output_duplicate(output_src);
+  }
 }
 
 /** Deep copy an AnimationLayer struct. */
@@ -101,6 +108,13 @@ static AnimationLayer *anim_layer_duplicate(const AnimationLayer *layer_src)
   }
 
   return layer_dst;
+}
+
+static AnimationOutput *anim_output_duplicate(const AnimationOutput *output_src)
+{
+  AnimationOutput *output_dup = static_cast<AnimationOutput *>(MEM_dupallocN(output_src));
+  output_dup->runtime.id = static_cast<ID **>(MEM_dupallocN(output_src->runtime.id));
+  return output_dup;
 }
 
 static AnimationStrip *anim_strip_duplicate(const AnimationStrip *strip_src)
@@ -152,11 +166,13 @@ void BKE_animation_free_data(Animation *animation)
   MEM_SAFE_FREE(animation->layer_array);
   animation->layer_array_num = 0;
 
-  for (AnimationOutput *output : ListBaseWrapper<AnimationOutput>(&animation->outputs)) {
+  for (animrig::Output *output : anim.outputs()) {
     /* TODO: Move freeing of Output runtime data to another function. */
     MEM_freeN(output->runtime.id);
+    MEM_delete(output);
   }
-  BLI_freelistN(&animation->outputs);
+  MEM_SAFE_FREE(animation->output_array);
+  animation->output_array_num = 0;
 }
 
 /** Free (or release) any data used by this animation (does not free the animation itself). */
