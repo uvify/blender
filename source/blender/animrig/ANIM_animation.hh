@@ -46,7 +46,8 @@ class Animation : public ::Animation {
 
   Output *output_add(ID *animated_id);
 };
-static_assert(sizeof(Animation) == sizeof(::Animation));
+static_assert(sizeof(Animation) == sizeof(::Animation),
+              "DNA struct and its C++ wrapper must have the same size");
 
 class Layer : public ::AnimationLayer {
  public:
@@ -62,6 +63,8 @@ class Layer : public ::AnimationLayer {
 
   Strip *strip_add(eAnimationStrip_type strip_type);
 };
+static_assert(sizeof(Layer) == sizeof(::AnimationLayer),
+              "DNA struct and its C++ wrapper must have the same size");
 
 class Output : public ::AnimationOutput {
  public:
@@ -69,6 +72,8 @@ class Output : public ::AnimationOutput {
   Output(const Output &other) = default;
   ~Output() = default;
 };
+static_assert(sizeof(Output) == sizeof(::AnimationOutput),
+              "DNA struct and its C++ wrapper must have the same size");
 
 class Strip : public ::AnimationStrip {
  public:
@@ -80,6 +85,8 @@ class Strip : public ::AnimationStrip {
   // template<typename T> bool is() const;
   template<typename T> T &as();
 };
+static_assert(sizeof(Strip) == sizeof(::AnimationStrip),
+              "DNA struct and its C++ wrapper must have the same size");
 
 class KeyframeStrip : public ::KeyframeAnimationStrip {
  public:
@@ -101,6 +108,8 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
    */
   FCurve *fcurve_find_or_create(const AnimationOutput *out, const char *rna_path, int array_index);
 };
+static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
+              "DNA struct and its C++ wrapper must have the same size");
 
 template<> KeyframeStrip &Strip::as<KeyframeStrip>();
 
