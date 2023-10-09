@@ -53,6 +53,14 @@ class Layer : public ::AnimationLayer {
   Layer() = default;
   Layer(const Layer &other) = default;
   ~Layer() = default;
+
+  /* Strip access. */
+  blender::Span<const Strip *> strips() const;
+  blender::MutableSpan<Strip *> strips();
+  const Strip *strip(int64_t index) const;
+  Strip *strip(int64_t index);
+
+  Strip *strip_add(eAnimationStrip_type strip_type);
 };
 
 class Output : public ::AnimationOutput {

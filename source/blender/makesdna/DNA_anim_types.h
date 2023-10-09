@@ -1261,7 +1261,10 @@ typedef struct AnimationLayer {
   /**
    * There is always at least one strip.
    * If there is only one, it can be infinite. This is the default for new layers. */
-  ListBase /* AnimationStrip */ strips;
+  struct AnimationStrip **strip_array; /* Array of 'strip_array_num' strips. */
+  int strip_array_num;
+
+  uint8_t _pad1[4];
 
 #ifdef __cplusplus
   blender::animrig::Layer &wrap();
@@ -1310,8 +1313,6 @@ typedef struct AnimationOutput {
 } AnimationOutput;
 
 typedef struct AnimationStrip {
-  struct AnimationStrip *next, *prev;
-
   /** eAnimationStrip_type */
   uint8_t type;
   uint8_t _pad0[3];

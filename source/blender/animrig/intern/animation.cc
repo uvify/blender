@@ -66,6 +66,12 @@ template<typename T> static void grow_array(T **array, int *num, const int add_n
   *num = new_array_num;
 }
 
+template<typename T> static void grow_array_and_append(T **array, int *num, T item)
+{
+  grow_array(array, num, 1);
+  (*array)[*num - 1] = item;
+}
+
 /* ----- Animation C++ implementation ----------- */
 
 blender::Span<const Layer *> Animation::layers() const
@@ -97,13 +103,10 @@ Layer *Animation::layer_add(const char *name)
   /* FIXME: For now, just add a keyframe strip. This may not be the right choice
    * going forward, and maybe it's better to allocate the strip at the first
    * use. */
-  ::AnimationStrip *strip = animationstrip_alloc_infinite(ANIM_STRIP_TYPE_KEYFRAME);
-  BLI_addtail(&new_layer->strips, strip);
+  new_layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
 
-  /* Add the new layer to the layer array. */
-  grow_array<::AnimationLayer *>(&this->layer_array, &this->layer_array_num, 1);
+  grow_array_and_append<::AnimationLayer *>(&this->layer_array, &this->layer_array_num, new_layer);
   this->layer_active_index = this->layer_array_num - 1;
-  this->layer_array[this->layer_active_index] = new_layer;
 
   return new_layer;
 }
@@ -144,11 +147,42 @@ Output *Animation::output_add(ID *animated_id)
   output.runtime.num_ids = 1;
   *(output.runtime.id) = animated_id;
 
-  /* Add the new output to the output array. */
-  grow_array<::AnimationOutput *>(&this->output_array, &this->output_array_num, 1);
-  this->output_array[this->output_array_num - 1] = &output;
+  grow_array_and_append<::AnimationOutput *>(
+      &this->output_array, &this->output_array_num, &output);
 
   return &output;
+}
+
+/* ----- AnimationLayer C++ implementation ----------- */
+
+blender::Span<const Strip *> Layer::strips() const
+{
+  return blender::Span<Strip *>{reinterpret_cast<Strip **>(this->strip_array),
+                                this->strip_array_num};
+}
+blender::MutableSpan<Strip *> Layer::strips()
+{
+  return blender::MutableSpan<Strip *>{reinterpret_cast<Strip **>(this->strip_array),
+                                       this->strip_array_num};
+}
+const Strip *Layer::strip(const int64_t index) const
+{
+  return &this->strip_array[index]->wrap();
+}
+Strip *Layer::strip(const int64_t index)
+{
+  return &this->strip_array[index]->wrap();
+}
+
+Strip *Layer::strip_add(const eAnimationStrip_type strip_type)
+{
+  ::AnimationStrip *dna_strip = animationstrip_alloc_infinite(strip_type);
+  Strip &strip = dna_strip->wrap();
+
+  /* Add the new strip to the strip array. */
+  grow_array_and_append<::AnimationStrip *>(&this->strip_array, &this->strip_array_num, &strip);
+
+  return &strip;
 }
 
 template<> KeyframeStrip &Strip::as<KeyframeStrip>()

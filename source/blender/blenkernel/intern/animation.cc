@@ -100,11 +100,11 @@ static AnimationLayer *anim_layer_duplicate(const AnimationLayer *layer_src)
   AnimationLayer *layer_dst = static_cast<AnimationLayer *>(MEM_dupallocN(layer_src));
 
   /* Strips. */
-  BLI_listbase_clear(&layer_dst->strips);
-  for (const AnimationStrip *strip_src : ConstListBaseWrapper<AnimationStrip>(&layer_src->strips))
-  {
-    AnimationStrip *strip_dst = anim_strip_duplicate(strip_src);
-    BLI_addtail(&layer_dst->strips, strip_dst);
+  layer_dst->strip_array_num = layer_src->strip_array_num;
+  layer_dst->strip_array = MEM_cnew_array<AnimationStrip *>(layer_src->strip_array_num, __func__);
+  for (int i = 0; i < layer_src->strip_array_num; i++) {
+    const AnimationStrip *strip_src = layer_src->strip_array[i];
+    layer_dst->strip_array[i] = anim_strip_duplicate(strip_src);
   }
 
   return layer_dst;
@@ -181,12 +181,15 @@ static void animation_free_data(ID *id)
   BKE_animation_free_data((Animation *)id);
 }
 
-static void anim_layer_free_data(AnimationLayer *layer)
+static void anim_layer_free_data(AnimationLayer *dna_layer)
 {
-  for (AnimationStrip *strip : ListBaseWrapper<AnimationStrip>(&layer->strips)) {
+  animrig::Layer &layer = dna_layer->wrap();
+  for (animrig::Strip *strip : layer.strips()) {
     anim_strip_free_data(strip);
+    MEM_delete(strip);
   }
-  BLI_freelistN(&layer->strips);
+  MEM_SAFE_FREE(layer.strip_array);
+  layer.strip_array_num = 0;
 }
 
 static void anim_strip_free_data(AnimationStrip *strip)

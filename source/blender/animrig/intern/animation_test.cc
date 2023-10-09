@@ -21,7 +21,7 @@ namespace blender::animrig::tests {
 TEST(ANIM_animation_layers, add_layer)
 {
   Animation anim = {};
-  AnimationLayer *layer = anim.layer_add("layer name");
+  Layer *layer = anim.layer_add("layer name");
 
   EXPECT_EQ(anim.layer(0), layer);
   EXPECT_EQ("layer name", std::string(layer->name));
@@ -29,10 +29,9 @@ TEST(ANIM_animation_layers, add_layer)
   EXPECT_EQ(0, anim.layer_active_index)
       << "Expected newly added layer to become the active layer.";
 
-  ASSERT_EQ(1, BLI_listbase_count(&layer->strips))
-      << "Expected newly added layer to have a single strip.";
+  ASSERT_EQ(1, layer->strips().size()) << "Expected newly added layer to have a single strip.";
 
-  Strip *strip = static_cast<Strip *>(layer->strips.first);
+  Strip *strip = layer->strip(0);
   constexpr float inf = std::numeric_limits<float>::infinity();
   EXPECT_EQ(-inf, strip->frame_start) << "Expected strip to be infinite.";
   EXPECT_EQ(inf, strip->frame_end) << "Expected strip to be infinite.";
@@ -58,6 +57,30 @@ TEST(ANIM_animation_layers, add_output)
   BKE_animation_free_data(&anim);
 }
 
+TEST(ANIM_animation_layers, add_output_multiple)
+{
+  Animation anim = {};
+  ID cube = {};
+  STRNCPY_UTF8(cube.name, "OBKüüübus");
+  ID suzanne = {};
+  STRNCPY_UTF8(suzanne.name, "OBSuzanne");
+
+  Output *out_cube = anim.output_add(&cube);
+  Output *out_suzanne = anim.output_add(&suzanne);
+
+  EXPECT_EQ(2, anim.last_output_stable_index);
+
+  EXPECT_EQ(1, out_cube->stable_index);
+  EXPECT_EQ(&cube, *out_cube->runtime.id);
+  EXPECT_EQ(1, out_cube->runtime.num_ids);
+
+  EXPECT_EQ(2, out_suzanne->stable_index);
+  EXPECT_EQ(&suzanne, *out_suzanne->runtime.id);
+  EXPECT_EQ(1, out_suzanne->runtime.num_ids);
+
+  BKE_animation_free_data(&anim);
+}
+
 TEST(ANIM_animation_layers, keyframe_insert)
 {
   Animation anim = {};
@@ -65,7 +88,7 @@ TEST(ANIM_animation_layers, keyframe_insert)
   STRNCPY_UTF8(cube.name, "OBKüüübus");
   Output *out = anim.output_add(&cube);
   Layer *layer = anim.layer_add("Kübus layer");
-  Strip *strip = static_cast<Strip *>(layer->strips.first);
+  Strip *strip = layer->strip(0);
 
   FCurve *fcurve_loc_a = keyframe_insert(
       strip, out, "location", 0, 47.0f, 1.0f, BEZT_KEYTYPE_KEYFRAME);

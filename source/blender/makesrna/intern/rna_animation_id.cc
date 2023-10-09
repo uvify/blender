@@ -48,6 +48,11 @@ static animrig::Animation &rna_animation(const PointerRNA *ptr)
   return reinterpret_cast<Animation *>(ptr->owner_id)->wrap();
 }
 
+static animrig::Layer &rna_data_layer(const PointerRNA *ptr)
+{
+  return reinterpret_cast<AnimationLayer *>(ptr->data)->wrap();
+}
+
 static AnimationOutput *rna_Animation_outputs_new(Animation *anim_id,
                                                   ReportList *reports,
                                                   ID *animated_id)
@@ -81,6 +86,13 @@ static int rna_iterator_animation_layers_length(PointerRNA *ptr)
   return anim.layers().size();
 }
 
+static AnimationLayer *rna_Animation_layers_new(Animation *anim, const char *name)
+{
+  AnimationLayer *layer = anim->wrap().layer_add(name);
+  // TODO: notifiers.
+  return layer;
+}
+
 static void rna_iterator_animation_outputs_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   animrig::Animation &anim = rna_animation(ptr);
@@ -92,15 +104,24 @@ static void rna_iterator_animation_outputs_begin(CollectionPropertyIterator *ite
 
 static int rna_iterator_animation_outputs_length(PointerRNA *ptr)
 {
-  animrig::Animation anim = rna_animation(ptr);
+  animrig::Animation &anim = rna_animation(ptr);
   return anim.outputs().size();
 }
 
-static AnimationLayer *rna_Animation_layers_new(Animation *anim, const char *name)
+static void rna_iterator_animationlayer_strips_begin(CollectionPropertyIterator *iter,
+                                                     PointerRNA *ptr)
 {
-  AnimationLayer *layer = anim->wrap().layer_add(name);
-  // TODO: notifiers.
-  return layer;
+  animrig::Layer &layer = rna_data_layer(ptr);
+  Span<animrig::Strip *> strips = layer.strips();
+
+  rna_iterator_array_begin(
+      iter, (void *)strips.data(), sizeof(AnimationStrip *), strips.size(), 0, nullptr);
+}
+
+static int rna_iterator_animationlayer_strips_length(PointerRNA *ptr)
+{
+  animrig::Layer &layer = rna_data_layer(ptr);
+  return layer.strips().size();
 }
 
 static FCurve *rna_AnimationStrip_keyframe_insert(AnimationStrip *strip,
@@ -232,7 +253,7 @@ static void rna_def_animation_output(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
-static void rna_def_animation_strips(BlenderRNA *brna, PropertyRNA *cprop)
+static void rna_def_animationlayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
 
@@ -258,10 +279,19 @@ static void rna_def_animation_layer(BlenderRNA *brna)
 
   /* Collection properties .*/
   prop = RNA_def_property(srna, "strips", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, nullptr, "strips", nullptr);
   RNA_def_property_struct_type(prop, "AnimationStrip");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_iterator_animationlayer_strips_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_dereference_get",
+                                    "rna_iterator_animationlayer_strips_length",
+                                    nullptr, /* TODO */
+                                    nullptr, /* TODO */
+                                    nullptr);
   RNA_def_property_ui_text(prop, "Strips", "The list of strips that are on this animation layer");
-  rna_def_animation_strips(brna, prop);
+
+  rna_def_animationlayer_strips(brna, prop);
 }
 
 static void rna_def_animation_strip(BlenderRNA *brna)
