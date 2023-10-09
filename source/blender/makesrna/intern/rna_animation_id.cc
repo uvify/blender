@@ -43,6 +43,11 @@
 
 using namespace blender;
 
+static Animation *rna_animation(const PointerRNA *ptr)
+{
+  return reinterpret_cast<Animation *>(ptr->owner_id);
+}
+
 static AnimationOutput *rna_Animation_outputs_new(Animation *anim,
                                                   ReportList *reports,
                                                   ID *animated_id)
@@ -60,9 +65,24 @@ static AnimationOutput *rna_Animation_outputs_new(Animation *anim,
   return output;
 }
 
+static void rna_iterator_animation_layers_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  Animation *anim = rna_animation(ptr);
+  blender::Span<AnimationLayer *> layers = anim->layers();
+
+  rna_iterator_array_begin(
+      iter, (void *)layers.data(), sizeof(AnimationLayer *), layers.size(), 0, nullptr);
+}
+
+static int rna_iterator_animation_layers_length(PointerRNA *ptr)
+{
+  Animation *anim = rna_animation(ptr);
+  return anim->layers().size();
+}
+
 static AnimationLayer *rna_Animation_layers_new(Animation *anim, const char *name)
 {
-  AnimationLayer *layer = animrig::animation_add_layer(anim, name);
+  AnimationLayer *layer = anim->layer_add(name);
   // TODO: notifiers.
   return layer;
 }
@@ -159,8 +179,16 @@ static void rna_def_animation(BlenderRNA *brna)
   rna_def_animation_outputs(brna, prop);
 
   prop = RNA_def_property(srna, "layers", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, nullptr, "layers", nullptr);
   RNA_def_property_struct_type(prop, "AnimationLayer");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_iterator_animation_layers_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_dereference_get",
+                                    "rna_iterator_animation_layers_length",
+                                    nullptr, /* TODO */
+                                    nullptr, /* TODO */
+                                    nullptr);
   RNA_def_property_ui_text(prop, "Layers", "The list of layers that make up this Animation");
   rna_def_animation_layers(brna, prop);
 }

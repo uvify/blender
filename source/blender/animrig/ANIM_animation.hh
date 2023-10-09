@@ -55,7 +55,6 @@ class KeyframeAnimationStrip : public ::KeyframeAnimationStrip {
 template<> KeyframeAnimationStrip *AnimationStrip::as<KeyframeAnimationStrip>();
 
 AnimationOutput *animation_add_output(Animation *anim, ID *animated_id);
-AnimationLayer *animation_add_layer(Animation *anim, const char *name);
 
 FCurve *keyframe_insert(AnimationStrip *strip,
                         const AnimationOutput *out,

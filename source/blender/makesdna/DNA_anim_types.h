@@ -15,6 +15,10 @@
 #include "DNA_curve_types.h"
 #include "DNA_listBase.h"
 
+#ifdef __cplusplus
+#  include "BLI_span.hh"
+#endif
+
 /* ************************************************ */
 /* F-Curve DataTypes */
 
@@ -1214,15 +1218,26 @@ typedef struct Animation {
 
   uint8_t _pad0[4];
 
-  ListBase /* AnimationLayer */ layers;
-  ListBase /* AnimationOutput */ outputs;
+  struct AnimationLayer **layer_array; /* Array of 'layer_array_num' layers. */
+  ListBase /*AnimationOutput*/ outputs;
+  // struct AnimationOutput **output_array; /* Array of 'output_array_num' outputs. */
 
-  struct AnimationLayer *active_layer;
+  int layer_array_num;
+  int layer_active_index; /* Index into layer_array, -1 means 'no active'. */
+  // int output_array_num;
+
+#ifdef __cplusplus
+  /* Animation Layers read/write access. */
+  blender::Span<const AnimationLayer *> layers() const;
+  blender::MutableSpan<AnimationLayer *> layers();
+  const AnimationLayer *layer(int64_t index) const;
+  AnimationLayer *layer(int64_t index);
+
+  AnimationLayer *layer_add(const char *name);
+#endif
 } Animation;
 
 typedef struct AnimationLayer {
-  struct AnimationLayer *next, *prev;
-
   /** User-Visible identifier, unique within the Animation. `MAX_ID_NAME - 2`. */
   char name[64];
 

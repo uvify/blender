@@ -21,12 +21,13 @@ namespace blender::animrig::tests {
 TEST(ANIM_animation_layers, add_layer)
 {
   Animation anim = {};
-  AnimationLayer *layer = animation_add_layer(&anim, "layer name");
+  AnimationLayer *layer = anim.layer_add("layer name");
 
-  EXPECT_EQ(static_cast<AnimationLayer *>(anim.layers.first), layer);
+  EXPECT_EQ(anim.layer(0), layer);
   EXPECT_EQ("layer name", std::string(layer->name));
   EXPECT_EQ(1.0f, layer->influence) << "Expected DNA defaults to be used.";
-  EXPECT_EQ(layer, anim.active_layer) << "Expected newly added layer to become the active layer.";
+  EXPECT_EQ(0, anim.layer_active_index)
+      << "Expected newly added layer to become the active layer.";
 
   ASSERT_EQ(1, BLI_listbase_count(&layer->strips))
       << "Expected newly added layer to have a single strip.";
@@ -63,7 +64,7 @@ TEST(ANIM_animation_layers, keyframe_insert)
   ID cube = {};
   STRNCPY_UTF8(cube.name, "OBKüüübus");
   AnimationOutput *out = animation_add_output(&anim, &cube);
-  AnimationLayer *layer = animation_add_layer(&anim, "Kübus layer");
+  AnimationLayer *layer = anim.layer_add("Kübus layer");
   AnimationStrip *strip = static_cast<AnimationStrip *>(layer->strips.first);
 
   FCurve *fcurve_loc_a = keyframe_insert(

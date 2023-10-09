@@ -9,6 +9,7 @@
 #include "BLI_listbase.h"
 #include "BLI_listbase_wrapper.hh"
 #include "BLI_map.hh"
+#include "BLI_string_utf8.h"
 
 #include "BLO_read_write.hh"
 
@@ -19,6 +20,7 @@
 #include "BKE_main.h"
 
 #include "DNA_anim_types.h"
+#include "DNA_defaults.h"
 
 #include "BLT_translation.h"
 
@@ -26,6 +28,88 @@ using namespace blender;
 
 struct BlendWriter;
 struct BlendDataReader;
+
+static AnimationLayer *animationlayer_alloc()
+{
+  AnimationLayer *layer = DNA_struct_default_alloc(AnimationLayer);
+  return layer;
+}
+static AnimationStrip *animationstrip_alloc_infinite(const eAnimationStrip_type type)
+{
+  AnimationStrip *strip;
+  switch (type) {
+    case ANIM_STRIP_TYPE_KEYFRAME: {
+      KeyframeAnimationStrip *key_strip = MEM_new<KeyframeAnimationStrip>(__func__);
+      strip = &key_strip->strip;
+      break;
+    }
+  }
+
+  BLI_assert_msg(strip, "unsupported strip type");
+
+  /* Copy the default AnimationStrip fields into the allocated data-block. */
+  memcpy(strip, DNA_struct_default_get(AnimationStrip), sizeof(*strip));
+  return strip;
+}
+
+/* Copied from source/blender/blenkernel/intern/grease_pencil.cc. It also has a shrink_array()
+ * function, if we ever need one (we will). */
+template<typename T> static void grow_array(T **array, int *num, const int add_num)
+{
+  BLI_assert(add_num > 0);
+  const int new_array_num = *num + add_num;
+  T *new_array = reinterpret_cast<T *>(MEM_cnew_array<T *>(new_array_num, __func__));
+
+  blender::uninitialized_relocate_n(*array, *num, new_array);
+  if (*array != nullptr) {
+    MEM_freeN(*array);
+  }
+
+  *array = new_array;
+  *num = new_array_num;
+}
+
+/* ----- Animation C++ implementation ----------- */
+
+AnimationLayer *Animation::layer_add(const char *name)
+{
+  using namespace blender::animrig;
+
+  AnimationLayer *new_layer = animationlayer_alloc();
+  STRNCPY_UTF8(new_layer->name, name);
+
+  /* FIXME: For now, just add a keyframe strip. This may not be the right choice
+   * going forward, and maybe it's better to allocate the strip at the first
+   * use. */
+  ::AnimationStrip *strip = animationstrip_alloc_infinite(ANIM_STRIP_TYPE_KEYFRAME);
+  BLI_addtail(&new_layer->strips, strip);
+
+  /* Add the new layer to the layer array. */
+  grow_array<AnimationLayer *>(&this->layer_array, &this->layer_array_num, 1);
+  this->layer_active_index = this->layer_array_num - 1;
+  this->layer_array[this->layer_active_index] = new_layer;
+
+  return new_layer;
+}
+
+/* ----- AnimationLayer C++ implementation ----------- */
+
+blender::Span<const AnimationLayer *> Animation::layers() const
+{
+  return blender::Span<AnimationLayer *>{this->layer_array, this->layer_array_num};
+}
+blender::MutableSpan<AnimationLayer *> Animation::layers()
+{
+  return blender::MutableSpan<AnimationLayer *>{this->layer_array, this->layer_array_num};
+}
+const AnimationLayer *Animation::layer(const int64_t index) const
+{
+  return this->layer_array[index];
+}
+AnimationLayer *Animation::layer(const int64_t index)
+{
+  return this->layer_array[index];
+}
 
 static AnimationLayer *anim_layer_duplicate(const AnimationLayer *layer_src);
 static AnimationStrip *anim_strip_duplicate(const AnimationStrip *strip_src);
@@ -72,10 +156,11 @@ static void animation_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, 
   const Animation *anim_src = (const Animation *)id_src;
 
   /* Layers. **/
-  BLI_listbase_clear(&anim_dst->layers);
-  for (const AnimationLayer *layer_src : ConstListBaseWrapper<AnimationLayer>(&anim_src->layers)) {
-    AnimationLayer *layer_dst = anim_layer_duplicate(layer_src);
-    BLI_addtail(&anim_dst->layers, layer_dst);
+  anim_dst->layer_array_num = anim_src->layer_array_num;
+  anim_dst->layer_array = MEM_cnew_array<AnimationLayer *>(anim_src->layer_array_num, __func__);
+  for (int i = 0; i < anim_src->layer_array_num; i++) {
+    const AnimationLayer *layer_src = anim_src->layer(i);
+    anim_dst->layer_array[i] = anim_layer_duplicate(layer_src);
   }
 
   BLI_duplicatelist(&anim_dst->outputs, &anim_src->outputs);
@@ -84,9 +169,8 @@ static void animation_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, 
 /** Deep copy an AnimationLayer struct. */
 static AnimationLayer *anim_layer_duplicate(const AnimationLayer *layer_src)
 {
+  printf("anim_layer_duplicate: duplicating layer %s\n", layer_src->name);
   AnimationLayer *layer_dst = static_cast<AnimationLayer *>(MEM_dupallocN(layer_src));
-  layer_dst->next = nullptr;
-  layer_dst->prev = nullptr;
 
   /* Strips. */
   BLI_listbase_clear(&layer_dst->strips);
@@ -137,16 +221,19 @@ static AnimationStrip *anim_strip_duplicate_keyframe(const AnimationStrip *strip
 
 void BKE_animation_free_data(Animation *animation)
 {
+  /* Free layers. */
+  for (AnimationLayer *layer : animation->layers()) {
+    anim_layer_free_data(layer);
+    MEM_freeN(layer);
+  }
+  MEM_SAFE_FREE(animation->layer_array);
+  animation->layer_array_num = 0;
+
   for (AnimationOutput *output : ListBaseWrapper<AnimationOutput>(&animation->outputs)) {
     /* TODO: Move freeing of Output runtime data to another function. */
     MEM_freeN(output->runtime.id);
   }
   BLI_freelistN(&animation->outputs);
-
-  for (AnimationLayer *layer : ListBaseWrapper<AnimationLayer>(&animation->layers)) {
-    anim_layer_free_data(layer);
-  }
-  BLI_freelistN(&animation->layers);
 }
 
 /** Free (or release) any data used by this animation (does not free the animation itself). */

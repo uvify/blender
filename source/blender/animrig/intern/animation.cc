@@ -4,7 +4,6 @@
 
 #include "DNA_anim_defaults.h"
 #include "DNA_anim_types.h"
-#include "DNA_defaults.h"
 
 #include "BLI_listbase.h"
 #include "BLI_listbase_wrapper.hh"
@@ -46,47 +45,6 @@ AnimationOutput *animation_add_output(Animation *anim, ID *animated_id)
   BLI_addtail(&anim->outputs, output);
 
   return output;
-}
-
-static AnimationLayer *animationlayer_alloc()
-{
-  AnimationLayer *layer = DNA_struct_default_alloc(AnimationLayer);
-  return layer;
-}
-
-static AnimationStrip *animationstrip_alloc_infinite(const eAnimationStrip_type type)
-{
-  AnimationStrip *strip;
-  switch (type) {
-    case ANIM_STRIP_TYPE_KEYFRAME: {
-      KeyframeAnimationStrip *key_strip = MEM_new<KeyframeAnimationStrip>(__func__);
-      strip = &key_strip->strip.wrap();
-      break;
-    }
-  }
-
-  BLI_assert_msg(strip, "unsupported strip type");
-
-  /* Copy the default AnimationStrip fields into the allocated data-block. */
-  memcpy(strip, DNA_struct_default_get(AnimationStrip), sizeof(*strip));
-  return strip;
-}
-
-AnimationLayer *animation_add_layer(Animation *anim, const char *name)
-{
-  AnimationLayer *layer = animationlayer_alloc();
-  STRNCPY_UTF8(layer->name, name);
-
-  BLI_addtail(&anim->layers, layer);
-  anim->active_layer = layer;
-
-  /* FIXME: For now, just add a keyframe strip. This may not be the right choice
-   * going forward, and maybe it's better to allocate the strip at the first
-   * use. */
-  AnimationStrip *strip = animationstrip_alloc_infinite(ANIM_STRIP_TYPE_KEYFRAME);
-  BLI_addtail(&layer->strips, strip);
-
-  return layer;
 }
 
 template<> KeyframeAnimationStrip *AnimationStrip::as<KeyframeAnimationStrip>()
