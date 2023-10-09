@@ -134,20 +134,25 @@ static AnimationStrip *anim_strip_duplicate_keyframe(const AnimationStrip *strip
                  "wrong type of strip for this function");
 
   AnimationStrip *strip_dst = anim_strip_duplicate_common(strip_src);
+  const KeyframeAnimationStrip *key_strip_src = reinterpret_cast<const KeyframeAnimationStrip *>(
+      strip_src);
   KeyframeAnimationStrip *key_strip_dst = reinterpret_cast<KeyframeAnimationStrip *>(strip_dst);
 
-  BLI_duplicatelist(&key_strip_dst->channels_for_output, &key_strip_dst->channels_for_output);
-  for (auto *channels :
-       ListBaseWrapper<AnimationChannelsForOutput>(&key_strip_dst->channels_for_output))
-  {
-    /* Contrary to BLI_duplicatelist(), BKE_fcurves_copy() does not support having the same list as
-     * 'src' and 'dest'. To avoid having to track the original source list (which would mean
-     * iterating over key_strip_dst->channels_for_output and strip_src->channels_for_output in
-     * parallel), just copy to a separate listbase and reassign. The original listbase items are
-     * still owned by strip_src. */
-    ListBase fcurves_copy = {0};
-    BKE_fcurves_copy(&fcurves_copy, &channels->fcurves);
-    channels->fcurves = fcurves_copy;
+  key_strip_dst->channels_for_output_array_num = key_strip_src->channels_for_output_array_num;
+  key_strip_dst->channels_for_output_array = MEM_cnew_array<AnimationChannelsForOutput *>(
+      key_strip_src->channels_for_output_array_num, __func__);
+  for (int i = 0; i < key_strip_src->channels_for_output_array_num; i++) {
+    const AnimationChannelsForOutput *channels_src = key_strip_src->channels_for_output_array[i];
+
+    AnimationChannelsForOutput *channels_dup = static_cast<AnimationChannelsForOutput *>(
+        MEM_dupallocN(channels_src));
+    BLI_listbase_clear(&channels_dup->fcurves);
+
+    /* FIXME: BKE_fcurves_copy() doesn't modify the source curves, but should use `const` itself
+     * instead of casting it away here. */
+    BKE_fcurves_copy(&channels_dup->fcurves, const_cast<ListBase *>(&channels_src->fcurves));
+
+    key_strip_dst->channels_for_output_array[i] = channels_dup;
   }
 
   return &key_strip_dst->strip;
@@ -200,15 +205,13 @@ static void anim_strip_free_data(AnimationStrip *strip)
 
 static void anim_strip_free_data_keyframe(AnimationStrip *strip)
 {
-  BLI_assert_msg(strip->type == ANIM_STRIP_TYPE_KEYFRAME, "wrong type of strip for this function");
-  KeyframeAnimationStrip *key_strip = reinterpret_cast<KeyframeAnimationStrip *>(strip);
+  animrig::KeyframeStrip &key_strip = strip->wrap().as<animrig::KeyframeStrip>();
 
-  for (AnimationChannelsForOutput *chans_for_out :
-       ListBaseWrapper<AnimationChannelsForOutput>(&key_strip->channels_for_output))
-  {
+  for (ChannelsForOutput *chans_for_out : key_strip.channels_for_output()) {
     BKE_fcurves_free(&chans_for_out->fcurves);
   }
-  BLI_freelistN(&key_strip->channels_for_output);
+  MEM_SAFE_FREE(key_strip.channels_for_output_array);
+  key_strip.channels_for_output_array_num = 0;
 }
 
 static void animation_foreach_id(ID *id, LibraryForeachIDData *data)

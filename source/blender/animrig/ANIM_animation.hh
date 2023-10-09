@@ -94,6 +94,12 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
   KeyframeStrip(const KeyframeStrip &other) = default;
   ~KeyframeStrip() = default;
 
+  /* Strip access. */
+  blender::Span<const ChannelsForOutput *> channels_for_output() const;
+  blender::MutableSpan<ChannelsForOutput *> channels_for_output();
+  const ChannelsForOutput *channel_for_output(int64_t index) const;
+  ChannelsForOutput *channel_for_output(int64_t index);
+
   /**
    * Find the animation channels for this output.
    *
@@ -112,6 +118,14 @@ static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");
 
 template<> KeyframeStrip &Strip::as<KeyframeStrip>();
+
+class ChannelsForOutput : public ::AnimationChannelsForOutput {
+  ChannelsForOutput() = default;
+  ChannelsForOutput(const ChannelsForOutput &other) = default;
+  ~ChannelsForOutput() = default;
+};
+static_assert(sizeof(ChannelsForOutput) == sizeof(::AnimationChannelsForOutput),
+              "DNA struct and its C++ wrapper must have the same size");
 
 FCurve *keyframe_insert(Strip *strip,
                         const AnimationOutput *out,
@@ -168,4 +182,13 @@ inline blender::animrig::KeyframeStrip &KeyframeAnimationStrip::wrap()
 inline const blender::animrig::KeyframeStrip &KeyframeAnimationStrip::wrap() const
 {
   return *reinterpret_cast<const blender::animrig::KeyframeStrip *>(this);
+}
+
+inline blender::animrig::ChannelsForOutput &AnimationChannelsForOutput::wrap()
+{
+  return *reinterpret_cast<blender::animrig::ChannelsForOutput *>(this);
+}
+inline const blender::animrig::ChannelsForOutput &AnimationChannelsForOutput::wrap() const
+{
+  return *reinterpret_cast<const blender::animrig::ChannelsForOutput *>(this);
 }

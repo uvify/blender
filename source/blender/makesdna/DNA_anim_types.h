@@ -1210,10 +1210,11 @@ typedef struct IdAdtTemplate {
 #ifdef __cplusplus
 namespace blender::animrig {
 class Animation;
+class ChannelsForOutput;
+class KeyframeStrip;
 class Layer;
 class Output;
 class Strip;
-class KeyframeStrip;
 }  // namespace blender::animrig
 #endif
 
@@ -1221,6 +1222,7 @@ class KeyframeStrip;
 struct AnimationLayer;
 struct AnimationOutput;
 struct AnimationStrip;
+struct AnimationChannelsForOutput;
 
 /** Container of layered animation data. */
 typedef struct Animation {
@@ -1335,7 +1337,10 @@ typedef enum eAnimationStrip_type {
 typedef struct KeyframeAnimationStrip {
   AnimationStrip strip;
 
-  ListBase /* AnimationChannelsForOutput */ channels_for_output;
+  struct AnimationChannelsForOutput **channels_for_output_array;
+  int channels_for_output_array_num;
+
+  uint8_t _pad[4];
 
 #ifdef __cplusplus
   blender::animrig::KeyframeStrip &wrap();
@@ -1344,8 +1349,6 @@ typedef struct KeyframeAnimationStrip {
 } KeyframeAnimationStrip;
 
 typedef struct AnimationChannelsForOutput {
-  struct AnimationChannelsForOutput *next, *prev;
-
   int output_stable_index;
   uint8_t _pad0[4];
 
@@ -1355,4 +1358,9 @@ typedef struct AnimationChannelsForOutput {
 
   /* TODO: Design & implement a way to integrate other channel types as well,
    * and still have them map to a certain output */
+
+#ifdef __cplusplus
+  blender::animrig::ChannelsForOutput &wrap();
+  const blender::animrig::ChannelsForOutput &wrap() const;
+#endif
 } ChannelsForOutput;

@@ -97,9 +97,8 @@ TEST(ANIM_animation_layers, keyframe_insert)
 
   /* Check the strip was created correctly, with the channels for the output. */
   KeyframeStrip &key_strip = strip->wrap().as<KeyframeStrip>();
-  ASSERT_EQ(1, BLI_listbase_count(&key_strip.channels_for_output));
-  AnimationChannelsForOutput *chan_for_out = static_cast<AnimationChannelsForOutput *>(
-      key_strip.channels_for_output.first);
+  ASSERT_EQ(1, key_strip.channels_for_output().size());
+  ChannelsForOutput *chan_for_out = key_strip.channel_for_output(0);
   EXPECT_EQ(out->stable_index, chan_for_out->output_stable_index);
 
   /* Insert a second key, should insert into the same FCurve as before. */

@@ -185,6 +185,29 @@ Strip *Layer::strip_add(const eAnimationStrip_type strip_type)
   return &strip;
 }
 
+/* ----- KeyframeAnimationStrip C++ implementation ----------- */
+
+blender::Span<const ChannelsForOutput *> KeyframeStrip::channels_for_output() const
+{
+  return blender::Span<ChannelsForOutput *>{
+      reinterpret_cast<ChannelsForOutput **>(this->channels_for_output_array),
+      this->channels_for_output_array_num};
+}
+blender::MutableSpan<ChannelsForOutput *> KeyframeStrip::channels_for_output()
+{
+  return blender::MutableSpan<ChannelsForOutput *>{
+      reinterpret_cast<ChannelsForOutput **>(this->channels_for_output_array),
+      this->channels_for_output_array_num};
+}
+const ChannelsForOutput *KeyframeStrip::channel_for_output(const int64_t index) const
+{
+  return &this->channels_for_output_array[index]->wrap();
+}
+ChannelsForOutput *KeyframeStrip::channel_for_output(const int64_t index)
+{
+  return &this->channels_for_output_array[index]->wrap();
+}
+
 template<> KeyframeStrip &Strip::as<KeyframeStrip>()
 {
   BLI_assert_msg(type == ANIM_STRIP_TYPE_KEYFRAME,
@@ -195,19 +218,19 @@ template<> KeyframeStrip &Strip::as<KeyframeStrip>()
 AnimationChannelsForOutput *KeyframeStrip::chans_for_out(const AnimationOutput *out)
 {
   /* FIXME: use a hash map lookup for this. */
-  for (AnimationChannelsForOutput *channels :
-       ListBaseWrapper<AnimationChannelsForOutput>(&this->channels_for_output))
-  {
+  for (ChannelsForOutput *channels : this->channels_for_output()) {
     if (channels->output_stable_index == out->stable_index) {
       return channels;
     }
   }
 
-  AnimationChannelsForOutput *channels = MEM_new<AnimationChannelsForOutput>(__func__);
-  channels->output_stable_index = out->stable_index;
-  BLI_addtail(&this->channels_for_output, channels);
+  ChannelsForOutput &channels = MEM_new<AnimationChannelsForOutput>(__func__)->wrap();
+  channels.output_stable_index = out->stable_index;
 
-  return channels;
+  grow_array_and_append<AnimationChannelsForOutput *>(
+      &this->channels_for_output_array, &this->channels_for_output_array_num, &channels);
+
+  return &channels;
 }
 
 FCurve *KeyframeStrip::fcurve_find_or_create(const AnimationOutput *out,
