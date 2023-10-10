@@ -110,16 +110,31 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
   /**
    * Find the animation channels for this output.
    *
-   * Create an empty AnimationChannelsForOutput if there is none yet.
+   * \return nullptr if there is none yet for this output.
    */
-  AnimationChannelsForOutput *chans_for_out(const AnimationOutput *out);
+  const ChannelsForOutput *chans_for_out(const Output &out) const;
+  ChannelsForOutput *chans_for_out(const Output &out);
+
+  /**
+   * Add the animation channels for this output.
+   *
+   * Should only be called when there is no `ChannelsForOutput` for this output yet.
+   */
+  ChannelsForOutput *chans_for_out_add(const Output &out);
+
+  /**
+   * Find an FCurve for this output + RNA path + array index combination.
+   *
+   * If it cannot be found, `nullptr` is returned.
+   */
+  FCurve *fcurve_find(const Output &out, const char *rna_path, int array_index);
 
   /**
    * Find an FCurve for this output + RNA path + array index combination.
    *
    * If it cannot be found, a new one is created.
    */
-  FCurve *fcurve_find_or_create(const AnimationOutput *out, const char *rna_path, int array_index);
+  FCurve *fcurve_find_or_create(const Output &out, const char *rna_path, int array_index);
 };
 static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");
@@ -127,15 +142,22 @@ static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
 template<> KeyframeStrip &Strip::as<KeyframeStrip>();
 
 class ChannelsForOutput : public ::AnimationChannelsForOutput {
+ public:
   ChannelsForOutput() = default;
   ChannelsForOutput(const ChannelsForOutput &other) = default;
   ~ChannelsForOutput() = default;
+
+  /* FCurves access. */
+  blender::Span<const FCurve *> fcurves() const;
+  blender::MutableSpan<FCurve *> fcurves();
+  const FCurve *fcurve(int64_t index) const;
+  FCurve *fcurve(int64_t index);
 };
 static_assert(sizeof(ChannelsForOutput) == sizeof(::AnimationChannelsForOutput),
               "DNA struct and its C++ wrapper must have the same size");
 
 FCurve *keyframe_insert(Strip *strip,
-                        const AnimationOutput *out,
+                        const Output &out,
                         const char *rna_path,
                         int array_index,
                         float value,

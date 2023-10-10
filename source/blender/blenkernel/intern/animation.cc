@@ -36,10 +36,13 @@ static AnimationOutput *anim_output_duplicate(const AnimationOutput *output_src)
 static AnimationStrip *anim_strip_duplicate(const AnimationStrip *strip_src);
 static AnimationStrip *anim_strip_duplicate_common(const AnimationStrip *strip_src);
 static AnimationStrip *anim_strip_duplicate_keyframe(const AnimationStrip *strip_src);
+static AnimationChannelsForOutput *anim_channels_for_output_duplicate(
+    const AnimationChannelsForOutput *channels_src);
 
 static void anim_layer_free_data(AnimationLayer *layer);
 static void anim_strip_free_data(AnimationStrip *strip);
 static void anim_strip_free_data_keyframe(AnimationStrip *strip);
+static void anim_channels_for_output_free_data(AnimationChannelsForOutput *channels);
 
 using anim_strip_duplicator = AnimationStrip *(*)(const AnimationStrip *strip_src);
 using anim_strip_freeer = void (*)(AnimationStrip *strip);
@@ -144,19 +147,25 @@ static AnimationStrip *anim_strip_duplicate_keyframe(const AnimationStrip *strip
       key_strip_src->channels_for_output_array_num, __func__);
   for (int i = 0; i < key_strip_src->channels_for_output_array_num; i++) {
     const AnimationChannelsForOutput *channels_src = key_strip_src->channels_for_output_array[i];
-
-    AnimationChannelsForOutput *channels_dup = static_cast<AnimationChannelsForOutput *>(
-        MEM_dupallocN(channels_src));
-    BLI_listbase_clear(&channels_dup->fcurves);
-
-    /* FIXME: BKE_fcurves_copy() doesn't modify the source curves, but should use `const` itself
-     * instead of casting it away here. */
-    BKE_fcurves_copy(&channels_dup->fcurves, const_cast<ListBase *>(&channels_src->fcurves));
-
+    AnimationChannelsForOutput *channels_dup = anim_channels_for_output_duplicate(channels_src);
     key_strip_dst->channels_for_output_array[i] = channels_dup;
   }
 
   return &key_strip_dst->strip;
+}
+
+static AnimationChannelsForOutput *anim_channels_for_output_duplicate(
+    const AnimationChannelsForOutput *channels_src)
+{
+  AnimationChannelsForOutput *channels_dup = static_cast<AnimationChannelsForOutput *>(
+      MEM_dupallocN(channels_src));
+
+  channels_dup->fcurve_array_num = channels_src->fcurve_array_num;
+  channels_dup->fcurve_array = MEM_cnew_array<FCurve *>(channels_src->fcurve_array_num, __func__);
+  for (int i = 0; i < channels_src->fcurve_array_num; i++) {
+    const FCurve *fcu_src = channels_src->fcurve_array[i];
+    channels_dup->fcurve_array[i] = BKE_fcurve_copy(fcu_src);
+  }
 }
 
 void BKE_animation_free_data(Animation *animation)
@@ -209,11 +218,20 @@ static void anim_strip_free_data_keyframe(AnimationStrip *strip)
   animrig::KeyframeStrip &key_strip = strip->wrap().as<animrig::KeyframeStrip>();
 
   for (ChannelsForOutput *chans_for_out : key_strip.channels_for_output()) {
-    BKE_fcurves_free(&chans_for_out->fcurves);
+    anim_channels_for_output_free_data(chans_for_out);
     MEM_delete(chans_for_out);
   }
   MEM_SAFE_FREE(key_strip.channels_for_output_array);
   key_strip.channels_for_output_array_num = 0;
+}
+
+static void anim_channels_for_output_free_data(AnimationChannelsForOutput *channels)
+{
+  for (FCurve *fcu : channels->wrap().fcurves()) {
+    BKE_fcurve_free(fcu);
+  }
+  MEM_SAFE_FREE(channels->fcurve_array);
+  channels->fcurve_array_num = 0;
 }
 
 static void animation_foreach_id(ID *id, LibraryForeachIDData *data)

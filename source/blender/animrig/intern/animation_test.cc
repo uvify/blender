@@ -91,7 +91,7 @@ TEST(ANIM_animation_layers, keyframe_insert)
   Strip *strip = layer->strip(0);
 
   FCurve *fcurve_loc_a = keyframe_insert(
-      strip, out, "location", 0, 47.0f, 1.0f, BEZT_KEYTYPE_KEYFRAME);
+      strip, *out, "location", 0, 47.0f, 1.0f, BEZT_KEYTYPE_KEYFRAME);
   ASSERT_NE(nullptr, fcurve_loc_a)
       << "Expect all the necessary data structures to be created on insertion of a key";
 
@@ -103,7 +103,7 @@ TEST(ANIM_animation_layers, keyframe_insert)
 
   /* Insert a second key, should insert into the same FCurve as before. */
   FCurve *fcurve_loc_b = keyframe_insert(
-      strip, out, "location", 0, 47.1f, 5.0f, BEZT_KEYTYPE_KEYFRAME);
+      strip, *out, "location", 0, 47.1f, 5.0f, BEZT_KEYTYPE_KEYFRAME);
   ASSERT_EQ(fcurve_loc_a, fcurve_loc_b)
       << "Expect same (output/rna path/array index) tuple to return the same FCurve.";
 
@@ -113,11 +113,10 @@ TEST(ANIM_animation_layers, keyframe_insert)
 
   /* Insert another key for another property, should create another FCurve. */
   FCurve *fcurve_rot = keyframe_insert(
-      strip, out, "rotation_quaternion", 0, 0.25f, 1.0f, BEZT_KEYTYPE_KEYFRAME);
+      strip, *out, "rotation_quaternion", 0, 0.25f, 1.0f, BEZT_KEYTYPE_KEYFRAME);
   EXPECT_NE(fcurve_loc_b, fcurve_rot)
       << "Expected rotation and location curves to be different FCurves.";
-  EXPECT_EQ(2, BLI_listbase_count(&chan_for_out->fcurves))
-      << "Expected a second FCurve to be created.";
+  EXPECT_EQ(2, chan_for_out->fcurves().size()) << "Expected a second FCurve to be created.";
 
   /* TODO: test with finite strips & strip offsets. */
 

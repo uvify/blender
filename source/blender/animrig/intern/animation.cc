@@ -215,17 +215,33 @@ template<> KeyframeStrip &Strip::as<KeyframeStrip>()
   return *reinterpret_cast<KeyframeStrip *>(this);
 }
 
-AnimationChannelsForOutput *KeyframeStrip::chans_for_out(const AnimationOutput *out)
+const ChannelsForOutput *KeyframeStrip::chans_for_out(const Output &out) const
 {
   /* FIXME: use a hash map lookup for this. */
-  for (ChannelsForOutput *channels : this->channels_for_output()) {
-    if (channels->output_stable_index == out->stable_index) {
+  for (const ChannelsForOutput *channels : this->channels_for_output()) {
+    if (channels->output_stable_index == out.stable_index) {
       return channels;
     }
   }
+  return nullptr;
+}
+
+ChannelsForOutput *KeyframeStrip::chans_for_out(const Output &out)
+{
+  const auto *const_this = const_cast<const KeyframeStrip *>(this);
+  const auto *const_channels = const_this->chans_for_out(out);
+  return const_cast<ChannelsForOutput *>(const_channels);
+}
+
+ChannelsForOutput *KeyframeStrip::chans_for_out_add(const Output &out)
+{
+#ifndef NDEBUG
+  BLI_assert_msg(chans_for_out(out) == nullptr,
+                 "Cannot add chans-for-out for already-registered output");
+#endif
 
   ChannelsForOutput &channels = MEM_new<AnimationChannelsForOutput>(__func__)->wrap();
-  channels.output_stable_index = out->stable_index;
+  channels.output_stable_index = out.stable_index;
 
   grow_array_and_append<AnimationChannelsForOutput *>(
       &this->channels_for_output_array, &this->channels_for_output_array_num, &channels);
@@ -233,13 +249,33 @@ AnimationChannelsForOutput *KeyframeStrip::chans_for_out(const AnimationOutput *
   return &channels;
 }
 
-FCurve *KeyframeStrip::fcurve_find_or_create(const AnimationOutput *out,
+FCurve *KeyframeStrip::fcurve_find(const Output &out, const char *rna_path, const int array_index)
+{
+  ChannelsForOutput *channels = this->chans_for_out(out);
+  if (channels == nullptr) {
+    return nullptr;
+  }
+
+  /* Copy of the logic in BKE_fcurve_find(), but then compatible with our array-of-FCurves instead
+   * of ListBase. */
+
+  for (FCurve *fcu : channels->fcurves()) {
+    /* Check indices first, much cheaper than a string comparison. */
+    /* Simple string-compare (this assumes that they have the same root...) */
+    if (UNLIKELY(fcu->array_index == array_index && fcu->rna_path &&
+                 fcu->rna_path[0] == rna_path[0] && STREQ(fcu->rna_path, rna_path)))
+    {
+      return fcu;
+    }
+  }
+  return nullptr;
+}
+
+FCurve *KeyframeStrip::fcurve_find_or_create(const Output &out,
                                              const char *rna_path,
                                              const int array_index)
 {
-  AnimationChannelsForOutput *channels = this->chans_for_out(out);
-
-  FCurve *fcurve = BKE_fcurve_find(&channels->fcurves, rna_path, array_index);
+  FCurve *fcurve = this->fcurve_find(out, rna_path, array_index);
   if (fcurve) {
     return fcurve;
   }
@@ -253,15 +289,42 @@ FCurve *KeyframeStrip::fcurve_find_or_create(const AnimationOutput *out,
   fcurve->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
   fcurve->auto_smoothing = U.auto_smoothing_new;
 
-  if (BLI_listbase_is_empty(&channels->fcurves)) {
+  ChannelsForOutput *channels = this->chans_for_out(out);
+  if (channels == nullptr) {
+    channels = this->chans_for_out_add(out);
+  }
+
+  if (channels->fcurve_array_num == 0) {
     fcurve->flag |= FCURVE_ACTIVE; /* First curve is added active. */
   }
-  BLI_addhead(&channels->fcurves, fcurve);
+
+  grow_array_and_append(&channels->fcurve_array, &channels->fcurve_array_num, fcurve);
   return fcurve;
 }
 
+/* KeyframeAnimationStrip C++ implementation. */
+
+blender::Span<const FCurve *> ChannelsForOutput::fcurves() const
+{
+  return blender::Span<FCurve *>{reinterpret_cast<FCurve **>(this->fcurve_array),
+                                 this->fcurve_array_num};
+}
+blender::MutableSpan<FCurve *> ChannelsForOutput::fcurves()
+{
+  return blender::MutableSpan<FCurve *>{reinterpret_cast<FCurve **>(this->fcurve_array),
+                                        this->fcurve_array_num};
+}
+const FCurve *ChannelsForOutput::fcurve(const int64_t index) const
+{
+  return this->fcurve_array[index];
+}
+FCurve *ChannelsForOutput::fcurve(const int64_t index)
+{
+  return this->fcurve_array[index];
+}
+
 FCurve *keyframe_insert(Strip *strip,
-                        const AnimationOutput *out,
+                        const Output &out,
                         const char *rna_path,
                         const int array_index,
                         const float value,
@@ -284,7 +347,7 @@ FCurve *keyframe_insert(Strip *strip,
                  "FCurve %s[%d] for output %s doesn't allow inserting keys.\n",
                  rna_path,
                  array_index,
-                 out->fallback);
+                 out.fallback);
     return nullptr;
   }
 
@@ -296,7 +359,7 @@ FCurve *keyframe_insert(Strip *strip,
                  "Could not insert key into FCurve %s[%d] for output %s.\n",
                  rna_path,
                  array_index,
-                 out->fallback);
+                 out.fallback);
     return nullptr;
   }
 

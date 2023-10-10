@@ -138,7 +138,7 @@ static FCurve *rna_AnimationStrip_keyframe_insert(AnimationStrip *strip,
   }
 
   FCurve *fcurve = animrig::keyframe_insert(
-      &strip->wrap(), output, rna_path, array_index, value, time, BEZT_KEYTYPE_KEYFRAME);
+      &strip->wrap(), output->wrap(), rna_path, array_index, value, time, BEZT_KEYTYPE_KEYFRAME);
   return fcurve;
 }
 

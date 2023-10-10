@@ -1353,11 +1353,13 @@ typedef struct AnimationChannelsForOutput {
 
   /* TODO: when converting this listbase to array, make sure the fcurve next/prev pointers are nil
    * to avoid accidental 'compatibility' with LISTBASE_FOREACH and friends. */
-  ListBase /* FCurve */ fcurves;
+  FCurve **fcurve_array; /* Array of 'fcurve_array_num' FCurves. */
+  int fcurve_array_num;
 
   /* TODO: Design & implement a way to integrate other channel types as well,
    * and still have them map to a certain output */
 
+  uint8_t _pad1[4];
 #ifdef __cplusplus
   blender::animrig::ChannelsForOutput &wrap();
   const blender::animrig::ChannelsForOutput &wrap() const;
