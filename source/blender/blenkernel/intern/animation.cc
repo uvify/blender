@@ -166,6 +166,8 @@ static AnimationChannelsForOutput *anim_channels_for_output_duplicate(
     const FCurve *fcu_src = channels_src->fcurve_array[i];
     channels_dup->fcurve_array[i] = BKE_fcurve_copy(fcu_src);
   }
+
+  return channels_dup;
 }
 
 void BKE_animation_free_data(Animation *animation)
@@ -236,46 +238,67 @@ static void anim_channels_for_output_free_data(AnimationChannelsForOutput *chann
 
 static void animation_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Animation *anim = reinterpret_cast<Animation *>(id);
-  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+  animrig::Animation &anim = reinterpret_cast<Animation *>(id)->wrap();
 
-  // LISTBASE_FOREACH (FCurve *, fcu, &anim->curves) {
-  //   BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_fcurve_foreach_id(fcu, data));
-  // }
+  /* TODO: split up into multiple functions. */
 
-  // LISTBASE_FOREACH (TimeMarker *, marker, &anim->markers) {
-  //   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, marker->camera, IDWALK_CB_NOP);
-  // }
+  for (animrig::Layer *layer : anim.layers()) {
+    for (animrig::Strip *strip : layer->strips()) {
+      switch (strip->type) {
+        case ANIM_STRIP_TYPE_KEYFRAME: {
+          auto &key_strip = strip->as<animrig::KeyframeStrip>();
+          for (animrig::ChannelsForOutput *chans_for_out : key_strip.channels_for_output()) {
+            for (FCurve *fcurve : chans_for_out->fcurves()) {
+              BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_fcurve_foreach_id(fcurve, data));
+            }
+          }
+        }
+      }
+    }
+  }
+}
 
-  // if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
-  //   LISTBASE_FOREACH (banimionChannel *, chan, &anim->chanbase) {
-  //     BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, chan->ipo, IDWALK_CB_USER);
-  //     LISTBASE_FOREACH (bConstraintChannel *, chan_constraint, &chan->constraintChannels) {
-  //       BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, chan_constraint->ipo, IDWALK_CB_USER);
-  //     }
-  //   }
-  // }
+static void write_fcurves(BlendWriter *writer, Span<FCurve *> fcurves)
+{
+  /* Construct a listbase to pass to the BKE function. */
+  for (int i = 0; i < fcurves.size() - 1; i++) {
+    fcurves[i]->next = fcurves[i + 1];
+  }
+  ListBase curves_listbase = {fcurves[0], fcurves[fcurves.size() - 1]};
+
+  BKE_fcurve_blend_write(writer, &curves_listbase);
+
+  /* Reset the 'next' pointers to nullptr again to clean up. */
+  for (FCurve *fcu : fcurves) {
+    fcu->next = nullptr;
+  }
 }
 
 static void animation_blend_write(BlendWriter *writer, ID *id, const void *id_address)
 {
-  Animation *animation = (Animation *)id;
-  int the_id = SDNA_TYPE_FROM_STRUCT(Animation);
+  animrig::Animation &anim = reinterpret_cast<Animation *>(id)->wrap();
 
-  // BLO_write_id_struct(writer, Animation, id_address, &animation->id);
-  BKE_id_blend_write(writer, &animation->id);
+  BLO_write_id_struct(writer, Animation, id_address, &anim.id);
+  BKE_id_blend_write(writer, &anim.id);
 
-  // BKE_fcurve_blend_write(writer, &animation->curves);
+  /* TODO: split up into multiple functions? */
+  for (animrig::Layer *layer : anim.layers()) {
+    BLO_write_struct(writer, AnimationLayer, layer);
 
-  // LISTBASE_FOREACH (banimationGroup *, grp, &animation->groups) {
-  //   BLO_write_struct(writer, banimationGroup, grp);
-  // }
+    for (animrig::Strip *strip : layer->strips()) {
+      switch (strip->type) {
+        case ANIM_STRIP_TYPE_KEYFRAME: {
+          auto &key_strip = strip->as<animrig::KeyframeStrip>();
+          BLO_write_struct(writer, KeyframeAnimationStrip, &key_strip);
 
-  // LISTBASE_FOREACH (TimeMarker *, marker, &animation->markers) {
-  //   BLO_write_struct(writer, TimeMarker, marker);
-  // }
-
-  // BKE_previewimg_blend_write(writer, animation->preview);
+          for (animrig::ChannelsForOutput *chans_for_out : key_strip.channels_for_output()) {
+            BLO_write_struct(writer, AnimationChannelsForOutput, chans_for_out);
+            write_fcurves(writer, chans_for_out->fcurves());
+          }
+        }
+      }
+    }
+  }
 }
 
 static void animation_blend_read_data(BlendDataReader *reader, ID *id)
