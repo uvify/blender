@@ -209,6 +209,7 @@ static void anim_strip_free_data_keyframe(AnimationStrip *strip)
 
   for (ChannelsForOutput *chans_for_out : key_strip.channels_for_output()) {
     BKE_fcurves_free(&chans_for_out->fcurves);
+    MEM_delete(chans_for_out);
   }
   MEM_SAFE_FREE(key_strip.channels_for_output_array);
   key_strip.channels_for_output_array_num = 0;
