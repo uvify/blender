@@ -113,7 +113,8 @@ static AnimationLayer *anim_layer_duplicate(const AnimationLayer *layer_src)
 static AnimationOutput *anim_output_duplicate(const AnimationOutput *output_src)
 {
   AnimationOutput *output_dup = static_cast<AnimationOutput *>(MEM_dupallocN(output_src));
-  output_dup->runtime.id = static_cast<ID **>(MEM_dupallocN(output_src->runtime.id));
+  output_dup->runtime = MEM_new<animrig::Output_runtime>(__func__);
+  output_dup->runtime->ids = output_src->runtime->ids;
   return output_dup;
 }
 
@@ -173,7 +174,7 @@ void BKE_animation_free_data(Animation *animation)
 
   for (animrig::Output *output : anim.outputs()) {
     /* TODO: Move freeing of Output runtime data to another function. */
-    MEM_freeN(output->runtime.id);
+    MEM_delete(output->runtime);
     MEM_delete(output);
   }
   MEM_SAFE_FREE(animation->output_array);

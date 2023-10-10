@@ -142,11 +142,11 @@ Output *Animation::output_add(ID *animated_id)
    * names when multiple IDs share the same output. */
   STRNCPY_UTF8(output.fallback, animated_id->name + 2);
 
-  // TODO: turn this into an actually nice function.
-  output.runtime.id = MEM_new<ID *>(__func__);
-  output.runtime.num_ids = 1;
-  *(output.runtime.id) = animated_id;
+  /* Allocate the runtime struct. */
+  output.runtime = MEM_new<Output_runtime>(__func__);
+  output.runtime->ids.append(animated_id);
 
+  /* Append the Output to the animation data-block. */
   grow_array_and_append<::AnimationOutput *>(
       &this->output_array, &this->output_array_num, &output);
 

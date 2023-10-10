@@ -1213,9 +1213,14 @@ class Animation;
 class ChannelsForOutput;
 class KeyframeStrip;
 class Layer;
+class Output_runtime;
 class Output;
 class Strip;
 }  // namespace blender::animrig
+
+using AnimationOutput_runtime = blender::animrig::Output_runtime;
+#else
+typedef struct AnimationOutput_runtime AnimationOutput_runtime;
 #endif
 
 /* Forward declarations so the actual declarations can happen top-down. */
@@ -1288,12 +1293,6 @@ typedef enum eAnimationLayer_Flags {
 } eAnimationLayer_Flags;
 ENUM_OPERATORS(eAnimationLayer_Flags, ANIM_LAYER_ENABLED);
 
-typedef struct AnimationOutput_runtime {
-  ID **id;
-  uint16_t num_ids;
-  uint8_t _pad0[6];
-} AnimationOutput_runtime;
-
 typedef struct AnimationOutput {
   int32_t stable_index;
   char fallback[64]; /* Fallback string for remapping outputs. */
@@ -1304,7 +1303,7 @@ typedef struct AnimationOutput {
    */
   int idtype;
 
-  struct AnimationOutput_runtime runtime;
+  AnimationOutput_runtime *runtime;
 
   void *_pad1;
 

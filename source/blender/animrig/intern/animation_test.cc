@@ -51,8 +51,8 @@ TEST(ANIM_animation_layers, add_output)
   EXPECT_EQ(1, out->stable_index);
   EXPECT_EQ("Küüübus", std::string(out->fallback));
   EXPECT_EQ(GS(cube.name), out->idtype);
-  EXPECT_EQ(&cube, *out->runtime.id);
-  EXPECT_EQ(1, out->runtime.num_ids);
+  ASSERT_EQ(1, out->runtime->ids.size());
+  EXPECT_EQ(&cube, out->runtime->ids[0]);
 
   BKE_animation_free_data(&anim);
 }
@@ -71,12 +71,12 @@ TEST(ANIM_animation_layers, add_output_multiple)
   EXPECT_EQ(2, anim.last_output_stable_index);
 
   EXPECT_EQ(1, out_cube->stable_index);
-  EXPECT_EQ(&cube, *out_cube->runtime.id);
-  EXPECT_EQ(1, out_cube->runtime.num_ids);
+  ASSERT_EQ(1, out_cube->runtime->ids.size());
+  EXPECT_EQ(&cube, out_cube->runtime->ids[0]);
 
   EXPECT_EQ(2, out_suzanne->stable_index);
-  EXPECT_EQ(&suzanne, *out_suzanne->runtime.id);
-  EXPECT_EQ(1, out_suzanne->runtime.num_ids);
+  ASSERT_EQ(1, out_suzanne->runtime->ids.size());
+  EXPECT_EQ(&suzanne, out_suzanne->runtime->ids[0]);
 
   BKE_animation_free_data(&anim);
 }

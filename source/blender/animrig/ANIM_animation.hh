@@ -15,6 +15,8 @@
 
 #include "DNA_anim_types.h"
 
+#include "BLI_vector.hh"
+
 struct FCurve;
 struct ID;
 
@@ -74,6 +76,11 @@ class Output : public ::AnimationOutput {
 };
 static_assert(sizeof(Output) == sizeof(::AnimationOutput),
               "DNA struct and its C++ wrapper must have the same size");
+
+class Output_runtime {
+ public:
+  Vector<ID *> ids;
+};
 
 class Strip : public ::AnimationStrip {
  public:
