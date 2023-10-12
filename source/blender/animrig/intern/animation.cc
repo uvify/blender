@@ -11,7 +11,9 @@
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
+#include "BKE_anim_data.h"
 #include "BKE_fcurve.h"
+#include "BKE_lib_id.h"
 
 #include "ED_keyframing.hh"
 
@@ -130,27 +132,99 @@ Output *Animation::output(const int64_t index)
   return &this->output_array[index]->wrap();
 }
 
-Output *Animation::output_add(ID *animated_id)
+Output *Animation::output_for_stable_index(const int32_t stable_index)
+{
+  /* TODO: implement hashmap lookup. */
+  for (Output *out : outputs()) {
+    if (out->stable_index == stable_index) {
+      return out;
+    }
+  }
+  return nullptr;
+}
+Output *Animation::output_for_fallback(const char *fallback)
+{
+  for (Output *out : outputs()) {
+    if (STREQ(out->fallback, fallback)) {
+      return out;
+    }
+  }
+  return nullptr;
+}
+
+Output &Animation::output_allocate_()
 {
   Output &output = MEM_new<AnimationOutput>(__func__)->wrap();
 
-  output.idtype = GS(animated_id->name);
   output.stable_index = atomic_add_and_fetch_int32(&this->last_output_stable_index, 1);
-
-  /* The ID type bytes can be stripped from the name, as that information is
-   * already stored in output.idtype. This also makes it easier to combine
-   * names when multiple IDs share the same output. */
-  STRNCPY_UTF8(output.fallback, animated_id->name + 2);
-
-  /* Allocate the runtime struct. */
   output.runtime = MEM_new<Output_runtime>(__func__);
-  output.runtime->ids.append(animated_id);
+
+  return output;
+}
+
+Output *Animation::output_add()
+{
+  Output &output = this->output_allocate_();
 
   /* Append the Output to the animation data-block. */
   grow_array_and_append<::AnimationOutput *>(
       &this->output_array, &this->output_array_num, &output);
 
   return &output;
+}
+
+Output *Animation::find_suitable_output_for(const ID *animated_id)
+{
+  AnimData *adt = BKE_animdata_from_id(animated_id);
+
+  /* Note that there is no check that `adt->animation` is actually `this`; this
+   * function can also be used while assigning an Animation to an ID. */
+
+  /* First step: find by stable index. */
+  Output *out = this->output_for_stable_index(adt->output_stable_index);
+  if (out && out->is_suitable_for(animated_id)) {
+    return out;
+  }
+
+  /* Second step: find by fallback string. */
+  out = this->output_for_fallback(adt->output_fallback);
+  if (out && out->is_suitable_for(animated_id)) {
+    return out;
+  }
+
+  return nullptr;
+}
+
+bool Animation::assign_id(Output &output, ID *animated_id)
+{
+  AnimData *adt = BKE_animdata_ensure_id(animated_id);
+  BLI_assert_msg(adt->animation == nullptr, "Unassign the ID from its existing animation first");
+
+  if (!output.assign_id(animated_id)) {
+    return false;
+  }
+
+  adt->output_stable_index = output.stable_index;
+  STRNCPY(adt->output_fallback, output.fallback);
+
+  adt->animation = this;
+  id_us_plus(&this->id);
+
+  return true;
+}
+
+void Animation::unassign_id(ID *animated_id)
+{
+  AnimData *adt = BKE_animdata_from_id(animated_id);
+  BLI_assert_msg(adt->animation == this, "ID is not assigned to this Animation");
+
+  Output *out = this->output_for_stable_index(adt->output_stable_index);
+  if (out) {
+    out->runtime->ids.remove(animated_id);
+  }
+
+  id_us_min(&this->id);
+  adt->animation = nullptr;
 }
 
 /* ----- AnimationLayer C++ implementation ----------- */
@@ -183,6 +257,62 @@ Strip *Layer::strip_add(const eAnimationStrip_type strip_type)
   grow_array_and_append<::AnimationStrip *>(&this->strip_array, &this->strip_array_num, &strip);
 
   return &strip;
+}
+
+/* ----- AnimationOutput C++ implementation ----------- */
+
+bool Output::assign_id(ID *animated_id)
+{
+  if (!id_can_have_animdata(animated_id)) {
+    return false;
+  }
+
+  if (!this->is_suitable_for(animated_id)) {
+    return false;
+  }
+
+  if (this->idtype == 0) {
+    this->idtype = GS(animated_id->name);
+  }
+  this->runtime->ids.add(animated_id);
+
+  /* The ID type bytes can be stripped from the name, as that information is
+   * already stored in this->idtype. This also makes it easier to combine
+   * names when multiple IDs share the same this-> */
+  /* TODO: handle the case where there are more IDs in runtime->ids. */
+  STRNCPY_UTF8(this->fallback, animated_id->name + 2);
+
+  /* This does NOT update the ID itself, as that also requires actually setting its Animation* to
+   * the owner of this Output. It is expected that the caller deals with this. */
+  return true;
+}
+
+bool Output::is_suitable_for(const ID *animated_id) const
+{
+  /* Check that the ID type is compatible with this output. */
+  const int animated_idtype = GS(animated_id->name);
+  return this->idtype == 0 || this->idtype == animated_idtype;
+}
+
+bool assign_animation(Animation &anim, ID *animated_id)
+{
+  unassign_animation(animated_id);
+
+  Output *out = anim.find_suitable_output_for(animated_id);
+  if (!out) {
+    out = anim.output_add();
+  }
+  return anim.assign_id(*out, animated_id);
+}
+
+void unassign_animation(ID *animated_id)
+{
+  AnimData *adt = BKE_animdata_from_id(animated_id);
+  if (!adt || !adt->animation) {
+    return;
+  }
+
+  adt->animation->wrap().unassign_id(animated_id);
 }
 
 /* ----- KeyframeAnimationStrip C++ implementation ----------- */
@@ -256,8 +386,8 @@ FCurve *KeyframeStrip::fcurve_find(const Output &out, const char *rna_path, cons
     return nullptr;
   }
 
-  /* Copy of the logic in BKE_fcurve_find(), but then compatible with our array-of-FCurves instead
-   * of ListBase. */
+  /* Copy of the logic in BKE_fcurve_find(), but then compatible with our array-of-FCurves
+   * instead of ListBase. */
 
   for (FCurve *fcu : channels->fcurves()) {
     /* Check indices first, much cheaper than a string comparison. */

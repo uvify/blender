@@ -106,6 +106,8 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
 #  include "BKE_fcurve.h"
 #  include "BKE_nla.h"
 
+#  include "ANIM_animation.hh"
+
 #  include "DEG_depsgraph.hh"
 #  include "DEG_depsgraph_build.hh"
 
@@ -188,6 +190,18 @@ bool rna_AnimData_tweakmode_override_apply(Main * /*bmain*/,
   anim_data_dst->flag = (anim_data_dst->flag & ~ADT_NLA_EDIT_ON) |
                         (anim_data_src->flag & ADT_NLA_EDIT_ON);
   return true;
+}
+
+static void rna_AnimData_animation_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
+{
+  ID *animated_id = ptr->owner_id;
+  Animation *anim = static_cast<Animation *>(value.data);
+  if (!anim) {
+    blender::animrig::unassign_animation(animated_id);
+    return;
+  }
+
+  blender::animrig::assign_animation(anim->wrap(), animated_id);
 }
 
 /* ****************************** */
@@ -1385,8 +1399,7 @@ static void rna_def_animdata(BlenderRNA *brna)
   prop = RNA_def_property(srna, "action", PROP_POINTER, PROP_NONE);
   /* this flag as well as the dynamic test must be defined for this to be editable... */
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
-  RNA_def_property_pointer_funcs(
-      prop, nullptr, "rna_AnimData_action_set", nullptr, "rna_Action_id_poll");
+  RNA_def_property_pointer_funcs(prop, nullptr, "rna_AnimData_action_set", nullptr, nullptr);
   RNA_def_property_editable_func(prop, "rna_AnimData_action_editable");
   RNA_def_property_ui_text(prop, "Action", "Active Action for this data-block");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA_ACTCHANGE, "rna_AnimData_dependency_update");
@@ -1462,6 +1475,16 @@ static void rna_def_animdata(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", ADT_CURVES_ALWAYS_VISIBLE);
   RNA_def_property_ui_text(prop, "Pin in Graph Editor", "");
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
+
+  /* Animation data-block */
+  prop = RNA_def_property(srna, "animation", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "Animation");
+  /* this flag as well as the dynamic test must be defined for this to be editable... */
+  // RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_pointer_funcs(prop, nullptr, "rna_AnimData_animation_set", nullptr, nullptr);
+  RNA_def_property_ui_text(prop, "Animation", "Active Animation for this data-block");
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA_ACTCHANGE, "rna_AnimData_dependency_update");
 
   RNA_define_lib_overridable(false);
 

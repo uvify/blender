@@ -17,7 +17,16 @@
 
 #ifdef __cplusplus
 #  include "BLI_span.hh"
+
+#  include <type_traits>
 #endif
+
+/* Forward declarations so the actual declarations can happen top-down. */
+struct Animation;
+struct AnimationLayer;
+struct AnimationOutput;
+struct AnimationStrip;
+struct AnimationChannelsForOutput;
 
 /* ************************************************ */
 /* F-Curve DataTypes */
@@ -1142,10 +1151,22 @@ typedef struct AnimData {
   /** Runtime data, for depsgraph evaluation. */
   FCurve **driver_array;
 
+  /**
+   * Active Animation data-block. If this is set, `action` will be ignored.
+   */
+  struct Animation *animation;
+
+  /**
+   * Identifier for which AnimationOutput of the above Animation is actually animating this
+   * data-block.
+   */
+  int32_t output_stable_index;
+  /** Fallback string for remapping outputs. */
+  char output_fallback[64];
+
   /* settings for animation evaluation */
   /** User-defined settings. */
   int flag;
-  char _pad[4];
 
   /* settings for active action evaluation (based on NLA strip settings) */
   /** Accumulation mode for active action. */
@@ -1222,12 +1243,6 @@ using AnimationOutput_runtime = blender::animrig::Output_runtime;
 #else
 typedef struct AnimationOutput_runtime AnimationOutput_runtime;
 #endif
-
-/* Forward declarations so the actual declarations can happen top-down. */
-struct AnimationLayer;
-struct AnimationOutput;
-struct AnimationStrip;
-struct AnimationChannelsForOutput;
 
 /** Container of layered animation data. */
 typedef struct Animation {
@@ -1312,6 +1327,13 @@ typedef struct AnimationOutput {
   const blender::animrig::Output &wrap() const;
 #endif
 } AnimationOutput;
+
+#ifdef __cplusplus
+static_assert(std::is_same_v<decltype(AnimationOutput::stable_index),
+                             decltype(AnimData::output_stable_index)>);
+static_assert(
+    std::is_same_v<decltype(AnimationOutput::fallback), decltype(AnimData::output_fallback)>);
+#endif
 
 typedef struct AnimationStrip {
   /** eAnimationStrip_type */

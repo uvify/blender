@@ -6,6 +6,7 @@
 
 #include "BKE_animation.h"
 #include "BKE_fcurve.h"
+#include "BKE_idtype.h"
 
 #include "DNA_anim_types.h"
 
@@ -18,7 +19,16 @@
 
 namespace blender::animrig::tests {
 
-TEST(ANIM_animation_layers, add_layer)
+class AnimationLayersTest : public testing::Test {
+ public:
+  static void SetUpTestSuite()
+  {
+    /* To make id_can_have_animdata() and friends work, the `id_types` array needs to be set up. */
+    BKE_idtype_init();
+  }
+};
+
+TEST_F(AnimationLayersTest, add_layer)
 {
   Animation anim = {};
   Layer *layer = anim.layer_add("layer name");
@@ -40,24 +50,30 @@ TEST(ANIM_animation_layers, add_layer)
   BKE_animation_free_data(&anim);
 }
 
-TEST(ANIM_animation_layers, add_output)
+TEST_F(AnimationLayersTest, add_output)
 {
   Animation anim = {};
   ID cube = {};
   STRNCPY_UTF8(cube.name, "OBKüüübus");
 
-  Output *out = anim.output_add(&cube);
+  Output *out = anim.output_add();
   EXPECT_EQ(1, anim.last_output_stable_index);
+  ASSERT_NE(nullptr, out);
   EXPECT_EQ(1, out->stable_index);
+
+  EXPECT_EQ("", std::string(out->fallback));
+  EXPECT_EQ(0, out->idtype);
+
+  out->assign_id(&cube);
   EXPECT_EQ("Küüübus", std::string(out->fallback));
   EXPECT_EQ(GS(cube.name), out->idtype);
   ASSERT_EQ(1, out->runtime->ids.size());
-  EXPECT_EQ(&cube, out->runtime->ids[0]);
+  EXPECT_TRUE(out->runtime->ids.contains(&cube));
 
   BKE_animation_free_data(&anim);
 }
 
-TEST(ANIM_animation_layers, add_output_multiple)
+TEST_F(AnimationLayersTest, add_output_multiple)
 {
   Animation anim = {};
   ID cube = {};
@@ -65,28 +81,31 @@ TEST(ANIM_animation_layers, add_output_multiple)
   ID suzanne = {};
   STRNCPY_UTF8(suzanne.name, "OBSuzanne");
 
-  Output *out_cube = anim.output_add(&cube);
-  Output *out_suzanne = anim.output_add(&suzanne);
+  Output *out_cube = anim.output_add();
+  Output *out_suzanne = anim.output_add();
+  out_cube->assign_id(&cube);
+  out_suzanne->assign_id(&suzanne);
 
   EXPECT_EQ(2, anim.last_output_stable_index);
 
   EXPECT_EQ(1, out_cube->stable_index);
   ASSERT_EQ(1, out_cube->runtime->ids.size());
-  EXPECT_EQ(&cube, out_cube->runtime->ids[0]);
+  EXPECT_TRUE(out_cube->runtime->ids.contains(&cube));
 
   EXPECT_EQ(2, out_suzanne->stable_index);
   ASSERT_EQ(1, out_suzanne->runtime->ids.size());
-  EXPECT_EQ(&suzanne, out_suzanne->runtime->ids[0]);
+  EXPECT_TRUE(out_suzanne->runtime->ids.contains(&suzanne));
 
   BKE_animation_free_data(&anim);
 }
 
-TEST(ANIM_animation_layers, keyframe_insert)
+TEST_F(AnimationLayersTest, keyframe_insert)
 {
   Animation anim = {};
   ID cube = {};
   STRNCPY_UTF8(cube.name, "OBKüüübus");
-  Output *out = anim.output_add(&cube);
+  Output *out = anim.output_add();
+  out->assign_id(&cube);
   Layer *layer = anim.layer_add("Kübus layer");
   Strip *strip = layer->strip(0);
 

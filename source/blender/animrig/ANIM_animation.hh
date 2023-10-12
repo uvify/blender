@@ -15,7 +15,7 @@
 
 #include "DNA_anim_types.h"
 
-#include "BLI_vector.hh"
+#include "BLI_set.hh"
 
 struct FCurve;
 struct ID;
@@ -46,7 +46,19 @@ class Animation : public ::Animation {
   const Output *output(int64_t index) const;
   Output *output(int64_t index);
 
-  Output *output_add(ID *animated_id);
+  Output *output_for_stable_index(int32_t stable_index);
+  Output *output_for_fallback(const char *fallback);
+
+  Output *output_add();
+  bool assign_id(Output &output, ID *animated_id);
+  void unassign_id(ID *animated_id);
+
+  /* Find the output with the same stable index.
+   * If that is not available, use the fallback string. */
+  Output *find_suitable_output_for(const ID *animated_id);
+
+ private:
+  Output &output_allocate_();
 };
 static_assert(sizeof(Animation) == sizeof(::Animation),
               "DNA struct and its C++ wrapper must have the same size");
@@ -73,13 +85,24 @@ class Output : public ::AnimationOutput {
   Output() = default;
   Output(const Output &other) = default;
   ~Output() = default;
+
+  /**
+   * Assign the ID to this Output.
+   *
+   * \return Whether this was possible. If the Output was already bound to a
+   * specific ID type, and `animated_id` is of a different type, it will be
+   * refused. If the ID type cannot be animated at all, false is also returned.
+   */
+  bool assign_id(ID *animated_id);
+
+  bool is_suitable_for(const ID *animated_id) const;
 };
 static_assert(sizeof(Output) == sizeof(::AnimationOutput),
               "DNA struct and its C++ wrapper must have the same size");
 
 class Output_runtime {
  public:
-  Vector<ID *> ids;
+  Set<ID *> ids;
 };
 
 class Strip : public ::AnimationStrip {
@@ -163,6 +186,25 @@ FCurve *keyframe_insert(Strip *strip,
                         float value,
                         float time,
                         eBezTriple_KeyframeType keytype);
+
+/**
+ * Assign the animation to the ID.
+ *
+ * This will will make a best-effort guess as to which output to use, in this
+ * order;
+ *
+ * - By stable index.
+ * - By fallback string.
+ * - Add a new Output for this ID.
+ *
+ * \return false if the assignment was not possible.
+ */
+bool assign_animation(Animation &anim, ID *animated_id);
+
+/**
+ * Ensure that this ID is no longer animated.
+ */
+void unassign_animation(ID *animated_id);
 
 }  // namespace blender::animrig
 

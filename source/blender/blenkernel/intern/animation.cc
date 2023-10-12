@@ -260,7 +260,8 @@ static void animation_foreach_id(ID *id, LibraryForeachIDData *data)
 
 static void write_fcurves(BlendWriter *writer, Span<FCurve *> fcurves)
 {
-  /* Construct a listbase to pass to the BKE function. */
+  /* Construct a listbase to pass to the BKE function. This is for historical
+   * purposes, as Actions also store the FCurves as ListBase. */
   for (int i = 0; i < fcurves.size() - 1; i++) {
     fcurves[i]->next = fcurves[i + 1];
   }
@@ -304,6 +305,13 @@ static void animation_blend_write(BlendWriter *writer, ID *id, const void *id_ad
 static void animation_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Animation *animation = (Animation *)id;
+
+  /* TODO: actually load the layers & outputs instead of nuking them. */
+  animation->layer_array = nullptr;
+  animation->layer_array_num = 0;
+
+  animation->output_array = nullptr;
+  animation->output_array_num = 0;
 
   // BLO_read_list(reader, &animation->curves);
   // BLO_read_list(reader, &animation->chanbase); /* XXX deprecated - old animation system */

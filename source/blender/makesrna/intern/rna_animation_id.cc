@@ -66,7 +66,8 @@ static AnimationOutput *rna_Animation_outputs_new(Animation *anim_id,
   }
 
   animrig::Animation &anim = anim_id->wrap();
-  animrig::Output *output = anim.output_add(animated_id);
+  animrig::Output *output = anim.output_add();
+  output->assign_id(animated_id);
   // TODO: notifiers.
   return output;
 }
