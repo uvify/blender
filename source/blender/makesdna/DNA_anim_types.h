@@ -1371,17 +1371,16 @@ typedef struct KeyframeAnimationStrip {
 
 typedef struct AnimationChannelsForOutput {
   int output_stable_index;
-  uint8_t _pad0[4];
 
   /* TODO: when converting this listbase to array, make sure the fcurve next/prev pointers are nil
    * to avoid accidental 'compatibility' with LISTBASE_FOREACH and friends. */
-  FCurve **fcurve_array; /* Array of 'fcurve_array_num' FCurves. */
   int fcurve_array_num;
+  FCurve **fcurve_array; /* Array of 'fcurve_array_num' FCurves. */
+
+  ListBase fcurve_listbase; /* ONLY for writing to blend files. */
 
   /* TODO: Design & implement a way to integrate other channel types as well,
    * and still have them map to a certain output */
-
-  uint8_t _pad1[4];
 #ifdef __cplusplus
   blender::animrig::ChannelsForOutput &wrap();
   const blender::animrig::ChannelsForOutput &wrap() const;

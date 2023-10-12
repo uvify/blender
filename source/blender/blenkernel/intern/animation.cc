@@ -258,20 +258,85 @@ static void animation_foreach_id(ID *id, LibraryForeachIDData *data)
   }
 }
 
-static void write_fcurves(BlendWriter *writer, Span<FCurve *> fcurves)
+static void write_channels_for_output(BlendWriter *writer,
+                                      animrig::ChannelsForOutput &chans_for_out)
 {
+  Span<FCurve *> fcurves = chans_for_out.fcurves();
+
   /* Construct a listbase to pass to the BKE function. This is for historical
    * purposes, as Actions also store the FCurves as ListBase. */
   for (int i = 0; i < fcurves.size() - 1; i++) {
     fcurves[i]->next = fcurves[i + 1];
   }
-  ListBase curves_listbase = {fcurves[0], fcurves[fcurves.size() - 1]};
 
-  BKE_fcurve_blend_write(writer, &curves_listbase);
+  BLI_assert(BLI_listbase_is_empty(&chans_for_out.fcurve_listbase));
+  animrig::ChannelsForOutput backup = chans_for_out;
 
-  /* Reset the 'next' pointers to nullptr again to clean up. */
+  /* Prepare for writing. */
+  chans_for_out.fcurve_array = nullptr;
+  chans_for_out.fcurve_array_num = 0;
+  chans_for_out.fcurve_listbase.first = fcurves[0];
+  chans_for_out.fcurve_listbase.last = fcurves[fcurves.size() - 1];
+
+  BLO_write_struct(writer, AnimationChannelsForOutput, &chans_for_out);
+  BKE_fcurve_blend_write(writer, &chans_for_out.fcurve_listbase);
+
+  /* Reset the pointers to nullptr again to clean up. */
   for (FCurve *fcu : fcurves) {
     fcu->next = nullptr;
+  }
+
+  chans_for_out = backup;
+  BLI_assert(BLI_listbase_is_empty(&chans_for_out.fcurve_listbase));
+}
+
+static void write_keyframe_strip(BlendWriter *writer, animrig::KeyframeStrip &key_strip)
+{
+  BLO_write_struct(writer, KeyframeAnimationStrip, &key_strip);
+
+  auto channels_for_output = key_strip.channels_for_output();
+  BLO_write_pointer_array(writer, channels_for_output.size(), channels_for_output.data());
+
+  for (animrig::ChannelsForOutput *chans_for_out : channels_for_output) {
+    write_channels_for_output(writer, *chans_for_out);
+  }
+}
+
+static void write_strips(BlendWriter *writer, Span<animrig::Strip *> strips)
+{
+  BLO_write_pointer_array(writer, strips.size(), strips.data());
+
+  for (animrig::Strip *strip : strips) {
+    switch (strip->type) {
+      case ANIM_STRIP_TYPE_KEYFRAME: {
+        auto &key_strip = strip->as<animrig::KeyframeStrip>();
+        write_keyframe_strip(writer, key_strip);
+      }
+    }
+  }
+}
+
+static void write_layers(BlendWriter *writer, Span<animrig::Layer *> layers)
+{
+  BLO_write_pointer_array(writer, layers.size(), layers.data());
+
+  for (animrig::Layer *layer : layers) {
+    BLO_write_struct(writer, AnimationLayer, layer);
+    write_strips(writer, layer->strips());
+  }
+}
+
+static void write_outputs(BlendWriter *writer, Span<animrig::Output *> outputs)
+{
+  BLO_write_pointer_array(writer, outputs.size(), outputs.data());
+
+  for (animrig::Output *output : outputs) {
+    auto *runtime_bak = output->runtime;
+    output->runtime = nullptr;
+
+    BLO_write_struct(writer, AnimationOutput, output);
+
+    output->runtime = runtime_bak;
   }
 }
 
@@ -282,36 +347,86 @@ static void animation_blend_write(BlendWriter *writer, ID *id, const void *id_ad
   BLO_write_id_struct(writer, Animation, id_address, &anim.id);
   BKE_id_blend_write(writer, &anim.id);
 
-  /* TODO: split up into multiple functions? */
-  for (animrig::Layer *layer : anim.layers()) {
-    BLO_write_struct(writer, AnimationLayer, layer);
+  write_layers(writer, anim.layers());
+  write_outputs(writer, anim.outputs());
+}
 
-    for (animrig::Strip *strip : layer->strips()) {
+static void read_chans_for_out(BlendDataReader *reader, animrig::ChannelsForOutput &chans_for_out)
+{
+  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&chans_for_out.fcurve_array));
+  BLO_read_list(reader, &chans_for_out.fcurve_listbase);
+
+  printf("      - chans_for_out: %d in array, %d in listbase\n",
+         chans_for_out.fcurve_array_num,
+         BLI_listbase_count(&chans_for_out.fcurve_listbase));
+
+  chans_for_out.fcurve_array_num = BLI_listbase_count(&chans_for_out.fcurve_listbase);
+  chans_for_out.fcurve_array = MEM_cnew_array<FCurve *>(chans_for_out.fcurve_array_num, __func__);
+
+  int fcu_index = 0;
+  LISTBASE_FOREACH_MUTABLE (FCurve *, fcu, &chans_for_out.fcurve_listbase) {
+    chans_for_out.fcurve_array[fcu_index++] = fcu;
+    fcu->prev = nullptr;
+    fcu->next = nullptr;
+  }
+}
+
+static void read_keyframe_strip(BlendDataReader *reader, animrig::KeyframeStrip &strip)
+{
+  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&strip.channels_for_output_array));
+
+  for (int i = 0; i < strip.channels_for_output_array_num; i++) {
+    BLO_read_data_address(reader, &strip.channels_for_output_array[i]);
+    AnimationChannelsForOutput *chans_for_out = strip.channels_for_output_array[i];
+
+    read_chans_for_out(reader, chans_for_out->wrap());
+  }
+}
+
+static void read_animation_layers(BlendDataReader *reader, animrig::Animation &anim)
+{
+  printf("Anim %s: reading %d layers\n", anim.id.name, anim.layer_array_num);
+  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&anim.layer_array));
+
+  for (int layer_idx = 0; layer_idx < anim.layer_array_num; layer_idx++) {
+    printf("  - reading layer\n");
+
+    BLO_read_data_address(reader, &anim.layer_array[layer_idx]);
+    AnimationLayer *layer = anim.layer_array[layer_idx];
+
+    printf("    - reading %d strips\n", layer->strip_array_num);
+    BLO_read_pointer_array(reader, reinterpret_cast<void **>(&layer->strip_array));
+    for (int strip_idx = 0; strip_idx < layer->strip_array_num; strip_idx++) {
+      BLO_read_data_address(reader, &layer->strip_array[layer_idx]);
+      AnimationStrip *strip = layer->strip_array[layer_idx];
+
       switch (strip->type) {
         case ANIM_STRIP_TYPE_KEYFRAME: {
-          auto &key_strip = strip->as<animrig::KeyframeStrip>();
-          BLO_write_struct(writer, KeyframeAnimationStrip, &key_strip);
-
-          for (animrig::ChannelsForOutput *chans_for_out : key_strip.channels_for_output()) {
-            BLO_write_struct(writer, AnimationChannelsForOutput, chans_for_out);
-            write_fcurves(writer, chans_for_out->fcurves());
-          }
+          auto &key_strip = strip->wrap().as<animrig::KeyframeStrip>();
+          read_keyframe_strip(reader, key_strip);
         }
       }
     }
   }
 }
 
+static void read_animation_outputs(BlendDataReader *reader, animrig::Animation &anim)
+{
+  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&anim.output_array));
+  // TODO: recreate the runtime data.
+}
+
 static void animation_blend_read_data(BlendDataReader *reader, ID *id)
 {
-  Animation *animation = (Animation *)id;
+  animrig::Animation &animation = reinterpret_cast<Animation *>(id)->wrap();
 
-  /* TODO: actually load the layers & outputs instead of nuking them. */
-  animation->layer_array = nullptr;
-  animation->layer_array_num = 0;
+  // animation.layer_array = nullptr;
+  // animation.layer_array_num = 0;
+  // animation.output_array = nullptr;
+  // animation.output_array_num = 0;
 
-  animation->output_array = nullptr;
-  animation->output_array_num = 0;
+  read_animation_layers(reader, animation);
+  read_animation_outputs(reader, animation);
 
   // BLO_read_list(reader, &animation->curves);
   // BLO_read_list(reader, &animation->chanbase); /* XXX deprecated - old animation system */
