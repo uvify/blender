@@ -315,6 +315,13 @@ void unassign_animation(ID *animated_id)
   adt->animation->wrap().unassign_id(animated_id);
 }
 
+/* ----- AnimationStrip C++ implementation ----------- */
+
+bool Strip::contains_frame(const float frame_time) const
+{
+  return frame_start <= frame_time && frame_time <= frame_end;
+}
+
 /* ----- KeyframeAnimationStrip C++ implementation ----------- */
 
 blender::Span<const ChannelsForOutput *> KeyframeStrip::channels_for_output() const

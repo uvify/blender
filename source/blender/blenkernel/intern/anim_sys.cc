@@ -50,6 +50,8 @@
 #include "BKE_report.h"
 #include "BKE_texture.h"
 
+#include "ANIM_evaluation.hh"
+
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
@@ -3917,16 +3919,26 @@ void BKE_animsys_evaluate_animdata(ID *id,
    */
   /* TODO: need to double check that this all works correctly */
   if (recalc & ADT_RECALC_ANIM) {
-    /* evaluate NLA data */
-    if ((adt->nla_tracks.first) && !(adt->flag & ADT_NLA_EVAL_OFF)) {
-      /* evaluate NLA-stack
-       * - active action is evaluated as part of the NLA stack as the last item
-       */
-      animsys_calculate_nla(&id_ptr, adt, anim_eval_context, flush_to_original);
+    if (adt->animation && adt->output_stable_index) {
+      /* Animation data-blocks take precedence over the old Action + NLA system. */
+      blender::animrig::evaluate_animation(&id_ptr,
+                                           adt->animation->wrap(),
+                                           adt->output_stable_index,
+                                           anim_eval_context,
+                                           flush_to_original);
     }
-    /* evaluate Active Action only */
-    else if (adt->action) {
-      animsys_evaluate_action(&id_ptr, adt->action, anim_eval_context, flush_to_original);
+    else {
+      /* evaluate NLA data */
+      if ((adt->nla_tracks.first) && !(adt->flag & ADT_NLA_EVAL_OFF)) {
+        /* evaluate NLA-stack
+         * - active action is evaluated as part of the NLA stack as the last item
+         */
+        animsys_calculate_nla(&id_ptr, adt, anim_eval_context, flush_to_original);
+      }
+      /* evaluate Active Action only */
+      else if (adt->action) {
+        animsys_evaluate_action(&id_ptr, adt->action, anim_eval_context, flush_to_original);
+      }
     }
   }
 

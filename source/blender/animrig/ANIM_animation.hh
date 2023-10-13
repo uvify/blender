@@ -17,8 +17,10 @@
 
 #include "BLI_set.hh"
 
+struct AnimationEvalContext;
 struct FCurve;
 struct ID;
+struct PointerRNA;
 
 namespace blender::animrig {
 
@@ -117,6 +119,8 @@ class Strip : public ::AnimationStrip {
   // TODO: add? Maybe?
   // template<typename T> bool is() const;
   template<typename T> T &as();
+
+  bool contains_frame(float frame_time) const;
 };
 static_assert(sizeof(Strip) == sizeof(::AnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");

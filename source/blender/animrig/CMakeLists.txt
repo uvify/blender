@@ -25,11 +25,13 @@ set(SRC
   intern/animation.cc
   intern/bone_collections.cc
   intern/bonecolor.cc
+  intern/evaluation.cc
 
   ANIM_animation.hh
   ANIM_bone_collections.h
   ANIM_bone_collections.hh
   ANIM_bonecolor.hh
+  ANIM_evaluation.hh
 )
 
 set(LIB
