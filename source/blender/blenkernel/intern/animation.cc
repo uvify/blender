@@ -358,22 +358,24 @@ static void animation_blend_write(BlendWriter *writer, ID *id, const void *id_ad
 
 static void read_chans_for_out(BlendDataReader *reader, animrig::ChannelsForOutput &chans_for_out)
 {
-  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&chans_for_out.fcurve_array));
+  // BLO_read_pointer_array(reader, reinterpret_cast<void **>(&chans_for_out.fcurve_array));
+
+  /* Read the FCurves ListBase. */
   BLO_read_list(reader, &chans_for_out.fcurve_listbase);
+  BKE_fcurve_blend_read_data(reader, &chans_for_out.fcurve_listbase);
 
-  printf("      - chans_for_out: %d in array, %d in listbase\n",
-         chans_for_out.fcurve_array_num,
-         BLI_listbase_count(&chans_for_out.fcurve_listbase));
-
+  /* Allocate an appropriately-sized array. */
   chans_for_out.fcurve_array_num = BLI_listbase_count(&chans_for_out.fcurve_listbase);
   chans_for_out.fcurve_array = MEM_cnew_array<FCurve *>(chans_for_out.fcurve_array_num, __func__);
 
+  /* Convert the ListBase to the array. */
   int fcu_index = 0;
   LISTBASE_FOREACH_MUTABLE (FCurve *, fcu, &chans_for_out.fcurve_listbase) {
     chans_for_out.fcurve_array[fcu_index++] = fcu;
     fcu->prev = nullptr;
     fcu->next = nullptr;
   }
+  BLI_listbase_clear(&chans_for_out.fcurve_listbase);
 }
 
 static void read_keyframe_strip(BlendDataReader *reader, animrig::KeyframeStrip &strip)
