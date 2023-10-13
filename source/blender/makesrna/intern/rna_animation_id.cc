@@ -255,6 +255,13 @@ static int rna_iterator_ChansForOut_fcurves_length(PointerRNA *ptr)
   return chans_for_out.fcurves().size();
 }
 
+static AnimationChannelsForOutput *rna_KeyframeAnimationStrip_channels(
+    KeyframeAnimationStrip *self, const int output_index)
+{
+  animrig::KeyframeStrip &key_strip = self->wrap();
+  return key_strip.chans_for_out(output_index);
+}
+
 #else
 
 static void rna_def_animation_outputs(BlenderRNA *brna, PropertyRNA *cprop)
@@ -423,17 +430,6 @@ static void rna_def_keyframestrip_channels_for_outputs(BlenderRNA *brna, Propert
   RNA_def_struct_ui_text(srna,
                          "Animation Channels for Outputs",
                          "For each animation output, a list of animation channels");
-
-  // /* AnimationChannelsForOutputs.find(...). */
-  // func = RNA_def_function(srna, "find", "rna_AnimationChannelsForOutputs_find");
-  // parm = RNA_def_pointer(func,
-  //                        "output",
-  //                        "AnimationOutput",
-  //                        "Output",
-  //                        "The output that identifies which 'thing' is animated");
-  // RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  // parm = RNA_def_pointer(func, "channels", "AnimationChannelsForOutput", "Channels", "");
-  // RNA_def_function_return(func, parm);
 }
 
 static void rna_def_animation_keyframe_strip(BlenderRNA *brna)
@@ -459,10 +455,26 @@ static void rna_def_animation_keyframe_strip(BlenderRNA *brna)
   rna_def_keyframestrip_channels_for_outputs(brna, prop);
 
   {
-    /* KeyframeStrip.key_insert(...). */
-
     FunctionRNA *func;
     PropertyRNA *parm;
+
+    /* KeyframeStrip.channels(...). */
+    func = RNA_def_function(srna, "channels", "rna_KeyframeAnimationStrip_channels");
+    parm = RNA_def_int(func,
+                       "output_index",
+                       0,
+                       0,
+                       INT_MAX,
+                       "Output Index",
+                       "Number that identifies a specific animation output",
+                       0,
+                       INT_MAX);
+    RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+    parm = RNA_def_pointer(func, "channels", "AnimationChannelsForOutput", "Channels", "");
+    RNA_def_function_return(func, parm);
+
+    /* KeyframeStrip.key_insert(...). */
+
     func = RNA_def_function(srna, "key_insert", "rna_KeyframeAnimationStrip_key_insert");
     RNA_def_function_flag(func, FUNC_USE_REPORTS);
     parm = RNA_def_pointer(func,

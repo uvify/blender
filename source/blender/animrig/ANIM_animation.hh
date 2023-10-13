@@ -140,6 +140,8 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
    */
   const ChannelsForOutput *chans_for_out(const Output &out) const;
   ChannelsForOutput *chans_for_out(const Output &out);
+  const ChannelsForOutput *chans_for_out(stable_index_t output_stable_index) const;
+  ChannelsForOutput *chans_for_out(stable_index_t output_stable_index);
 
   /**
    * Add the animation channels for this output.

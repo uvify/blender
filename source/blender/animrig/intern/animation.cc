@@ -345,22 +345,30 @@ template<> KeyframeStrip &Strip::as<KeyframeStrip>()
   return *reinterpret_cast<KeyframeStrip *>(this);
 }
 
-const ChannelsForOutput *KeyframeStrip::chans_for_out(const Output &out) const
+const ChannelsForOutput *KeyframeStrip::chans_for_out(
+    const stable_index_t output_stable_index) const
 {
   /* FIXME: use a hash map lookup for this. */
   for (const ChannelsForOutput *channels : this->channels_for_output()) {
-    if (channels->output_stable_index == out.stable_index) {
+    if (channels->output_stable_index == output_stable_index) {
       return channels;
     }
   }
   return nullptr;
 }
-
-ChannelsForOutput *KeyframeStrip::chans_for_out(const Output &out)
+ChannelsForOutput *KeyframeStrip::chans_for_out(const stable_index_t output_stable_index)
 {
   const auto *const_this = const_cast<const KeyframeStrip *>(this);
-  const auto *const_channels = const_this->chans_for_out(out);
+  const auto *const_channels = const_this->chans_for_out(output_stable_index);
   return const_cast<ChannelsForOutput *>(const_channels);
+}
+const ChannelsForOutput *KeyframeStrip::chans_for_out(const Output &out) const
+{
+  return this->chans_for_out(out.stable_index);
+}
+ChannelsForOutput *KeyframeStrip::chans_for_out(const Output &out)
+{
+  return this->chans_for_out(out.stable_index);
 }
 
 ChannelsForOutput *KeyframeStrip::chans_for_out_add(const Output &out)
