@@ -1066,6 +1066,7 @@ static void write_result(TaskPool *__restrict pool, WriteTaskData *task_data)
     }
   }
   if (reports.list.first != nullptr) {
+    /* TODO: Should rather use new #BKE_reports_move_to_reports ? */
     BLI_spin_lock(&oglrender->reports_lock);
     for (Report *report = static_cast<Report *>(reports.list.first); report != nullptr;
          report = report->next)
@@ -1074,6 +1075,7 @@ static void write_result(TaskPool *__restrict pool, WriteTaskData *task_data)
     }
     BLI_spin_unlock(&oglrender->reports_lock);
   }
+  BKE_reports_free(&reports);
   if (!ok) {
     oglrender->pool_ok = false;
   }

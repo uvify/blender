@@ -8,14 +8,12 @@ set(INC
 
   ../blenkernel
   ../blentranslation
+  ../depsgraph
   ../editors/include
-
-  # Just for being able to include 'ED_keyframing.hh', which includes 'RNA_types.hh'.
-  #
-  # The functionality in 'ED_keyframing.hh' that is actually used in this module
-  # should be moved into this module instead, after which this path can be
-  # removed.
   ../makesrna
+  ../windowmanager
+  # RNA_prototypes.h
+  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -26,12 +24,19 @@ set(SRC
   intern/bone_collections.cc
   intern/bonecolor.cc
   intern/evaluation.cc
+  intern/keyframing.cc
+  intern/keyframing_auto.cc
+  intern/visualkey.cc
+  intern/fcurve.cc
 
   ANIM_animation.hh
   ANIM_bone_collections.h
   ANIM_bone_collections.hh
   ANIM_bonecolor.hh
   ANIM_evaluation.hh
+  ANIM_keyframing.hh
+  ANIM_visualkey.hh
+  ANIM_fcurve.hh
 )
 
 set(LIB
