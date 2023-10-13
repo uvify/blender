@@ -26,6 +26,9 @@ class Layer;
 class Strip;
 class Output;
 
+/* Use an alias for the stable index type. */
+using stable_index_t = decltype(::AnimationOutput::stable_index);
+
 class Animation : public ::Animation {
  public:
   Animation() = default;
@@ -46,7 +49,7 @@ class Animation : public ::Animation {
   const Output *output(int64_t index) const;
   Output *output(int64_t index);
 
-  Output *output_for_stable_index(int32_t stable_index);
+  Output *output_for_stable_index(stable_index_t stable_index);
   Output *output_for_fallback(const char *fallback);
 
   Output *output_add();

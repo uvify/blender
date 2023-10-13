@@ -132,7 +132,7 @@ Output *Animation::output(const int64_t index)
   return &this->output_array[index]->wrap();
 }
 
-Output *Animation::output_for_stable_index(const int32_t stable_index)
+Output *Animation::output_for_stable_index(const stable_index_t stable_index)
 {
   /* TODO: implement hashmap lookup. */
   for (Output *out : outputs()) {
