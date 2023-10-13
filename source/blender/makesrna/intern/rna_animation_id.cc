@@ -48,9 +48,19 @@ static animrig::Animation &rna_animation(const PointerRNA *ptr)
   return reinterpret_cast<Animation *>(ptr->owner_id)->wrap();
 }
 
+static animrig::Output &rna_data_output(const PointerRNA *ptr)
+{
+  return reinterpret_cast<AnimationOutput *>(ptr->data)->wrap();
+}
+
 static animrig::Layer &rna_data_layer(const PointerRNA *ptr)
 {
   return reinterpret_cast<AnimationLayer *>(ptr->data)->wrap();
+}
+
+static animrig::Strip &rna_data_strip(const PointerRNA *ptr)
+{
+  return reinterpret_cast<AnimationStrip *>(ptr->data)->wrap();
 }
 
 static AnimationOutput *rna_Animation_outputs_new(Animation *anim_id,
@@ -109,6 +119,32 @@ static int rna_iterator_animation_outputs_length(PointerRNA *ptr)
   return anim.outputs().size();
 }
 
+static char *rna_AnimationOutput_path(const PointerRNA *ptr)
+{
+  animrig::Animation &anim = rna_animation(ptr);
+  animrig::Output &output_to_find = rna_data_output(ptr);
+
+  Span<animrig::Output *> outputs = anim.outputs();
+  for (int i = 0; i < outputs.size(); ++i) {
+    animrig::Output &output = *outputs[i];
+    if (&output != &output_to_find) {
+      continue;
+    }
+
+    return BLI_sprintfN("outputs[%d]", i);
+  }
+  return nullptr;
+}
+
+static char *rna_AnimationLayer_path(const PointerRNA *ptr)
+{
+  animrig::Layer &layer = rna_data_layer(ptr);
+
+  char name_esc[sizeof(layer.name) * 2];
+  BLI_str_escape(name_esc, layer.name, sizeof(name_esc));
+  return BLI_sprintfN("layers[\"%s\"]", name_esc);
+}
+
 static void rna_iterator_animationlayer_strips_begin(CollectionPropertyIterator *iter,
                                                      PointerRNA *ptr)
 {
@@ -123,6 +159,28 @@ static int rna_iterator_animationlayer_strips_length(PointerRNA *ptr)
 {
   animrig::Layer &layer = rna_data_layer(ptr);
   return layer.strips().size();
+}
+
+static char *rna_AnimationStrip_path(const PointerRNA *ptr)
+{
+  animrig::Animation &anim = rna_animation(ptr);
+  animrig::Strip &strip_to_find = rna_data_strip(ptr);
+
+  for (animrig::Layer *layer : anim.layers()) {
+    Span<animrig::Strip *> strips = layer->strips();
+    for (int i = 0; i < strips.size(); ++i) {
+      animrig::Strip &strip = *strips[i];
+      if (&strip != &strip_to_find) {
+        continue;
+      }
+
+      PointerRNA layer_ptr = RNA_pointer_create(&anim.id, &RNA_AnimationLayer, layer);
+      char *layer_path = rna_AnimationLayer_path(&layer_ptr);
+      return BLI_sprintfN("%s.strips[%d]", layer_path, i);
+    }
+  }
+
+  return nullptr;
 }
 
 static FCurve *rna_AnimationStrip_keyframe_insert(AnimationStrip *strip,
@@ -245,12 +303,15 @@ static void rna_def_animation_output(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "AnimationOutput", nullptr);
+  RNA_def_struct_path_func(srna, "rna_AnimationOutput_path");
   RNA_def_struct_ui_text(srna,
                          "Animation Output",
                          "Reference to a data-block that will be animated by this Animation");
 
   prop = RNA_def_property(srna, "stable_index", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "stable_index");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "fallback", PROP_STRING, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
@@ -274,6 +335,7 @@ static void rna_def_animation_layer(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "AnimationLayer", nullptr);
   RNA_def_struct_ui_text(srna, "Animation Layer", "");
+  RNA_def_struct_path_func(srna, "rna_AnimationLayer_path");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_name_property(srna, prop);
@@ -305,6 +367,7 @@ static void rna_def_animation_strip(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "AnimationStrip", nullptr);
   RNA_def_struct_ui_text(srna, "Animation Strip", "");
+  RNA_def_struct_path_func(srna, "rna_AnimationStrip_path");
 
   /* Strip.keyframe_insert(...). */
   func = RNA_def_function(srna, "keyframe_insert", "rna_AnimationStrip_keyframe_insert");
