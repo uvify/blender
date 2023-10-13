@@ -1183,10 +1183,15 @@ void DepsgraphNodeBuilder::build_animdata(ID *id)
   if (adt->action != nullptr) {
     build_action(adt->action);
   }
+  if (adt->animation != nullptr) {
+    build_animation(adt->animation);
+  }
   /* Make sure ID node exists. */
   (void)add_id_node(id);
   ID *id_cow = get_cow_id(id);
-  if (adt->action != nullptr || !BLI_listbase_is_empty(&adt->nla_tracks)) {
+  if (adt->action != nullptr || adt->animation != nullptr ||
+      !BLI_listbase_is_empty(&adt->nla_tracks))
+  {
     OperationNode *operation_node;
     /* Explicit entry operation. */
     operation_node = add_operation_node(id, NodeType::ANIMATION, OperationCode::ANIMATION_ENTRY);

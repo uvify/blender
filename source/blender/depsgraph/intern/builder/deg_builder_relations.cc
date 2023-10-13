@@ -88,6 +88,7 @@
 #include "RNA_prototypes.h"
 #include "RNA_types.hh"
 
+#include "ANIM_animation.hh"
 #include "SEQ_iterator.h"
 
 #include "DEG_depsgraph.hh"
@@ -1518,7 +1519,7 @@ void DepsgraphRelationBuilder::build_animdata(ID *id)
 {
   /* Images. */
   build_animation_images(id);
-  /* Animation curves and NLA. */
+  /* Animation curves, NLA, and Animation datablock. */
   build_animdata_curves(id);
   /* Drivers. */
   build_animdata_drivers(id);
@@ -1540,7 +1541,11 @@ void DepsgraphRelationBuilder::build_animdata_curves(ID *id)
   if (adt->action != nullptr) {
     build_action(adt->action);
   }
-  if (adt->action == nullptr && BLI_listbase_is_empty(&adt->nla_tracks)) {
+  if (adt->animation != nullptr) {
+    build_animation(adt->animation);
+  }
+  if (adt->action == nullptr && adt->animation == nullptr &&
+      BLI_listbase_is_empty(&adt->nla_tracks)) {
     return;
   }
   /* Ensure evaluation order from entry to exit. */
@@ -1549,12 +1554,17 @@ void DepsgraphRelationBuilder::build_animdata_curves(ID *id)
   OperationKey animation_exit_key(id, NodeType::ANIMATION, OperationCode::ANIMATION_EXIT);
   add_relation(animation_entry_key, animation_eval_key, "Init -> Eval");
   add_relation(animation_eval_key, animation_exit_key, "Eval -> Exit");
-  /* Wire up dependency from action. */
+  /* Wire up dependency from action and Animation datablock. */
   ComponentKey adt_key(id, NodeType::ANIMATION);
   /* Relation from action itself. */
   if (adt->action != nullptr) {
     ComponentKey action_key(&adt->action->id, NodeType::ANIMATION);
     add_relation(action_key, adt_key, "Action -> Animation");
+  }
+  /* Relation from Animation datablock itself. */
+  if (adt->animation != nullptr) {
+    ComponentKey animation_key(&adt->animation->id, NodeType::ANIMATION);
+    add_relation(animation_key, adt_key, "Animation ID -> Animation");
   }
   /* Get source operations. */
   Node *node_from = get_node(adt_key);
@@ -1568,8 +1578,49 @@ void DepsgraphRelationBuilder::build_animdata_curves(ID *id)
   if (adt->action != nullptr) {
     build_animdata_curves_targets(id, adt_key, operation_from, &adt->action->curves);
   }
+  if (adt->animation != nullptr) {
+    build_animdata_animation_targets(
+        id, adt->output_stable_index, adt_key, operation_from, adt->animation);
+  }
   LISTBASE_FOREACH (NlaTrack *, nlt, &adt->nla_tracks) {
     build_animdata_nlastrip_targets(id, adt_key, operation_from, &nlt->strips);
+  }
+}
+
+void DepsgraphRelationBuilder::build_animdata_fcurve_target(
+    ID *id, PointerRNA id_ptr, ComponentKey &adt_key, OperationNode *operation_from, FCurve *fcu)
+{
+  PointerRNA ptr;
+  PropertyRNA *prop;
+  int index;
+  if (!RNA_path_resolve_full(&id_ptr, fcu->rna_path, &ptr, &prop, &index)) {
+    return;
+  }
+  Node *node_to = rna_node_query_.find_node(&ptr, prop, RNAPointerSource::ENTRY);
+  if (node_to == nullptr) {
+    return;
+  }
+  OperationNode *operation_to = node_to->get_entry_operation();
+  /* NOTE: Special case for bones, avoid relation from animation to
+   * each of the bones. Bone evaluation could only start from pose
+   * init anyway. */
+  if (operation_to->opcode == OperationCode::BONE_LOCAL) {
+    OperationKey pose_init_key(id, NodeType::EVAL_POSE, OperationCode::POSE_INIT);
+    add_relation(adt_key, pose_init_key, "Animation -> Prop", RELATION_CHECK_BEFORE_ADD);
+    return;
+  }
+  graph_->add_new_relation(
+      operation_from, operation_to, "Animation -> Prop", RELATION_CHECK_BEFORE_ADD);
+  /* It is possible that animation is writing to a nested ID data-block,
+   * need to make sure animation is evaluated after target ID is copied. */
+  const IDNode *id_node_from = operation_from->owner->owner;
+  const IDNode *id_node_to = operation_to->owner->owner;
+  if (id_node_from != id_node_to) {
+    ComponentKey cow_key(id_node_to->id_orig, NodeType::COPY_ON_WRITE);
+    add_relation(cow_key,
+                 adt_key,
+                 "Animated CoW -> Animation",
+                 RELATION_CHECK_BEFORE_ADD | RELATION_FLAG_NO_FLUSH);
   }
 }
 
@@ -1581,37 +1632,40 @@ void DepsgraphRelationBuilder::build_animdata_curves_targets(ID *id,
   /* Iterate over all curves and build relations. */
   PointerRNA id_ptr = RNA_id_pointer_create(id);
   LISTBASE_FOREACH (FCurve *, fcu, curves) {
-    PointerRNA ptr;
-    PropertyRNA *prop;
-    int index;
-    if (!RNA_path_resolve_full(&id_ptr, fcu->rna_path, &ptr, &prop, &index)) {
-      continue;
-    }
-    Node *node_to = rna_node_query_.find_node(&ptr, prop, RNAPointerSource::ENTRY);
-    if (node_to == nullptr) {
-      continue;
-    }
-    OperationNode *operation_to = node_to->get_entry_operation();
-    /* NOTE: Special case for bones, avoid relation from animation to
-     * each of the bones. Bone evaluation could only start from pose
-     * init anyway. */
-    if (operation_to->opcode == OperationCode::BONE_LOCAL) {
-      OperationKey pose_init_key(id, NodeType::EVAL_POSE, OperationCode::POSE_INIT);
-      add_relation(adt_key, pose_init_key, "Animation -> Prop", RELATION_CHECK_BEFORE_ADD);
-      continue;
-    }
-    graph_->add_new_relation(
-        operation_from, operation_to, "Animation -> Prop", RELATION_CHECK_BEFORE_ADD);
-    /* It is possible that animation is writing to a nested ID data-block,
-     * need to make sure animation is evaluated after target ID is copied. */
-    const IDNode *id_node_from = operation_from->owner->owner;
-    const IDNode *id_node_to = operation_to->owner->owner;
-    if (id_node_from != id_node_to) {
-      ComponentKey cow_key(id_node_to->id_orig, NodeType::COPY_ON_WRITE);
-      add_relation(cow_key,
-                   adt_key,
-                   "Animated CoW -> Animation",
-                   RELATION_CHECK_BEFORE_ADD | RELATION_FLAG_NO_FLUSH);
+    build_animdata_fcurve_target(id, id_ptr, adt_key, operation_from, fcu);
+  }
+}
+
+void DepsgraphRelationBuilder::build_animdata_animation_targets(ID *id,
+                                                                const int32_t output_stable_index,
+                                                                ComponentKey &adt_key,
+                                                                OperationNode *operation_from,
+                                                                Animation *dna_animation)
+{
+  BLI_assert(id != nullptr);
+  BLI_assert(operation_from != nullptr);
+  BLI_assert(dna_animation != nullptr);
+
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
+  animrig::Animation &animation = dna_animation->wrap();
+
+  const animrig::Output *output = animation.output_for_stable_index(output_stable_index);
+  if (output == nullptr) {
+    /* If there's no matching output, there's no animation dependency. */
+    return;
+  }
+
+  for (animrig::Layer *layer : animation.layers()) {
+    for (animrig::Strip *strip : layer->strips()) {
+      switch (strip->type) {
+        case ANIM_STRIP_TYPE_KEYFRAME: {
+          animrig::KeyframeStrip keyframe_strip = strip->as<animrig::KeyframeStrip>();
+          for (FCurve *fcu : keyframe_strip.chans_for_out(*output)->fcurves()) {
+            build_animdata_fcurve_target(id, id_ptr, adt_key, operation_from, fcu);
+          }
+          break;
+        }
+      }
     }
   }
 }
@@ -1738,12 +1792,11 @@ void DepsgraphRelationBuilder::build_animation(Animation *animation)
   const BuilderStack::ScopedEntry stack_entry = stack_.trace(animation->id);
 
   build_idproperties(animation->id.properties);
-  // TODO: implement:
-  // if (!BLI_listbase_is_empty(&animation->curves)) {
-  //   TimeSourceKey time_src_key;
-  //   ComponentKey animation_key(&animation->id, NodeType::ANIMATION);
-  //   add_relation(time_src_key, animation_key, "TimeSrc -> Animation");
-  // }
+
+  /* TODO: if the animation is empty, skip adding this relation. */
+  TimeSourceKey time_src_key;
+  ComponentKey animation_key(&animation->id, NodeType::ANIMATION);
+  add_relation(time_src_key, animation_key, "TimeSrc -> Animation");
 }
 
 void DepsgraphRelationBuilder::build_driver(ID *id, FCurve *fcu)

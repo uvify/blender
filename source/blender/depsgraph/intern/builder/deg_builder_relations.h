@@ -162,10 +162,20 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
                                  RootPChanMap *root_map);
   virtual void build_animdata(ID *id);
   virtual void build_animdata_curves(ID *id);
+  virtual void build_animdata_fcurve_target(ID *id,
+                                            PointerRNA id_ptr,
+                                            ComponentKey &adt_key,
+                                            OperationNode *operation_from,
+                                            FCurve *fcu);
   virtual void build_animdata_curves_targets(ID *id,
                                              ComponentKey &adt_key,
                                              OperationNode *operation_from,
                                              ListBase *curves);
+  virtual void build_animdata_animation_targets(ID *id,
+                                                int32_t output_stable_index,
+                                                ComponentKey &adt_key,
+                                                OperationNode *operation_from,
+                                                Animation *animation);
   virtual void build_animdata_nlastrip_targets(ID *id,
                                                ComponentKey &adt_key,
                                                OperationNode *operation_from,
