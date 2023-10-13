@@ -179,7 +179,7 @@ class ChannelsForOutput : public ::AnimationChannelsForOutput {
 static_assert(sizeof(ChannelsForOutput) == sizeof(::AnimationChannelsForOutput),
               "DNA struct and its C++ wrapper must have the same size");
 
-FCurve *keyframe_insert(Strip *strip,
+FCurve *keyframe_insert(KeyframeStrip &key_strip,
                         const Output &out,
                         const char *rna_path,
                         int array_index,

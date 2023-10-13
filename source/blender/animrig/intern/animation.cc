@@ -453,7 +453,7 @@ FCurve *ChannelsForOutput::fcurve(const int64_t index)
   return this->fcurve_array[index];
 }
 
-FCurve *keyframe_insert(Strip *strip,
+FCurve *keyframe_insert(KeyframeStrip &key_strip,
                         const Output &out,
                         const char *rna_path,
                         const int array_index,
@@ -461,14 +461,6 @@ FCurve *keyframe_insert(Strip *strip,
                         const float time,
                         const eBezTriple_KeyframeType keytype)
 {
-  if (strip->type != ANIM_STRIP_TYPE_KEYFRAME) {
-    /* TODO: handle this properly, in a way that can be communicated to the user. */
-    std::fprintf(stderr,
-                 "Strip is not of type ANIM_STRIP_TYPE_KEYFRAME, unable to insert keys here\n");
-    return nullptr;
-  }
-
-  KeyframeStrip &key_strip = strip->wrap().as<KeyframeStrip>();
   FCurve *fcurve = key_strip.fcurve_find_or_create(out, rna_path, array_index);
 
   if (!BKE_fcurve_is_keyframable(fcurve)) {
