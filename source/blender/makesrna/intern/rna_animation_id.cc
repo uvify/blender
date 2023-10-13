@@ -421,9 +421,6 @@ static void rna_def_keyframestrip_channels_for_outputs(BlenderRNA *brna, Propert
 {
   StructRNA *srna;
 
-  FunctionRNA *func;
-  PropertyRNA *parm;
-
   RNA_def_property_srna(cprop, "AnimationChannelsForOutputs");
   srna = RNA_def_struct(brna, "AnimationChannelsForOutputs", nullptr);
   RNA_def_struct_sdna(srna, "KeyframeAnimationStrip");
@@ -555,9 +552,6 @@ static void rna_def_animation_strip(BlenderRNA *brna)
 static void rna_def_chans_for_out_fcurves(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
-
-  FunctionRNA *func;
-  PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "AnimationChannelsForOutputFCurves");
   srna = RNA_def_struct(brna, "AnimationChannelsForOutputFCurves", nullptr);
