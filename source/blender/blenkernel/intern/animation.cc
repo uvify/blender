@@ -99,7 +99,6 @@ static void animation_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, 
 /** Deep copy an AnimationLayer struct. */
 static AnimationLayer *anim_layer_duplicate(const AnimationLayer *layer_src)
 {
-  printf("anim_layer_duplicate: duplicating layer %s\n", layer_src->name);
   AnimationLayer *layer_dst = static_cast<AnimationLayer *>(MEM_dupallocN(layer_src));
 
   /* Strips. */
@@ -392,16 +391,12 @@ static void read_keyframe_strip(BlendDataReader *reader, animrig::KeyframeStrip 
 
 static void read_animation_layers(BlendDataReader *reader, animrig::Animation &anim)
 {
-  printf("Anim %s: reading %d layers\n", anim.id.name, anim.layer_array_num);
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&anim.layer_array));
 
   for (int layer_idx = 0; layer_idx < anim.layer_array_num; layer_idx++) {
-    printf("  - reading layer\n");
-
     BLO_read_data_address(reader, &anim.layer_array[layer_idx]);
     AnimationLayer *layer = anim.layer_array[layer_idx];
 
-    printf("    - reading %d strips\n", layer->strip_array_num);
     BLO_read_pointer_array(reader, reinterpret_cast<void **>(&layer->strip_array));
     for (int strip_idx = 0; strip_idx < layer->strip_array_num; strip_idx++) {
       BLO_read_data_address(reader, &layer->strip_array[layer_idx]);
