@@ -113,10 +113,15 @@ static AnimationLayer *anim_layer_duplicate(const AnimationLayer *layer_src)
   return layer_dst;
 }
 
+static animrig::Output_runtime *anim_output_runtime_allocate()
+{
+  return MEM_new<animrig::Output_runtime>(__func__);
+}
+
 static AnimationOutput *anim_output_duplicate(const AnimationOutput *output_src)
 {
   AnimationOutput *output_dup = static_cast<AnimationOutput *>(MEM_dupallocN(output_src));
-  output_dup->runtime = MEM_new<animrig::Output_runtime>(__func__);
+  output_dup->runtime = anim_output_runtime_allocate();
   output_dup->runtime->ids = output_src->runtime->ids;
   return output_dup;
 }
@@ -410,10 +415,21 @@ static void read_animation_layers(BlendDataReader *reader, animrig::Animation &a
   }
 }
 
+static void refresh_animation_output(BlendDataReader *reader, animrig::Output &out)
+{
+  out.runtime = anim_output_runtime_allocate();
+  // TODO: reconstruct out.runtime->ids from main + out.idtype.
+}
+
 static void read_animation_outputs(BlendDataReader *reader, animrig::Animation &anim)
 {
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&anim.output_array));
-  // TODO: recreate the runtime data.
+
+  for (int i = 0; i < anim.output_array_num; i++) {
+    BLO_read_data_address(reader, &anim.output_array[i]);
+    AnimationOutput *out = anim.output_array[i];
+    refresh_animation_output(reader, out->wrap());
+  }
 }
 
 static void animation_blend_read_data(BlendDataReader *reader, ID *id)
