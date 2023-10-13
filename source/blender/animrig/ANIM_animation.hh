@@ -27,7 +27,7 @@ class Strip;
 class Output;
 
 /* Use an alias for the stable index type. */
-using stable_index_t = decltype(::AnimationOutput::stable_index);
+using output_index_t = decltype(::AnimationOutput::stable_index);
 
 class Animation : public ::Animation {
  public:
@@ -49,7 +49,7 @@ class Animation : public ::Animation {
   const Output *output(int64_t index) const;
   Output *output(int64_t index);
 
-  Output *output_for_stable_index(stable_index_t stable_index);
+  Output *output_for_stable_index(output_index_t stable_index);
   Output *output_for_fallback(const char *fallback);
 
   Output *output_add();
@@ -140,8 +140,8 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
    */
   const ChannelsForOutput *chans_for_out(const Output &out) const;
   ChannelsForOutput *chans_for_out(const Output &out);
-  const ChannelsForOutput *chans_for_out(stable_index_t output_stable_index) const;
-  ChannelsForOutput *chans_for_out(stable_index_t output_stable_index);
+  const ChannelsForOutput *chans_for_out(output_index_t output_stable_index) const;
+  ChannelsForOutput *chans_for_out(output_index_t output_stable_index);
 
   /**
    * Add the animation channels for this output.

@@ -132,7 +132,7 @@ Output *Animation::output(const int64_t index)
   return &this->output_array[index]->wrap();
 }
 
-Output *Animation::output_for_stable_index(const stable_index_t stable_index)
+Output *Animation::output_for_stable_index(const output_index_t stable_index)
 {
   /* TODO: implement hashmap lookup. */
   for (Output *out : outputs()) {
@@ -346,7 +346,7 @@ template<> KeyframeStrip &Strip::as<KeyframeStrip>()
 }
 
 const ChannelsForOutput *KeyframeStrip::chans_for_out(
-    const stable_index_t output_stable_index) const
+    const output_index_t output_stable_index) const
 {
   /* FIXME: use a hash map lookup for this. */
   for (const ChannelsForOutput *channels : this->channels_for_output()) {
@@ -356,7 +356,7 @@ const ChannelsForOutput *KeyframeStrip::chans_for_out(
   }
   return nullptr;
 }
-ChannelsForOutput *KeyframeStrip::chans_for_out(const stable_index_t output_stable_index)
+ChannelsForOutput *KeyframeStrip::chans_for_out(const output_index_t output_stable_index)
 {
   const auto *const_this = const_cast<const KeyframeStrip *>(this);
   const auto *const_channels = const_this->chans_for_out(output_stable_index);
