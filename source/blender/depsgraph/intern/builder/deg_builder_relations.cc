@@ -1660,7 +1660,12 @@ void DepsgraphRelationBuilder::build_animdata_animation_targets(ID *id,
       switch (strip->type) {
         case ANIM_STRIP_TYPE_KEYFRAME: {
           animrig::KeyframeStrip keyframe_strip = strip->as<animrig::KeyframeStrip>();
-          for (FCurve *fcu : keyframe_strip.chans_for_out(*output)->fcurves()) {
+          animrig::ChannelsForOutput *channels = keyframe_strip.chans_for_out(*output);
+          if (channels == nullptr) {
+            /* Go to next strip. */
+            break;
+          }
+          for (FCurve *fcu : channels->fcurves()) {
             build_animdata_fcurve_target(id, id_ptr, adt_key, operation_from, fcu);
           }
           break;
