@@ -105,11 +105,6 @@ class Output : public ::AnimationOutput {
 static_assert(sizeof(Output) == sizeof(::AnimationOutput),
               "DNA struct and its C++ wrapper must have the same size");
 
-class Output_runtime {
- public:
-  Set<ID *> ids;
-};
-
 class Strip : public ::AnimationStrip {
  public:
   Strip() = default;

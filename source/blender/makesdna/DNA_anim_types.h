@@ -1234,14 +1234,9 @@ class Animation;
 class ChannelsForOutput;
 class KeyframeStrip;
 class Layer;
-class Output_runtime;
 class Output;
 class Strip;
 }  // namespace blender::animrig
-
-using AnimationOutput_runtime = blender::animrig::Output_runtime;
-#else
-typedef struct AnimationOutput_runtime AnimationOutput_runtime;
 #endif
 
 /** Container of layered animation data. */
@@ -1317,10 +1312,6 @@ typedef struct AnimationOutput {
    * If 0, will be set to whatever ID is first assigned.
    */
   int idtype;
-
-  AnimationOutput_runtime *runtime;
-
-  void *_pad1;
 
 #ifdef __cplusplus
   blender::animrig::Output &wrap();

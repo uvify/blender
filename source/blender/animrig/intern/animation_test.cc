@@ -67,8 +67,6 @@ TEST_F(AnimationLayersTest, add_output)
   out->assign_id(&cube);
   EXPECT_EQ("Küüübus", std::string(out->fallback));
   EXPECT_EQ(GS(cube.name), out->idtype);
-  ASSERT_EQ(1, out->runtime->ids.size());
-  EXPECT_TRUE(out->runtime->ids.contains(&cube));
 
   BKE_animation_free_data(&anim);
 }
@@ -87,14 +85,8 @@ TEST_F(AnimationLayersTest, add_output_multiple)
   out_suzanne->assign_id(&suzanne);
 
   EXPECT_EQ(2, anim.last_output_stable_index);
-
   EXPECT_EQ(1, out_cube->stable_index);
-  ASSERT_EQ(1, out_cube->runtime->ids.size());
-  EXPECT_TRUE(out_cube->runtime->ids.contains(&cube));
-
   EXPECT_EQ(2, out_suzanne->stable_index);
-  ASSERT_EQ(1, out_suzanne->runtime->ids.size());
-  EXPECT_TRUE(out_suzanne->runtime->ids.contains(&suzanne));
 
   BKE_animation_free_data(&anim);
 }

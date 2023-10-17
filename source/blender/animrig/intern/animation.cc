@@ -155,10 +155,7 @@ Output *Animation::output_for_fallback(const char *fallback)
 Output &Animation::output_allocate_()
 {
   Output &output = MEM_new<AnimationOutput>(__func__)->wrap();
-
   output.stable_index = atomic_add_and_fetch_int32(&this->last_output_stable_index, 1);
-  output.runtime = MEM_new<Output_runtime>(__func__);
-
   return output;
 }
 
@@ -218,11 +215,6 @@ void Animation::unassign_id(ID *animated_id)
   AnimData *adt = BKE_animdata_from_id(animated_id);
   BLI_assert_msg(adt->animation == this, "ID is not assigned to this Animation");
 
-  Output *out = this->output_for_stable_index(adt->output_stable_index);
-  if (out) {
-    out->runtime->ids.remove(animated_id);
-  }
-
   id_us_min(&this->id);
   adt->animation = nullptr;
 }
@@ -274,7 +266,6 @@ bool Output::assign_id(ID *animated_id)
   if (this->idtype == 0) {
     this->idtype = GS(animated_id->name);
   }
-  this->runtime->ids.add(animated_id);
 
   /* The ID type bytes can be stripped from the name, as that information is
    * already stored in this->idtype. This also makes it easier to combine
