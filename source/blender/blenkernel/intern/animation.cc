@@ -384,8 +384,8 @@ static void read_animation_layers(BlendDataReader *reader, animrig::Animation &a
 
     BLO_read_pointer_array(reader, reinterpret_cast<void **>(&layer->strip_array));
     for (int strip_idx = 0; strip_idx < layer->strip_array_num; strip_idx++) {
-      BLO_read_data_address(reader, &layer->strip_array[layer_idx]);
-      AnimationStrip *strip = layer->strip_array[layer_idx];
+      BLO_read_data_address(reader, &layer->strip_array[strip_idx]);
+      AnimationStrip *strip = layer->strip_array[strip_idx];
 
       switch (strip->type) {
         case ANIM_STRIP_TYPE_KEYFRAME: {
