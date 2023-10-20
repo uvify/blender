@@ -546,6 +546,15 @@ static void rna_def_animation_strip(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, prop_type_items);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
+  prop = RNA_def_property(srna, "frame_start", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Frame Start", "");
+
+  prop = RNA_def_property(srna, "frame_end", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "End", "");
+
+  prop = RNA_def_property(srna, "frame_offset", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Offset", "");
+
   rna_def_animation_keyframe_strip(brna);
 }
 
