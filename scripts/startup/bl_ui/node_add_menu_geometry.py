@@ -113,6 +113,7 @@ class NODE_MT_geometry_node_GEO_CURVE_OPERATIONS(Menu):
 
     def draw(self, _context):
         layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeBridgeCurves")
         node_add_menu.add_node_type(layout, "GeometryNodeCurveToMesh")
         node_add_menu.add_node_type(layout, "GeometryNodeCurveToPoints")
         node_add_menu.add_node_type(layout, "GeometryNodeDeformCurvesOnSurface")
