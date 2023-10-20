@@ -7,10 +7,6 @@
 #include "DNA_color_types.h"
 #include "DNA_node_types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct Render;
 
 /* Keep ascii art. */
@@ -266,16 +262,16 @@ struct Render;
  * If this is the case the chunk will be added to the work-list for OpenCLDevice's
  * otherwise the chunk will be added to the work-list of CPUDevices.
  *
- * A thread will read the work-list and sends a workpackage to its device.
+ * A thread will read the work-list and sends a work-package to its device.
  *
  * \see WorkScheduler.schedule method that is called to schedule a chunk
  * \see Device.execute method called to execute a chunk
  *
  * \subsection CPUDevice CPUDevice
- * When a CPUDevice gets a WorkPackage the Device will get the inputbuffer that is needed to
+ * When a CPUDevice gets a WorkPackage the Device will get the input-buffer that is needed to
  * calculate the chunk. Allocation is already done by the ExecutionGroup.
- * The outputbuffer of the chunk is being created.
- * The OutputOperation of the ExecutionGroup is called to execute the area of the outputbuffer.
+ * The output-buffer of the chunk is being created.
+ * The OutputOperation of the ExecutionGroup is called to execute the area of the output-buffer.
  *
  * \see ExecutionGroup
  * \see NodeOperation.execute_region executes a single chunk of a NodeOperation
@@ -349,7 +345,3 @@ void COM_deinitialize(void);
  * To deinitialize the compositor use the COM_deinitialize method.
  */
 // void COM_clear_caches(void); // NOT YET WRITTEN
-
-#ifdef __cplusplus
-}
-#endif

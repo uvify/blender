@@ -411,46 +411,72 @@ static const char *get_current_socket_identifier_for_future_socket(
                                       socket_decls);
     }
     case GEO_NODE_BLUR_ATTRIBUTE: {
-      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+      return get_identifier_from_decl("Value", socket, socket_decls);
     }
     case GEO_NODE_SAMPLE_CURVE: {
-      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+      return get_identifier_from_decl("Value", socket, socket_decls);
     }
     case GEO_NODE_EVALUATE_AT_INDEX: {
-      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+      return get_identifier_from_decl("Value", socket, socket_decls);
     }
     case GEO_NODE_EVALUATE_ON_DOMAIN: {
-      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+      return get_identifier_from_decl("Value", socket, socket_decls);
     }
     case GEO_NODE_INPUT_NAMED_ATTRIBUTE: {
-      return get_identifier_from_decl({"Attribute"}, socket, socket_decls);
+      return get_identifier_from_decl("Attribute", socket, socket_decls);
     }
     case GEO_NODE_RAYCAST: {
-      return get_identifier_from_decl({"Attribute"}, socket, socket_decls);
+      return get_identifier_from_decl("Attribute", socket, socket_decls);
     }
     case GEO_NODE_SAMPLE_INDEX: {
-      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+      return get_identifier_from_decl("Value", socket, socket_decls);
     }
     case GEO_NODE_SAMPLE_NEAREST_SURFACE: {
-      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+      return get_identifier_from_decl("Value", socket, socket_decls);
     }
     case FN_NODE_RANDOM_VALUE: {
       return get_identifier_from_decl({"Min", "Max", "Value"}, socket, socket_decls);
     }
     case GEO_NODE_SAMPLE_UV_SURFACE: {
-      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+      return get_identifier_from_decl("Value", socket, socket_decls);
     }
     case GEO_NODE_STORE_NAMED_ATTRIBUTE: {
-      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+      return get_identifier_from_decl("Value", socket, socket_decls);
     }
     case GEO_NODE_VIEWER: {
-      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+      return get_identifier_from_decl("Value", socket, socket_decls);
     }
     case SH_NODE_MIX: {
       return get_identifier_from_decl({"A", "B", "Result"}, socket, socket_decls);
     }
     case FN_NODE_COMPARE: {
       return get_identifier_from_decl({"A", "B"}, socket, socket_decls);
+    }
+    case SH_NODE_MAP_RANGE: {
+      if (socket.type == SOCK_VECTOR) {
+        if (STREQ(socket.identifier, "Value")) {
+          return "Vector";
+        }
+        if (STREQ(socket.identifier, "From Min")) {
+          return "From_Min_FLOAT3";
+        }
+        if (STREQ(socket.identifier, "From Max")) {
+          return "From_Max_FLOAT3";
+        }
+        if (STREQ(socket.identifier, "To Min")) {
+          return "To_Min_FLOAT3";
+        }
+        if (STREQ(socket.identifier, "To Max")) {
+          return "To_Max_FLOAT3";
+        }
+        if (STREQ(socket.identifier, "Steps")) {
+          return "Steps_FLOAT3";
+        }
+        if (STREQ(socket.identifier, "Result")) {
+          return "Vector";
+        }
+      }
+      return nullptr;
     }
   }
   return nullptr;
@@ -578,11 +604,13 @@ static void refresh_node(bNodeTree &ntree,
 
 void update_node_declaration_and_sockets(bNodeTree &ntree, bNode &node)
 {
-  if (node.typeinfo->declare_dynamic) {
-    if (!node.runtime->declaration) {
-      node.runtime->declaration = new NodeDeclaration();
+  if (node.typeinfo->declare) {
+    if (node.typeinfo->static_declaration->is_context_dependent) {
+      if (!node.runtime->declaration) {
+        node.runtime->declaration = new NodeDeclaration();
+      }
+      build_node_declaration(*node.typeinfo, *node.runtime->declaration, &ntree, &node);
     }
-    build_node_declaration_dynamic(ntree, node, *node.runtime->declaration);
   }
   refresh_node(ntree, node, *node.runtime->declaration, true);
 }
@@ -601,7 +629,7 @@ void node_verify_sockets(bNodeTree *ntree, bNode *node, bool do_id_user)
   if (ntype == nullptr) {
     return;
   }
-  if (ntype->declare || ntype->declare_dynamic) {
+  if (ntype->declare) {
     blender::bke::nodeDeclarationEnsureOnOutdatedNode(ntree, node);
     refresh_node(*ntree, *node, *node->runtime->declaration, do_id_user);
     return;

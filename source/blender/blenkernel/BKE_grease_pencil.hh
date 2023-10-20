@@ -23,6 +23,7 @@
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
+#include "DNA_object_types.h" /* #BoundBox. */
 
 struct Main;
 struct Depsgraph;
@@ -109,6 +110,24 @@ class Drawing : public ::GreasePencilDrawing {
   bool is_instanced() const;
   bool has_users() const;
 };
+
+class DrawingReference : public ::GreasePencilDrawingReference {
+ public:
+  DrawingReference();
+  DrawingReference(const DrawingReference &other);
+  ~DrawingReference();
+};
+
+const Drawing *get_eval_grease_pencil_layer_drawing(const GreasePencil &grease_pencil,
+                                                    int layer_index);
+Drawing *get_eval_grease_pencil_layer_drawing_for_write(GreasePencil &grease_pencil,
+                                                        int layer_index);
+/**
+ * Copies the drawings from one array to another. Assumes that \a dst_drawings is allocated but not
+ * initialized, e.g. it will allocate new drawings and store the pointers.
+ */
+void copy_drawing_array(Span<const GreasePencilDrawingBase *> src_drawings,
+                        MutableSpan<GreasePencilDrawingBase *> dst_drawings);
 
 class LayerGroup;
 class Layer;
@@ -503,6 +522,7 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
    * Adds a new layer named \a name at the end of this group and returns it.
    */
   Layer &add_layer(StringRefNull name);
+  Layer &add_layer(const Layer &duplicate_layer);
   /**
    * Adds a new group named \a name at the end of this group and returns it.
    */
@@ -645,11 +665,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
 void legacy_gpencil_to_grease_pencil(Main &main, GreasePencil &grease_pencil, bGPdata &gpd);
 
 }  // namespace convert
-
-const Drawing *get_eval_grease_pencil_layer_drawing(const GreasePencil &grease_pencil,
-                                                    int layer_index);
-Drawing *get_eval_grease_pencil_layer_drawing_for_write(GreasePencil &grease_pencil,
-                                                        int layer_index);
 }  // namespace greasepencil
 
 class GreasePencilRuntime {
@@ -702,6 +717,16 @@ inline blender::bke::greasepencil::Drawing &GreasePencilDrawing::wrap()
 inline const blender::bke::greasepencil::Drawing &GreasePencilDrawing::wrap() const
 {
   return *reinterpret_cast<const blender::bke::greasepencil::Drawing *>(this);
+}
+
+inline blender::bke::greasepencil::DrawingReference &GreasePencilDrawingReference::wrap()
+{
+  return *reinterpret_cast<blender::bke::greasepencil::DrawingReference *>(this);
+}
+inline const blender::bke::greasepencil::DrawingReference &GreasePencilDrawingReference::wrap()
+    const
+{
+  return *reinterpret_cast<const blender::bke::greasepencil::DrawingReference *>(this);
 }
 
 inline GreasePencilFrame GreasePencilFrame::null()
@@ -777,8 +802,10 @@ inline bool GreasePencil::has_active_layer() const
 void *BKE_grease_pencil_add(Main *bmain, const char *name);
 GreasePencil *BKE_grease_pencil_new_nomain();
 GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_src);
-BoundBox *BKE_grease_pencil_boundbox_get(Object *ob);
+BoundBox BKE_grease_pencil_boundbox_get(Object *ob);
 void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *object);
+void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil_src,
+                                               GreasePencil *grease_pencil_dst);
 
 int BKE_grease_pencil_object_material_index_get(Object *ob, Material *ma);
 int BKE_grease_pencil_object_material_index_get_by_name(Object *ob, const char *name);
@@ -800,6 +827,7 @@ Material *BKE_grease_pencil_object_material_ensure_from_active_input_brush(Main 
                                                                            Brush *brush);
 Material *BKE_grease_pencil_object_material_ensure_from_active_input_material(Object *ob);
 Material *BKE_grease_pencil_object_material_ensure_active(Object *ob);
+void BKE_grease_pencil_material_remap(GreasePencil *grease_pencil, const uint *remap, int totcol);
 
 bool BKE_grease_pencil_references_cyclic_check(const GreasePencil *id_reference,
                                                const GreasePencil *grease_pencil);

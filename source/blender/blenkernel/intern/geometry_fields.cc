@@ -137,6 +137,12 @@ GeometryFieldContext::GeometryFieldContext(const PointCloud &points)
     : geometry_(&points), type_(GeometryComponent::Type::PointCloud), domain_(ATTR_DOMAIN_POINT)
 {
 }
+GeometryFieldContext::GeometryFieldContext(const GreasePencil &grease_pencil)
+    : geometry_(&grease_pencil),
+      type_(GeometryComponent::Type::GreasePencil),
+      domain_(ATTR_DOMAIN_LAYER)
+{
+}
 GeometryFieldContext::GeometryFieldContext(const GreasePencil &grease_pencil,
                                            const eAttrDomain domain,
                                            const int layer_index)
@@ -252,6 +258,11 @@ GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &conte
   {
     return this->get_varray_for_context({point_context->pointcloud()}, mask);
   }
+  if (const GreasePencilFieldContext *grease_pencil_context =
+          dynamic_cast<const GreasePencilFieldContext *>(&context))
+  {
+    return this->get_varray_for_context({grease_pencil_context->grease_pencil()}, mask);
+  }
   if (const GreasePencilLayerFieldContext *grease_pencil_context =
           dynamic_cast<const GreasePencilLayerFieldContext *>(&context))
   {
@@ -303,7 +314,7 @@ GVArray CurvesFieldInput::get_varray_for_context(const fn::FieldContext &context
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
           &context))
   {
-    if (const CurvesGeometry *curves = geometry_context->curves()) {
+    if (const CurvesGeometry *curves = geometry_context->curves_or_strokes()) {
       return this->get_varray_for_context(*curves, geometry_context->domain(), mask);
     }
   }
@@ -529,7 +540,7 @@ GVArray NormalFieldInput::get_varray_for_context(const GeometryFieldContext &con
   if (const Mesh *mesh = context.mesh()) {
     return mesh_normals_varray(*mesh, mask, context.domain());
   }
-  if (const CurvesGeometry *curves = context.curves()) {
+  if (const CurvesGeometry *curves = context.curves_or_strokes()) {
     return curve_normals_varray(*curves, context.domain());
   }
   return {};

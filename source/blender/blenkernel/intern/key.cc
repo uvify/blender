@@ -16,7 +16,7 @@
 #include "BLI_endian_switch.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -193,7 +193,7 @@ IDTypeInfo IDType_ID_KE = {
     /*main_listbase_index*/ INDEX_ID_KE,
     /*struct_size*/ sizeof(Key),
     /*name*/ "Key",
-    /*name_plural*/ "shape_keys",
+    /*name_plural*/ N_("shape keys"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_SHAPEKEY,
     /*flags*/ IDTYPE_FLAGS_NO_LIBLINKING,
     /*asset_type_info*/ nullptr,
