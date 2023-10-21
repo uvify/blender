@@ -15,6 +15,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Curves");
   b.add_input<decl::Bool>("Selection").default_value(true).field_on_all();
+  b.add_input<decl::Bool>("Cyclic").field_on_all();
   b.add_input<decl::Int>("Group ID").hide_value().field_on_all();
   b.add_input<decl::Float>("Weight").field_on_all().hide_value();
   b.add_output<decl::Geometry>("Mesh").propagate_all();
@@ -34,7 +35,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     Array<int> curve_indices_to_bridge(curves_num);
     array_utils::fill_index_range<int>(curve_indices_to_bridge);
-    const bool bridge_cyclic = false;
+    const bool bridge_cyclic = params.get_input<bool>("Cyclic");
     const int bridges_num = bke::curves::segments_num(curve_indices_to_bridge.size(),
                                                       bridge_cyclic);
 
