@@ -470,8 +470,15 @@ typedef struct GreasePencil {
   bool is_layer_active(const blender::bke::greasepencil::Layer *layer) const;
 
   /* Adding layers and layer groups. */
+  /** Adds a new layer with the given name to the top of root group. */
+  blender::bke::greasepencil::Layer &add_layer(blender::StringRefNull name);
+  /** Adds a new layer with the given name to the top of the given group. */
   blender::bke::greasepencil::Layer &add_layer(
       blender::bke::greasepencil::LayerGroup &parent_group, blender::StringRefNull name);
+  /** Duplicates the given layer to the top of the root group. */
+  blender::bke::greasepencil::Layer &add_layer(
+      const blender::bke::greasepencil::Layer &duplicate_layer);
+  /** Duplicates the given layer to the top of the given group. */
   blender::bke::greasepencil::Layer &add_layer(
       blender::bke::greasepencil::LayerGroup &parent_group,
       const blender::bke::greasepencil::Layer &duplicate_layer);
@@ -492,11 +499,8 @@ typedef struct GreasePencil {
                       blender::bke::greasepencil::LayerGroup &parent_group);
 
   /* Search functions. */
-  const blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name) const;
-  blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name);
-  const blender::bke::greasepencil::LayerGroup *find_layer_group_by_name(
-      blender::StringRefNull name) const;
-  blender::bke::greasepencil::LayerGroup *find_layer_group_by_name(blender::StringRefNull name);
+  const blender::bke::greasepencil::TreeNode *find_node_by_name(blender::StringRefNull name) const;
+  blender::bke::greasepencil::TreeNode *find_node_by_name(blender::StringRefNull name);
 
   void rename_node(blender::bke::greasepencil::TreeNode &node, blender::StringRefNull new_name);
 

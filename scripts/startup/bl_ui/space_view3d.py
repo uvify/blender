@@ -1237,10 +1237,10 @@ class VIEW3D_MT_transform(VIEW3D_MT_transform_base, Menu):
         if context.mode == 'EDIT_MESH':
             layout.operator("transform.shrink_fatten", text="Shrink/Fatten").alt_navigation = alt_navigation
             layout.operator("transform.skin_resize")
-        elif context.mode == 'EDIT_CURVE':
+        elif context.mode in ['EDIT_CURVE', 'EDIT_GREASE_PENCIL']:
             layout.operator("transform.transform", text="Radius").mode = 'CURVE_SHRINKFATTEN'
 
-        if context.mode != 'EDIT_CURVES':
+        if context.mode != 'EDIT_CURVES' and context.mode != 'EDIT_GREASE_PENCIL':
             layout.separator()
             props = layout.operator("transform.translate", text="Move Texture Space")
             props.texture_space = True
@@ -2685,7 +2685,7 @@ class VIEW3D_MT_object(Menu):
     bl_context = "objectmode"
     bl_label = "Object"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
 
         layout.menu("VIEW3D_MT_transform_object")
@@ -2723,7 +2723,8 @@ class VIEW3D_MT_object(Menu):
         layout.separator()
 
         layout.operator("object.shade_smooth")
-        layout.operator("object.shade_smooth", text="Shade Auto Smooth").use_auto_smooth = True
+        if context.object and context.object.type == 'MESH':
+            layout.operator("object.shade_smooth_by_angle")
         layout.operator("object.shade_flat")
 
         layout.separator()
@@ -2967,8 +2968,9 @@ class VIEW3D_MT_object_context_menu(Menu):
         if obj is not None:
             if obj.type in {'MESH', 'CURVE', 'SURFACE'}:
                 layout.operator("object.shade_smooth")
-                layout.operator("object.shade_smooth", text="Shade Auto Smooth").use_auto_smooth = True
-                layout.operator("object.shade_flat", text="Shade Flat")
+                if obj.type == 'MESH':
+                    layout.operator("object.shade_smooth_by_angle")
+                layout.operator("object.shade_flat")
 
                 layout.separator()
 
@@ -5803,6 +5805,11 @@ class VIEW3D_MT_edit_greasepencil(Menu):
 
     def draw(self, _context):
         layout = self.layout
+        layout.menu("VIEW3D_MT_transform")
+        layout.menu("VIEW3D_MT_mirror")
+
+        layout.separator()
+
         layout.menu("VIEW3D_MT_edit_greasepencil_delete")
 
 
@@ -5815,8 +5822,8 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
         layout.operator("grease_pencil.stroke_simplify")
 
         layout.separator()
-        
-        layout.operator_enum("grease_pencil.cyclical_set", "type")
+
+        layout.operator("grease_pencil.cyclical_set", text="Toggle Cyclic").type = 'TOGGLE'
 
 
 class VIEW3D_MT_edit_curves(Menu):

@@ -459,7 +459,6 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
         if (curves.points_num() == 0) {
           return;
         }
-
         if (!ed::curves::has_anything_selected(curves)) {
           return;
         }
@@ -666,7 +665,6 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
         if (curves.points_num() == 0) {
           return;
         }
-
         if (!ed::curves::has_anything_selected(curves)) {
           return;
         }
@@ -861,7 +859,7 @@ enum class CyclicalMode : int8_t {
   CLOSE,
   /* Sets all strokes to not cycle. */
   OPEN,
-  /* Switchs the cyclic state of the strokes. */
+  /* Switches the cyclic state of the strokes. */
   TOGGLE,
 };
 
@@ -884,22 +882,19 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
-        if (curves.points_num() == 0) {
-          return;
-        }
-        if (!ed::curves::has_anything_selected(curves)) {
+
+        if (mode == CyclicalMode::OPEN && !curves.attributes().contains("cyclic")) {
+          /* Avoid creating unneeded attribute. */
           return;
         }
 
-        /* Return to stop from creating unneeded attribute. */
-        if (mode == CyclicalMode::OPEN && !curves.attributes().contains("cyclic")) {
+        IndexMaskMemory memory;
+        const IndexMask curve_selection = ed::curves::retrieve_selected_curves(curves, memory);
+        if (curve_selection.is_empty()) {
           return;
         }
 
         MutableSpan<bool> cyclic = curves.cyclic_for_write();
-
-        IndexMaskMemory memory;
-        const IndexMask curve_selection = ed::curves::retrieve_selected_curves(curves, memory);
 
         switch (mode) {
           case CyclicalMode::CLOSE:
@@ -914,10 +909,11 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
         }
 
         /* Remove the attribute if it is empty. */
-        if (mode != CyclicalMode::CLOSE &&
-            !ed::curves::has_anything_selected(curves.cyclic(), curves.curves_range()))
-        {
-          curves.attributes_for_write().remove("cyclic");
+        if (mode != CyclicalMode::CLOSE) {
+          if (array_utils::booleans_mix_calc(curves.cyclic()) == array_utils::BooleanMix::AllFalse)
+          {
+            curves.attributes_for_write().remove("cyclic");
+          }
         }
 
         changed = true;
