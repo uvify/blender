@@ -1199,7 +1199,9 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   grease_pencil_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 
   if (!geometry_set.has_grease_pencil()) {
-    geometry_set.replace_grease_pencil(BKE_grease_pencil_new_nomain());
+    GreasePencil *empty_grease_pencil = BKE_grease_pencil_new_nomain();
+    empty_grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
+    geometry_set.replace_grease_pencil(empty_grease_pencil);
   }
 
   /* For now the evaluated data is not const. We could use #get_grease_pencil_for_write, but that
@@ -2024,13 +2026,13 @@ static std::string unique_node_name(const GreasePencil &grease_pencil,
 static std::string unique_layer_name(const GreasePencil &grease_pencil,
                                      blender::StringRefNull name)
 {
-  return unique_node_name(grease_pencil, DATA_("GP_Layer"), name);
+  return unique_node_name(grease_pencil, DATA_("Layer"), name);
 }
 
 static std::string unique_layer_group_name(const GreasePencil &grease_pencil,
                                            blender::StringRefNull name)
 {
-  return unique_node_name(grease_pencil, DATA_("GP_Group"), name);
+  return unique_node_name(grease_pencil, DATA_("Group"), name);
 }
 
 blender::bke::greasepencil::Layer &GreasePencil::add_layer(const blender::StringRefNull name)
