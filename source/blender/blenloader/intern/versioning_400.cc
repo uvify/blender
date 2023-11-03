@@ -59,7 +59,7 @@
 #include "BKE_tracking.h"
 
 #include "SEQ_retiming.hh"
-#include "SEQ_sequencer.h"
+#include "SEQ_sequencer.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.h"
@@ -1824,6 +1824,21 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             region->alignment |= RGN_ALIGN_HIDE_WITH_PREV;
           }
         }
+      }
+    }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "float", "gtao_thickness")) {
+      SceneEEVEE default_eevee = *DNA_struct_default_get(SceneEEVEE);
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.gtao_thickness = default_eevee.gtao_thickness;
+        scene->eevee.gtao_focus = default_eevee.gtao_focus;
+      }
+    }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "LightProbe", "float", "data_display_size")) {
+      LightProbe default_probe = *DNA_struct_default_get(LightProbe);
+      LISTBASE_FOREACH (LightProbe *, probe, &bmain->lightprobes) {
+        probe->data_display_size = default_probe.data_display_size;
       }
     }
   }

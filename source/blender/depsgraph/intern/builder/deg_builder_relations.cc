@@ -89,7 +89,7 @@
 #include "RNA_types.hh"
 
 #include "ANIM_animation.hh"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
