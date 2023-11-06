@@ -222,32 +222,46 @@ static std::optional<EvaluationResult> evaluate_strip(
   return {};
 }
 
+std::optional<EvaluationResult> evaluate_layer(PointerRNA *animated_id_ptr,
+                                               Layer &layer,
+                                               const output_index_t output_index,
+                                               const AnimationEvalContext &anim_eval_context)
+{
+
+  for (Strip *strip : layer.strips()) {
+    if (!strip->contains_frame(anim_eval_context.eval_time)) {
+      continue;
+    }
+
+    const auto strip_result = evaluate_strip(
+        animated_id_ptr, *strip, output_index, anim_eval_context);
+    if (!strip_result) {
+      continue;
+    }
+
+    /* TODO: evaluate overlapping strips indepently, and mix the results. For
+     * now, just limit to the first available strip on this layer. */
+    return strip_result;
+  }
+
+  return {};
+}
+
 void evaluate_animation(PointerRNA *animated_id_ptr,
                         Animation &animation,
                         const output_index_t output_index,
                         const AnimationEvalContext &anim_eval_context,
                         const bool flush_to_original)
 {
-  const float eval_time = anim_eval_context.eval_time;
-
   /* Evaluate each layer in order. */
   for (Layer *layer : animation.layers()) {
-    for (Strip *strip : layer->strips()) {
-      if (!strip->contains_frame(eval_time)) {
-        continue;
-      }
+    auto layer_result = evaluate_layer(animated_id_ptr, *layer, output_index, anim_eval_context);
 
-      const auto strip_result = evaluate_strip(
-          animated_id_ptr, *strip, output_index, anim_eval_context);
-      if (!strip_result) {
-        continue;
-      }
-
-      /* TODO: merge overlapping strips indepently, and mix the results. For
-       * now, just limit to the first available strip. */
-      apply_evaluation_result(*strip_result, animated_id_ptr, flush_to_original);
-      break;
+    if (!layer_result) {
+      continue;
     }
+
+    apply_evaluation_result(*layer_result, animated_id_ptr, flush_to_original);
   }
 }
 
