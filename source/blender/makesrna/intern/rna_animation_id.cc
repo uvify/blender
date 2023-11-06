@@ -25,11 +25,11 @@
 #include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_layer_mix_mode_items[] = {
-    {OVERRIDE, "OVERRIDE", 0, "Override", ""},
-    {COMBINE, "COMBINE", 0, "Combine", ""},
-    {ADD, "ADD", 0, "Add", ""},
-    {SUBTRACT, "SUBTRACT", 0, "Subtract", ""},
-    {MULTIPLY, "MULTIPLY", 0, "Multiply", ""},
+    {ANIM_LAYER_MIX_OVERRIDE, "OVERRIDE", 0, "Override", ""},
+    {ANIM_LAYER_MIX_COMBINE, "COMBINE", 0, "Combine", ""},
+    {ANIM_LAYER_MIX_ADD, "ADD", 0, "Add", ""},
+    {ANIM_LAYER_MIX_SUBTRACT, "SUBTRACT", 0, "Subtract", ""},
+    {ANIM_LAYER_MIX_MULTIPLY, "MULTIPLY", 0, "Multiply", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

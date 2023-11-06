@@ -366,19 +366,19 @@ EvaluationResult blend_layer_results(const EvaluationResult &last_result,
     /* TODO: move this to a separate function. And write more smartness for rotations. */
     const eAnimationLayer_MixMode mix_mode = eAnimationLayer_MixMode(current_layer.mix_mode);
     switch (mix_mode) {
-      case OVERRIDE:
+      case ANIM_LAYER_MIX_OVERRIDE:
         last_prop->value = anim_prop.value * current_layer.influence;
         break;
-      case COMBINE:
+      case ANIM_LAYER_MIX_COMBINE:
         last_prop->value = lerp(current_layer.influence, last_prop->value, anim_prop.value);
         break;
-      case ADD:
+      case ANIM_LAYER_MIX_ADD:
         last_prop->value += anim_prop.value * current_layer.influence;
         break;
-      case SUBTRACT:
+      case ANIM_LAYER_MIX_SUBTRACT:
         last_prop->value -= anim_prop.value * current_layer.influence;
         break;
-      case MULTIPLY:
+      case ANIM_LAYER_MIX_MULTIPLY:
         last_prop->value *= anim_prop.value * current_layer.influence;
         break;
     };
