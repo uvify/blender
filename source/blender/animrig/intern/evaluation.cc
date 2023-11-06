@@ -46,6 +46,18 @@ class PropIdentifier {
   }
 };
 
+class AnimatedProperty {
+ public:
+  float value;
+  PathResolvedRNA prop_rna;
+
+  AnimatedProperty(const float value, const PathResolvedRNA &prop_rna)
+      : value(value), prop_rna(prop_rna)
+  {
+  }
+  ~AnimatedProperty() = default;
+};
+
 /* Evaluated FCurves for some animation output.
  * Mapping from property identifier to its float value.
  *
@@ -62,18 +74,21 @@ class EvaluationResult {
   ~EvaluationResult() = default;
 
  protected:
-  /* Pair of (rna_path, array_index). */
-  using EvaluationMap = Map<PropIdentifier, float>;
+  using EvaluationMap = Map<PropIdentifier, AnimatedProperty>;
   EvaluationMap result_;
 
  public:
-  void store(const StringRefNull rna_path, const int array_index, const float value)
+  void store(const StringRefNull rna_path,
+             const int array_index,
+             const float value,
+             const PathResolvedRNA &prop_rna)
   {
     PropIdentifier key(rna_path, array_index);
-    result_.add(key, value);
+    AnimatedProperty anim_prop(value, prop_rna);
+    result_.add(key, anim_prop);
   }
 
-  float value(const StringRefNull rna_path, const int array_index) const
+  AnimatedProperty value(const StringRefNull rna_path, const int array_index) const
   {
     PropIdentifier key(rna_path, array_index);
     return result_.lookup(key);
@@ -159,10 +174,7 @@ static std::optional<EvaluationResult> evaluate_keyframe_strip(
     }
 
     const float curval = calculate_fcurve(&anim_rna, fcu, &offset_eval_context);
-
-    // TODO: store `anim_rna` in there as well, so that when the result needs to be applied, we
-    // don't have to do another call to BKE_animsys_rna_path_resolve().
-    evaluation_result.store(fcu->rna_path, fcu->array_index, curval);
+    evaluation_result.store(fcu->rna_path, fcu->array_index, curval, anim_rna);
   }
 
   return evaluation_result;
@@ -174,17 +186,12 @@ void apply_evaluation_result(const EvaluationResult &evaluation_result,
 {
   for (auto channel_result : evaluation_result.items()) {
     const PropIdentifier &prop_ident = channel_result.key;
-    const float animated_value = channel_result.value;
-
-    // TODO: get from the EvaluationResult.
-    PathResolvedRNA anim_rna;
-    if (!BKE_animsys_rna_path_resolve(
-            animated_id_ptr, prop_ident.rna_path.c_str(), prop_ident.array_index, &anim_rna))
-    {
-      continue;
-    }
+    const AnimatedProperty &prop_value = channel_result.value;
+    const float animated_value = prop_value.value;
+    PathResolvedRNA anim_rna = prop_value.prop_rna;
 
     BKE_animsys_write_to_rna_path(&anim_rna, animated_value);
+
     if (flush_to_original) {
       animsys_write_orig_anim_rna(
           animated_id_ptr, prop_ident.rna_path.c_str(), prop_ident.array_index, animated_value);
