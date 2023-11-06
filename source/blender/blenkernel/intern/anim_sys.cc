@@ -3924,7 +3924,7 @@ void BKE_animsys_evaluate_animdata(ID *id,
       blender::animrig::evaluate_animation(&id_ptr,
                                            adt->animation->wrap(),
                                            adt->output_stable_index,
-                                           anim_eval_context,
+                                           *anim_eval_context,
                                            flush_to_original);
     }
     else {

@@ -9,7 +9,82 @@
 #include "BKE_animsys.h"
 #include "BKE_fcurve.h"
 
+#include "BLI_map.hh"
+
+#include <optional>
+
 namespace blender::animrig {
+
+namespace {
+
+class PropIdentifier {
+ public:
+  std::string rna_path;
+  int array_index;
+
+  PropIdentifier() = default;
+  ~PropIdentifier() = default;
+
+  /* TODO: should we use the PointerRNA or PropertyRNA type here instead? */
+  PropIdentifier(const StringRefNull rna_path, const int array_index)
+      : rna_path(rna_path), array_index(array_index)
+  {
+  }
+
+  bool operator==(const PropIdentifier &other) const
+  {
+    return rna_path == other.rna_path && array_index == other.array_index;
+  }
+  bool operator!=(const PropIdentifier &other) const
+  {
+    return !(*this == other);
+  }
+
+  uint64_t hash() const
+  {
+    return get_default_hash_2(rna_path, array_index);
+  }
+};
+
+/* Evaluated FCurves for some animation output.
+ * Mapping from property identifier to its float value.
+ *
+ * Can be fed to the evaluation of the next layer, mixed with another strip, or
+ * used to modify actual RNA properties.
+ *
+ * TODO: see if this is efficient, and contains enough info, for mixing. For now
+ * this just captures the FCurve evaluation result, but doesn't have any info
+ * about how to do the mixing (LERP, quaternion SLERP, etc.).
+ */
+class EvaluationResult {
+ public:
+  EvaluationResult() = default;
+  ~EvaluationResult() = default;
+
+ protected:
+  /* Pair of (rna_path, array_index). */
+  using EvaluationMap = Map<PropIdentifier, float>;
+  EvaluationMap result_;
+
+ public:
+  void store(const StringRefNull rna_path, const int array_index, const float value)
+  {
+    PropIdentifier key(rna_path, array_index);
+    result_.add(key, value);
+  }
+
+  float value(const StringRefNull rna_path, const int array_index) const
+  {
+    PropIdentifier key(rna_path, array_index);
+    return result_.lookup(key);
+  }
+
+  EvaluationMap::ItemIterator items() const
+  {
+    return result_.items();
+  }
+};
+}  // namespace
 
 /* Copy of the same-named function in anim_sys.cc, with the check on action groups removed. */
 static bool is_fcurve_evaluatable(const FCurve *fcu)
@@ -44,8 +119,8 @@ static void animsys_construct_orig_pointer_rna(const PointerRNA *ptr, PointerRNA
 /* Copy of the same-named function in anim_sys.cc. */
 static void animsys_write_orig_anim_rna(PointerRNA *ptr,
                                         const char *rna_path,
-                                        int array_index,
-                                        float value)
+                                        const int array_index,
+                                        const float value)
 {
   PointerRNA ptr_orig;
   animsys_construct_orig_pointer_rna(ptr, &ptr_orig);
@@ -58,17 +133,18 @@ static void animsys_write_orig_anim_rna(PointerRNA *ptr,
 }
 
 /* Returns whether the strip was evaluated. */
-static bool evaluate_keyframe_strip(PointerRNA *animated_id_ptr,
-                                    KeyframeStrip &key_strip,
-                                    const output_index_t output_index,
-                                    const AnimationEvalContext *offset_eval_context,
-                                    const bool flush_to_original)
+static std::optional<EvaluationResult> evaluate_keyframe_strip(
+    PointerRNA *animated_id_ptr,
+    KeyframeStrip &key_strip,
+    const output_index_t output_index,
+    const AnimationEvalContext &offset_eval_context)
 {
   ChannelsForOutput *chans_for_out = key_strip.chans_for_out(output_index);
   if (!chans_for_out) {
-    return false;
+    return {};
   }
 
+  EvaluationResult evaluation_result;
   for (FCurve *fcu : chans_for_out->fcurves()) {
     /* Blatant copy of animsys_evaluate_fcurves(). */
 
@@ -82,24 +158,48 @@ static bool evaluate_keyframe_strip(PointerRNA *animated_id_ptr,
       continue;
     }
 
-    const float curval = calculate_fcurve(&anim_rna, fcu, offset_eval_context);
-    BKE_animsys_write_to_rna_path(&anim_rna, curval);
-    if (flush_to_original) {
-      animsys_write_orig_anim_rna(animated_id_ptr, fcu->rna_path, fcu->array_index, curval);
-    }
+    const float curval = calculate_fcurve(&anim_rna, fcu, &offset_eval_context);
+
+    // TODO: store `anim_rna` in there as well, so that when the result needs to be applied, we
+    // don't have to do another call to BKE_animsys_rna_path_resolve().
+    evaluation_result.store(fcu->rna_path, fcu->array_index, curval);
   }
 
-  return true;
+  return evaluation_result;
+}
+
+void apply_evaluation_result(const EvaluationResult &evaluation_result,
+                             PointerRNA *animated_id_ptr,
+                             const bool flush_to_original)
+{
+  for (auto channel_result : evaluation_result.items()) {
+    const PropIdentifier &prop_ident = channel_result.key;
+    const float animated_value = channel_result.value;
+
+    // TODO: get from the EvaluationResult.
+    PathResolvedRNA anim_rna;
+    if (!BKE_animsys_rna_path_resolve(
+            animated_id_ptr, prop_ident.rna_path.c_str(), prop_ident.array_index, &anim_rna))
+    {
+      continue;
+    }
+
+    BKE_animsys_write_to_rna_path(&anim_rna, animated_value);
+    if (flush_to_original) {
+      animsys_write_orig_anim_rna(
+          animated_id_ptr, prop_ident.rna_path.c_str(), prop_ident.array_index, animated_value);
+    }
+  }
 }
 
 /* Returns whether the strip was evaluated. */
-static bool evaluate_strip(PointerRNA *animated_id_ptr,
-                           Strip &strip,
-                           const output_index_t output_index,
-                           const AnimationEvalContext *anim_eval_context,
-                           const bool flush_to_original)
+static std::optional<EvaluationResult> evaluate_strip(
+    PointerRNA *animated_id_ptr,
+    Strip &strip,
+    const output_index_t output_index,
+    const AnimationEvalContext &anim_eval_context)
 {
-  AnimationEvalContext offset_eval_context = *anim_eval_context;
+  AnimationEvalContext offset_eval_context = anim_eval_context;
   /* Positive offset means the entire strip is pushed "to the right", so
    * evaluation needs to happen further "to the left". */
   offset_eval_context.eval_time -= strip.frame_offset;
@@ -108,20 +208,20 @@ static bool evaluate_strip(PointerRNA *animated_id_ptr,
     case ANIM_STRIP_TYPE_KEYFRAME: {
       KeyframeStrip &key_strip = strip.as<KeyframeStrip>();
       return evaluate_keyframe_strip(
-          animated_id_ptr, key_strip, output_index, &offset_eval_context, flush_to_original);
+          animated_id_ptr, key_strip, output_index, offset_eval_context);
     }
   }
 
-  return false;
+  return {};
 }
 
 void evaluate_animation(PointerRNA *animated_id_ptr,
                         Animation &animation,
                         const output_index_t output_index,
-                        const AnimationEvalContext *anim_eval_context,
+                        const AnimationEvalContext &anim_eval_context,
                         const bool flush_to_original)
 {
-  const float eval_time = anim_eval_context->eval_time;
+  const float eval_time = anim_eval_context.eval_time;
 
   /* Evaluate each layer in order. */
   for (Layer *layer : animation.layers()) {
@@ -130,14 +230,16 @@ void evaluate_animation(PointerRNA *animated_id_ptr,
         continue;
       }
 
-      const bool strip_was_evaluated = evaluate_strip(
-          animated_id_ptr, *strip, output_index, anim_eval_context, flush_to_original);
-
-      /* TODO: merge overlapping strips indepently, and mix the results. For now, just limit to the
-       * first available strip. */
-      if (strip_was_evaluated) {
-        break;
+      const auto strip_result = evaluate_strip(
+          animated_id_ptr, *strip, output_index, anim_eval_context);
+      if (!strip_result) {
+        continue;
       }
+
+      /* TODO: merge overlapping strips indepently, and mix the results. For
+       * now, just limit to the first available strip. */
+      apply_evaluation_result(*strip_result, animated_id_ptr, flush_to_original);
+      break;
     }
   }
 }

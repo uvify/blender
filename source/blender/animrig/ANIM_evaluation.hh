@@ -25,7 +25,7 @@ namespace blender::animrig {
 void evaluate_animation(PointerRNA *animated_id_ptr,
                         Animation &animation,
                         output_index_t output_index,
-                        const AnimationEvalContext *anim_eval_context,
+                        const AnimationEvalContext &anim_eval_context,
                         bool flush_to_original);
 
 }  // namespace blender::animrig
