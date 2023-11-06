@@ -111,6 +111,80 @@ class EvaluationResult {
 };
 }  // namespace
 
+/**
+ * Evaluate the animation data on the given layer, for the given output. This
+ * just returns the evaluation result, without taking any other layers,
+ * blending, influence, etc. into account. */
+std::optional<EvaluationResult> evaluate_layer(PointerRNA *animated_id_ptr,
+                                               Layer &layer,
+                                               output_index_t output_index,
+                                               const AnimationEvalContext &anim_eval_context);
+
+/**
+ * Blend the 'current layer' with the 'last evaluation result', returning the
+ * blended result.
+ */
+EvaluationResult blend_layer_results(const EvaluationResult &last_result,
+                                     const EvaluationResult &current_result,
+                                     const Layer &current_layer);
+
+/**
+ * Apply the result of the animation evaluation to the given data-block.
+ *
+ * \param flush_to_original when true, look up the original data-block (assuming the given one is
+ * an evaluated copy) and update that too.
+ */
+void apply_evaluation_result(const EvaluationResult &evaluation_result,
+                             PointerRNA *animated_id_ptr,
+                             bool flush_to_original);
+
+/**
+ * Top level animation evaluation function.
+ *
+ * Animate the given ID, using the animation data-block and the given output.
+ *
+ * \param flush_to_original when true, look up the original data-block (assuming the given one is
+ * an evaluated copy) and update that too.
+ */
+void evaluate_animation(PointerRNA *animated_id_ptr,
+                        Animation &animation,
+                        const output_index_t output_index,
+                        const AnimationEvalContext &anim_eval_context,
+                        const bool flush_to_original)
+{
+  std::optional<EvaluationResult> last_result;
+
+  /* Evaluate each layer in order. */
+  for (Layer *layer : animation.layers()) {
+    if (layer->influence <= 0.0f) {
+      /* Don't bother evaluating layers without influence. */
+      continue;
+    }
+
+    auto layer_result = evaluate_layer(animated_id_ptr, *layer, output_index, anim_eval_context);
+    if (!layer_result) {
+      continue;
+    }
+
+    if (!last_result) {
+      /* Simple case: no results so far, so just use this layer as-is. There is
+       * nothing to blend/combine with, so ignore the influence and combination
+       * options. */
+      last_result = layer_result;
+      continue;
+    }
+
+    /* Complex case: blend this layer's result into the previous layer's result. */
+    last_result = blend_layer_results(*last_result, *layer_result, *layer);
+  }
+
+  if (!last_result) {
+    return;
+  }
+
+  apply_evaluation_result(*last_result, animated_id_ptr, flush_to_original);
+}
+
 /* Copy of the same-named function in anim_sys.cc, with the check on action groups removed. */
 static bool is_fcurve_evaluatable(const FCurve *fcu)
 {
@@ -262,20 +336,20 @@ static float lerp(const float t, const float a, const float b)
   return (a + t * (b - a));
 }
 
-EvaluationResult blend_layer_results(const EvaluationResult &last_results,
-                                     const EvaluationResult &current_results,
+EvaluationResult blend_layer_results(const EvaluationResult &last_result,
+                                     const EvaluationResult &current_result,
                                      const Layer &current_layer)
 {
   /* TODO?: store the layer results sequentially, so that we can step through
    * them in parallel, instead of iterating over one and doing map lookups on
    * the other. */
 
-  /* TODO?: make `last_results` non-const, as it's likely faster to update that,
+  /* TODO?: make `last_result` non-const, as it's likely faster to update that,
    * instead of copying everything and updating the copy. */
 
-  EvaluationResult blend = last_results;
+  EvaluationResult blend = last_result;
 
-  for (auto channel_result : current_results.items()) {
+  for (auto channel_result : current_result.items()) {
     const PropIdentifier &prop_ident = channel_result.key;
     AnimatedProperty *last_prop = blend.lookup_ptr(prop_ident);
     const AnimatedProperty &anim_prop = channel_result.value;
@@ -311,45 +385,6 @@ EvaluationResult blend_layer_results(const EvaluationResult &last_results,
   }
 
   return blend;
-}
-
-void evaluate_animation(PointerRNA *animated_id_ptr,
-                        Animation &animation,
-                        const output_index_t output_index,
-                        const AnimationEvalContext &anim_eval_context,
-                        const bool flush_to_original)
-{
-  std::optional<EvaluationResult> last_result;
-
-  /* Evaluate each layer in order. */
-  for (Layer *layer : animation.layers()) {
-    if (layer->influence <= 0.0f) {
-      /* Don't bother evaluating layers without influence. */
-      continue;
-    }
-
-    auto layer_result = evaluate_layer(animated_id_ptr, *layer, output_index, anim_eval_context);
-    if (!layer_result) {
-      continue;
-    }
-
-    if (!last_result) {
-      /* Simple case: no results so far, so just use this layer as-is. There is
-       * nothing to blend/combine with, so ignore the influence and combination
-       * options. */
-      last_result = layer_result;
-      continue;
-    }
-
-    /* Complex case: blend this layer's result into the previous layer's result. */
-    last_result = blend_layer_results(*last_result, *layer_result, *layer);
-  }
-
-  if (!last_result) {
-    return;
-  }
-
-  apply_evaluation_result(*last_result, animated_id_ptr, flush_to_original);
 }
 
 }  // namespace blender::animrig
