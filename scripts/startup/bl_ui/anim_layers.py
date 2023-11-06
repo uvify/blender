@@ -46,6 +46,7 @@ class VIEW3D_PT_animation_layers(Panel):
             col = layerbox.column(align=True)
             col.prop(layer, "name", text=f"Layer {layer_idx+1}:")
             col.prop(layer, "influence")
+            col.prop(layer, "mix_mode")
 
             for strip_idx, strip in enumerate(layer.strips):
                 stripcol = col.column(align=True)

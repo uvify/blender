@@ -1289,6 +1289,7 @@ typedef struct AnimationLayer {
 #endif
 } AnimationLayer;
 
+/* TODO: make this an enum class? */
 typedef enum eAnimationLayer_MixMode {
   OVERRIDE = 0,
   COMBINE = 1,

@@ -24,6 +24,15 @@
 
 #include "WM_types.hh"
 
+const EnumPropertyItem rna_enum_layer_mix_mode_items[] = {
+    {OVERRIDE, "OVERRIDE", 0, "Override", ""},
+    {COMBINE, "COMBINE", 0, "Combine", ""},
+    {ADD, "ADD", 0, "Add", ""},
+    {SUBTRACT, "SUBTRACT", 0, "Subtract", ""},
+    {MULTIPLY, "MULTIPLY", 0, "Multiply", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifdef RNA_RUNTIME
 
 // #  include "BKE_anim_data.h"
@@ -406,8 +415,12 @@ static void rna_def_animation_layer(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_range(prop, 0.0, 1.0, 3, 2);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, nullptr);
 
-  // TODO: send notifiers when changed, as the animation result depends on this.
+  prop = RNA_def_property(srna, "mix_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_enum_items(prop, rna_enum_layer_mix_mode_items);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, nullptr);
 
   /* Collection properties .*/
   prop = RNA_def_property(srna, "strips", PROP_COLLECTION, PROP_NONE);
