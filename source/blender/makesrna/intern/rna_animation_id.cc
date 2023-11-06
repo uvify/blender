@@ -204,7 +204,9 @@ static char *rna_AnimationStrip_path(const PointerRNA *ptr)
 
       PointerRNA layer_ptr = RNA_pointer_create(&anim.id, &RNA_AnimationLayer, layer);
       char *layer_path = rna_AnimationLayer_path(&layer_ptr);
-      return BLI_sprintfN("%s.strips[%d]", layer_path, i);
+      char *strip_path = BLI_sprintfN("%s.strips[%d]", layer_path, i);
+      MEM_freeN(layer_path);
+      return strip_path;
     }
   }
 
