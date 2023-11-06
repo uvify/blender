@@ -71,6 +71,7 @@ class AnimatedProperty {
 class EvaluationResult {
  public:
   EvaluationResult() = default;
+  EvaluationResult(const EvaluationResult &other) = default;
   ~EvaluationResult() = default;
 
  protected:
@@ -92,6 +93,15 @@ class EvaluationResult {
   {
     PropIdentifier key(rna_path, array_index);
     return result_.lookup(key);
+  }
+
+  const AnimatedProperty *lookup_ptr(const PropIdentifier &key) const
+  {
+    return result_.lookup_ptr(key);
+  }
+  AnimatedProperty *lookup_ptr(const PropIdentifier &key)
+  {
+    return result_.lookup_ptr(key);
   }
 
   EvaluationMap::ItemIterator items() const
@@ -186,9 +196,9 @@ void apply_evaluation_result(const EvaluationResult &evaluation_result,
 {
   for (auto channel_result : evaluation_result.items()) {
     const PropIdentifier &prop_ident = channel_result.key;
-    const AnimatedProperty &prop_value = channel_result.value;
-    const float animated_value = prop_value.value;
-    PathResolvedRNA anim_rna = prop_value.prop_rna;
+    const AnimatedProperty &anim_prop = channel_result.value;
+    const float animated_value = anim_prop.value;
+    PathResolvedRNA anim_rna = anim_prop.prop_rna;
 
     BKE_animsys_write_to_rna_path(&anim_rna, animated_value);
 
@@ -247,22 +257,99 @@ std::optional<EvaluationResult> evaluate_layer(PointerRNA *animated_id_ptr,
   return {};
 }
 
+static float lerp(const float t, const float a, const float b)
+{
+  return (a + t * (b - a));
+}
+
+EvaluationResult blend_layer_results(const EvaluationResult &last_results,
+                                     const EvaluationResult &current_results,
+                                     const Layer &current_layer)
+{
+  /* TODO?: store the layer results sequentially, so that we can step through
+   * them in parallel, instead of iterating over one and doing map lookups on
+   * the other. */
+
+  /* TODO?: make `last_results` non-const, as it's likely faster to update that,
+   * instead of copying everything and updating the copy. */
+
+  EvaluationResult blend = last_results;
+
+  for (auto channel_result : current_results.items()) {
+    const PropIdentifier &prop_ident = channel_result.key;
+    AnimatedProperty *last_prop = blend.lookup_ptr(prop_ident);
+    const AnimatedProperty &anim_prop = channel_result.value;
+
+    if (!last_prop) {
+      /* Nothing to blend with, so just take (influence * value). */
+      blend.store(prop_ident.rna_path,
+                  prop_ident.array_index,
+                  anim_prop.value * current_layer.influence,
+                  anim_prop.prop_rna);
+      continue;
+    }
+
+    /* TODO: move this to a separate function. And write more smartness for rotations. */
+    const eAnimationLayer_MixMode mix_mode = eAnimationLayer_MixMode(current_layer.mix_mode);
+    switch (mix_mode) {
+      case OVERRIDE:
+        last_prop->value = anim_prop.value * current_layer.influence;
+        break;
+      case COMBINE:
+        last_prop->value = lerp(current_layer.influence, last_prop->value, anim_prop.value);
+        break;
+      case ADD:
+        last_prop->value += anim_prop.value * current_layer.influence;
+        break;
+      case SUBTRACT:
+        last_prop->value -= anim_prop.value * current_layer.influence;
+        break;
+      case MULTIPLY:
+        last_prop->value *= anim_prop.value * current_layer.influence;
+        break;
+    };
+  }
+
+  return blend;
+}
+
 void evaluate_animation(PointerRNA *animated_id_ptr,
                         Animation &animation,
                         const output_index_t output_index,
                         const AnimationEvalContext &anim_eval_context,
                         const bool flush_to_original)
 {
+  std::optional<EvaluationResult> last_result;
+
   /* Evaluate each layer in order. */
   for (Layer *layer : animation.layers()) {
-    auto layer_result = evaluate_layer(animated_id_ptr, *layer, output_index, anim_eval_context);
+    if (layer->influence <= 0.0f) {
+      /* Don't bother evaluating layers without influence. */
+      continue;
+    }
 
+    auto layer_result = evaluate_layer(animated_id_ptr, *layer, output_index, anim_eval_context);
     if (!layer_result) {
       continue;
     }
 
-    apply_evaluation_result(*layer_result, animated_id_ptr, flush_to_original);
+    if (!last_result) {
+      /* Simple case: no results so far, so just use this layer as-is. There is
+       * nothing to blend/combine with, so ignore the influence and combination
+       * options. */
+      last_result = layer_result;
+      continue;
+    }
+
+    /* Complex case: blend this layer's result into the previous layer's result. */
+    last_result = blend_layer_results(*last_result, *layer_result, *layer);
   }
+
+  if (!last_result) {
+    return;
+  }
+
+  apply_evaluation_result(*last_result, animated_id_ptr, flush_to_original);
 }
 
 }  // namespace blender::animrig

@@ -402,6 +402,13 @@ static void rna_def_animation_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_name_property(srna, prop);
 
+  prop = RNA_def_property(srna, "influence", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0, 1.0, 3, 2);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+
+  // TODO: send notifiers when changed, as the animation result depends on this.
+
   /* Collection properties .*/
   prop = RNA_def_property(srna, "strips", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "AnimationStrip");
