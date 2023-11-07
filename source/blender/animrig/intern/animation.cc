@@ -22,6 +22,7 @@
 #include "atomic_ops.h"
 
 #include "ANIM_animation.hh"
+#include "ANIM_fcurve.hh"
 
 #include <cstdio>
 #include <cstring>

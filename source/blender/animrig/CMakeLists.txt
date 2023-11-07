@@ -20,6 +20,7 @@ set(INC_SYS
 )
 
 set(SRC
+  intern/action.cc
   intern/anim_rna.cc
   intern/animation.cc
   intern/bone_collections.cc
@@ -30,6 +31,7 @@ set(SRC
   intern/keyframing_auto.cc
   intern/visualkey.cc
 
+  ANIM_action.hh
   ANIM_animation.hh
   ANIM_armature_iter.hh
   ANIM_bone_collections.h
