@@ -59,19 +59,6 @@ const EnumPropertyItem rna_enum_layer_mix_mode_items[] = {
 
 #ifdef RNA_RUNTIME
 
-// #  include "BKE_anim_data.h"
-// #  include "BKE_animsys.h"
-// #  include "BKE_fcurve.h"
-
-// #  include "DEG_depsgraph.hh"
-// #  include "DEG_depsgraph_build.hh"
-
-// #  include "DNA_object_types.h"
-
-// #  include "ED_anim_api.hh"
-
-// #  include "WM_api.hh"
-
 #  include "ANIM_animation.hh"
 
 using namespace blender;
