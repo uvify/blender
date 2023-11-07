@@ -25,11 +25,35 @@
 #include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_layer_mix_mode_items[] = {
-    {ANIM_LAYER_MIX_OVERRIDE, "OVERRIDE", 0, "Override", ""},
-    {ANIM_LAYER_MIX_COMBINE, "COMBINE", 0, "Combine", ""},
-    {ANIM_LAYER_MIX_ADD, "ADD", 0, "Add", ""},
-    {ANIM_LAYER_MIX_SUBTRACT, "SUBTRACT", 0, "Subtract", ""},
-    {ANIM_LAYER_MIX_MULTIPLY, "MULTIPLY", 0, "Multiply", ""},
+    {ANIM_LAYER_MIX_OVERRIDE,
+     "OVERRIDE",
+     0,
+     "Override",
+     "Animation channels in this layer override the same channels from underlying layers"},
+    {ANIM_LAYER_MIX_COMBINE,
+     "COMBINE",
+     0,
+     "Combine",
+     "Animation channels in this layer are added, as sequential operations, to the output of "
+     "underlying layers"},
+    {ANIM_LAYER_MIX_ADD,
+     "ADD",
+     0,
+     "Add",
+     "Animation channels in this layer are added, on a per-channel basis, to the output of "
+     "underlying layers"},
+    {ANIM_LAYER_MIX_SUBTRACT,
+     "SUBTRACT",
+     0,
+     "Subtract",
+     "Animation channels in this layer are subtracted, on a per-channel basis, from the output of "
+     "underlying layers"},
+    {ANIM_LAYER_MIX_MULTIPLY,
+     "MULTIPLY",
+     0,
+     "Multiply",
+     "Animation channels in this layer are multiplied, on a per-channel basis, with the output of "
+     "underlying layers"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
