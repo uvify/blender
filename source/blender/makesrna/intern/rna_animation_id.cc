@@ -413,11 +413,17 @@ static void rna_def_animation_layer(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "influence", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(
+      prop,
+      "Influence",
+      "How much of this layer is used when blending into the output of lower layers");
   RNA_def_property_ui_range(prop, 0.0, 1.0, 3, 2);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, nullptr);
 
   prop = RNA_def_property(srna, "mix_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Mix Mode", "How animation of this layer is blended into the output of lower layers");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_enum_items(prop, rna_enum_layer_mix_mode_items);
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, nullptr);
