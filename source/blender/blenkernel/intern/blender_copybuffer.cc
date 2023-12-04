@@ -27,11 +27,11 @@
 #include "BKE_blender_copybuffer.h" /* own include */
 #include "BKE_blendfile.h"
 #include "BKE_blendfile_link_append.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph.hh"

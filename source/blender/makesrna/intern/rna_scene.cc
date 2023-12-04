@@ -32,11 +32,11 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_armature.h"
-#include "BKE_editmesh.h"
+#include "BKE_armature.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_idtype.h"
 #include "BKE_paint.hh"
-#include "BKE_volume.h"
+#include "BKE_volume.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_object.hh"
@@ -52,7 +52,7 @@
 #include "RE_pipeline.h"
 
 #ifdef WITH_FFMPEG
-#  include "BKE_writeffmpeg.h"
+#  include "BKE_writeffmpeg.hh"
 #  include "ffmpeg_compat.h"
 #  include <libavcodec/avcodec.h>
 #  include <libavformat/avformat.h>
@@ -726,7 +726,7 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 #  include "BKE_brush.hh"
 #  include "BKE_collection.h"
 #  include "BKE_colortools.h"
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 #  include "BKE_freestyle.h"
 #  include "BKE_global.h"
 #  include "BKE_gpencil_legacy.h"
@@ -734,13 +734,13 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 #  include "BKE_image.h"
 #  include "BKE_image_format.h"
 #  include "BKE_layer.h"
-#  include "BKE_main.h"
+#  include "BKE_main.hh"
 #  include "BKE_mesh.hh"
 #  include "BKE_node.h"
 #  include "BKE_pointcache.h"
 #  include "BKE_scene.h"
 #  include "BKE_screen.hh"
-#  include "BKE_unit.h"
+#  include "BKE_unit.hh"
 
 #  include "NOD_composite.hh"
 
@@ -3485,6 +3485,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_enum_bitflag_sdna(prop, nullptr, "snap_anim_mode");
   RNA_def_property_enum_items(prop, rna_enum_snap_animation_element_items);
   RNA_def_property_ui_text(prop, "Snap Anim Element", "Type of element to snap to");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_UNIT);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   /* image editor uses own set of snap modes */
@@ -3798,7 +3799,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
                            "Mode of automatic keyframe insertion for Objects, Bones and Masks");
 
   prop = RNA_def_property(srna, "use_record_with_nla", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", ANIMRECORD_FLAG_WITHNLA);
+  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_LAYERED_RECORD);
   RNA_def_property_ui_text(
       prop,
       "Layered",
@@ -7492,6 +7493,16 @@ static void rna_def_raytrace_eevee(BlenderRNA *brna)
       "Surface thickness used to detect intersection when using screen-tracing");
   RNA_def_property_range(prop, 1e-6f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 5, 3);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "screen_trace_max_roughness", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_ui_text(
+      prop,
+      "Screen-Trace Max Roughness",
+      "Maximum roughness to use the tracing pipeline for. Higher "
+      "roughness surfaces will use horizon scan. A value of 1 will disable horizon scan");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 

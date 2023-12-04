@@ -14,7 +14,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -195,14 +195,14 @@ static void do_enhance_details_brush_task(Object *ob,
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->cache->automasking, &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -226,7 +226,7 @@ static void do_enhance_details_brush_task(Object *ob,
   BKE_pbvh_vertex_iter_end;
 }
 
-static void SCULPT_enhance_details_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
+static void SCULPT_enhance_details_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nodes)
 {
   using namespace blender;
   SculptSession *ss = ob->sculpt;
@@ -276,14 +276,14 @@ static void do_smooth_brush_task(Object *ob,
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->cache->automasking, &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -317,8 +317,11 @@ static void do_smooth_brush_task(Object *ob,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_smooth(
-    Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask)
+void SCULPT_smooth(Sculpt *sd,
+                   Object *ob,
+                   blender::Span<PBVHNode *> nodes,
+                   float bstrength,
+                   const bool smooth_mask)
 {
   using namespace blender;
   SculptSession *ss = ob->sculpt;
@@ -352,7 +355,7 @@ void SCULPT_smooth(
   }
 }
 
-void SCULPT_do_smooth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
+void SCULPT_do_smooth_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
 
@@ -438,7 +441,7 @@ static void do_surface_smooth_brush_laplacian_task(Object *ob, const Brush *brus
 
   SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->cache->automasking, &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -446,7 +449,7 @@ static void do_surface_smooth_brush_laplacian_task(Object *ob, const Brush *brus
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -483,14 +486,14 @@ static void do_surface_smooth_brush_displace_task(Object *ob, const Brush *brush
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->cache->automasking, &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -508,7 +511,7 @@ static void do_surface_smooth_brush_displace_task(Object *ob, const Brush *brush
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_surface_smooth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
+void SCULPT_do_surface_smooth_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nodes)
 {
   using namespace blender;
   Brush *brush = BKE_paint_brush(&sd->paint);

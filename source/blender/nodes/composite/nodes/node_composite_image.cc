@@ -14,11 +14,11 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph_query.hh"
@@ -514,7 +514,7 @@ class ImageOperation : public NodeOperation {
     Result &result = get_result(identifier);
     result.allocate_texture(Domain(size));
 
-    GPUShader *shader = shader_manager().get(get_shader_name(identifier));
+    GPUShader *shader = context().get_shader(get_shader_name(identifier));
     GPU_shader_bind(shader);
 
     const int2 lower_bound = int2(0);
@@ -905,7 +905,7 @@ class RenderLayerOperation : public NodeOperation {
       return;
     }
 
-    GPUShader *shader = shader_manager().get(shader_name);
+    GPUShader *shader = context().get_shader(shader_name);
     GPU_shader_bind(shader);
 
     /* The compositing space might be limited to a subset of the pass texture, so only read that

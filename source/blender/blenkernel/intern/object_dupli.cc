@@ -41,24 +41,25 @@
 
 #include "BKE_collection.h"
 #include "BKE_duplilist.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_instances.hh"
-#include "BKE_lattice.h"
-#include "BKE_main.h"
+#include "BKE_lattice.hh"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
 #include "BKE_type_conversions.hh"
-#include "BKE_vfont.h"
+#include "BKE_vfont.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -1045,7 +1046,7 @@ static void make_duplis_geometry_set_impl(const DupliContext *ctx,
 
 static void make_duplis_geometry_set(const DupliContext *ctx)
 {
-  const GeometrySet *geometry_set = ctx->object->runtime.geometry_set_eval;
+  const GeometrySet *geometry_set = ctx->object->runtime->geometry_set_eval;
   make_duplis_geometry_set_impl(ctx, *geometry_set, ctx->object->object_to_world, false, false);
 }
 
@@ -1712,7 +1713,7 @@ static const DupliGenerator *get_dupli_generator(const DupliContext *ctx)
   int transflag = ctx->object->transflag;
   int visibility_flag = ctx->object->visibility_flag;
 
-  if ((transflag & OB_DUPLI) == 0 && ctx->object->runtime.geometry_set_eval == nullptr) {
+  if ((transflag & OB_DUPLI) == 0 && ctx->object->runtime->geometry_set_eval == nullptr) {
     return nullptr;
   }
 
@@ -1738,7 +1739,7 @@ static const DupliGenerator *get_dupli_generator(const DupliContext *ctx)
     }
   }
 
-  if (ctx->object->runtime.geometry_set_eval != nullptr) {
+  if (ctx->object->runtime->geometry_set_eval != nullptr) {
     if (blender::bke::object_has_geometry_set_instances(*ctx->object)) {
       return &gen_dupli_geometry_set;
     }
@@ -1939,18 +1940,21 @@ static bool find_rna_property_rgba(PointerRNA *id_ptr, const char *name, float r
   return false;
 }
 
-static bool find_rna_property_rgba(ID *id, const char *name, float r_data[4])
+static bool find_rna_property_rgba(const ID *id, const char *name, float r_data[4])
 {
-  PointerRNA ptr = RNA_id_pointer_create(id);
+  PointerRNA ptr = RNA_id_pointer_create(const_cast<ID *>(id));
   return find_rna_property_rgba(&ptr, name, r_data);
 }
 
-bool BKE_object_dupli_find_rgba_attribute(
-    Object *ob, DupliObject *dupli, Object *dupli_parent, const char *name, float r_value[4])
+bool BKE_object_dupli_find_rgba_attribute(const Object *ob,
+                                          const DupliObject *dupli,
+                                          const Object *dupli_parent,
+                                          const char *name,
+                                          float r_value[4])
 {
   /* Check the dupli particle system. */
   if (dupli && dupli->particle_system) {
-    ParticleSettings *settings = dupli->particle_system->part;
+    const ParticleSettings *settings = dupli->particle_system->part;
 
     if (find_rna_property_rgba(&settings->id, name, r_value)) {
       return true;
@@ -1974,7 +1978,7 @@ bool BKE_object_dupli_find_rgba_attribute(
     }
 
     /* Check the main object data (e.g. mesh). */
-    if (ob->data && find_rna_property_rgba((ID *)ob->data, name, r_value)) {
+    if (ob->data && find_rna_property_rgba((const ID *)ob->data, name, r_value)) {
       return true;
     }
   }
@@ -1983,13 +1987,14 @@ bool BKE_object_dupli_find_rgba_attribute(
   return false;
 }
 
-bool BKE_view_layer_find_rgba_attribute(Scene *scene,
-                                        ViewLayer *layer,
+bool BKE_view_layer_find_rgba_attribute(const Scene *scene,
+                                        const ViewLayer *layer,
                                         const char *name,
                                         float r_value[4])
 {
   if (layer) {
-    PointerRNA layer_ptr = RNA_pointer_create(&scene->id, &RNA_ViewLayer, layer);
+    PointerRNA layer_ptr = RNA_pointer_create(
+        &const_cast<ID &>(scene->id), &RNA_ViewLayer, const_cast<ViewLayer *>(layer));
 
     if (find_rna_property_rgba(&layer_ptr, name, r_value)) {
       return true;

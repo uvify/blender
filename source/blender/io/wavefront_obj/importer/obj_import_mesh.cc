@@ -6,16 +6,18 @@
  * \ingroup obj
  */
 
+#include <iostream>
+
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_object.hh"
 #include "BKE_object_deform.h"
 
@@ -39,7 +41,8 @@ Object *MeshFromGeometry::create_mesh(Main *bmain,
     /* Empty mesh */
     return nullptr;
   }
-  std::string ob_name{mesh_geometry_.geometry_name_};
+  std::string ob_name = get_geometry_name(mesh_geometry_.geometry_name_,
+                                          import_params.collection_separator);
   if (ob_name.empty()) {
     ob_name = "Untitled";
   }

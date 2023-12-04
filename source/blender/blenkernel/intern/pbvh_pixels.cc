@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_attribute.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_pbvh_api.hh"
@@ -173,7 +173,7 @@ static void split_pixel_node(
       continue;
     }
 
-    const float(*vert_cos)[3] = BKE_pbvh_get_vert_positions(pbvh);
+    const Span<float3> vert_cos = BKE_pbvh_get_vert_positions(pbvh);
     PBVHData &pbvh_data = BKE_pbvh_pixels_data_get(*pbvh);
 
     for (const PackedPixelRow &row : tile.pixel_rows) {
@@ -667,7 +667,8 @@ static bool update_pixels(PBVH *pbvh, Mesh *mesh, Image *image, ImageUser *image
   const AttributeAccessor attributes = mesh->attributes();
   const VArraySpan uv_map = *attributes.lookup<float2>(active_uv_name, ATTR_DOMAIN_CORNER);
 
-  uv_islands::MeshData mesh_data(pbvh->looptri, pbvh->corner_verts, uv_map, pbvh->vert_positions);
+  uv_islands::MeshData mesh_data(
+      pbvh->looptri, mesh->corner_verts(), uv_map, pbvh->vert_positions);
   uv_islands::UVIslands islands(mesh_data);
 
   uv_islands::UVIslandsMask uv_masks;

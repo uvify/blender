@@ -19,13 +19,13 @@
 #include "BLI_task.hh"
 #include "BLI_timeit.hh"
 
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_shrinkwrap.h"
+#include "BKE_shrinkwrap.hh"
 #include "BKE_subdiv_ccg.hh"
 
 using blender::float3;
@@ -47,15 +47,6 @@ static void free_mesh_eval(MeshRuntime &mesh_runtime)
   }
 }
 
-static void free_subdiv_ccg(MeshRuntime &mesh_runtime)
-{
-  /* TODO(sergey): Does this really belong here? */
-  if (mesh_runtime.subdiv_ccg != nullptr) {
-    BKE_subdiv_ccg_destroy(mesh_runtime.subdiv_ccg);
-    mesh_runtime.subdiv_ccg = nullptr;
-  }
-}
-
 static void free_bvh_cache(MeshRuntime &mesh_runtime)
 {
   if (mesh_runtime.bvh_cache) {
@@ -72,10 +63,11 @@ static void free_batch_cache(MeshRuntime &mesh_runtime)
   }
 }
 
+MeshRuntime::MeshRuntime() {}
+
 MeshRuntime::~MeshRuntime()
 {
   free_mesh_eval(*this);
-  free_subdiv_ccg(*this);
   free_bvh_cache(*this);
   free_batch_cache(*this);
   if (this->shrinkwrap_data) {
@@ -199,6 +191,11 @@ const blender::bke::LooseVertCache &Mesh::verts_no_face() const
   return this->runtime->verts_no_face_cache.data();
 }
 
+bool Mesh::no_overlapping_topology() const
+{
+  return this->flag & ME_NO_OVERLAPPING_TOPOLOGY;
+}
+
 const blender::bke::LooseEdgeCache &Mesh::loose_edges() const
 {
   using namespace blender::bke;
@@ -227,6 +224,12 @@ void Mesh::tag_loose_edges_none() const
     r_data.count = 0;
   });
   try_tag_verts_no_face_none(*this);
+}
+
+void Mesh::tag_overlapping_none()
+{
+  using namespace blender::bke;
+  this->flag |= ME_NO_OVERLAPPING_TOPOLOGY;
 }
 
 blender::Span<MLoopTri> Mesh::looptris() const
@@ -302,7 +305,7 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
 {
   /* Tagging shared caches dirty will free the allocated data if there is only one user. */
   free_bvh_cache(*mesh->runtime);
-  free_subdiv_ccg(*mesh->runtime);
+  mesh->runtime->subdiv_ccg.reset();
   mesh->runtime->bounds_cache.tag_dirty();
   mesh->runtime->vert_to_face_offset_cache.tag_dirty();
   mesh->runtime->vert_to_face_map_cache.tag_dirty();
@@ -321,6 +324,7 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
     BKE_shrinkwrap_boundary_data_free(mesh->runtime->shrinkwrap_data);
     mesh->runtime->shrinkwrap_data = nullptr;
   }
+  mesh->flag &= ~ME_NO_OVERLAPPING_TOPOLOGY;
 }
 
 void BKE_mesh_tag_edges_split(Mesh *mesh)
@@ -328,7 +332,7 @@ void BKE_mesh_tag_edges_split(Mesh *mesh)
   /* Triangulation didn't change because vertex positions and loop vertex indices didn't change. */
   free_bvh_cache(*mesh->runtime);
   mesh->runtime->vert_normals_cache.tag_dirty();
-  free_subdiv_ccg(*mesh->runtime);
+  mesh->runtime->subdiv_ccg.reset();
   mesh->runtime->vert_to_face_offset_cache.tag_dirty();
   mesh->runtime->vert_to_face_map_cache.tag_dirty();
   mesh->runtime->vert_to_corner_map_cache.tag_dirty();

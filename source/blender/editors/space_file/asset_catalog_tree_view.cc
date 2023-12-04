@@ -12,7 +12,7 @@
 #include "AS_asset_catalog_tree.hh"
 #include "AS_asset_library.hh"
 
-#include "BKE_asset.h"
+#include "BKE_asset.hh"
 
 #include "BLI_string_ref.hh"
 
@@ -141,8 +141,10 @@ class AssetCatalogDropTarget : public ui::TreeViewItemDropTarget {
   std::string drop_tooltip_asset_catalog(const wmDrag &drag) const;
 };
 
-/** Only reason this isn't just `BasicTreeViewItem` is to add a '+' icon for adding a root level
- * catalog. */
+/**
+ * Only reason this isn't just `BasicTreeViewItem` is to add a '+' icon for adding a root level
+ * catalog.
+ */
 class AssetCatalogTreeViewAllItem : public ui::BasicTreeViewItem {
   using BasicTreeViewItem::BasicTreeViewItem;
 

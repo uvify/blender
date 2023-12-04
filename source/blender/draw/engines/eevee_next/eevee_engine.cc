@@ -63,7 +63,8 @@ static void eevee_engine_init(void *vedata)
       rctf default_border;
       BLI_rctf_init(&default_border, 0.0f, 1.0f, 0.0f, 1.0f);
       bool is_default_border = BLI_rctf_compare(&scene->r.border, &default_border, 0.0f);
-      if (!is_default_border) {
+      bool use_border = scene->r.mode & R_BORDER;
+      if (!is_default_border && use_border) {
         rctf viewborder;
         /* TODO(fclem) Might be better to get it from DRW. */
         ED_view3d_calc_camera_border(scene, depsgraph, region, v3d, rv3d, &viewborder, false);
@@ -109,6 +110,13 @@ static void eevee_cache_populate(void *vedata, Object *object)
 static void eevee_cache_finish(void *vedata)
 {
   reinterpret_cast<EEVEE_Data *>(vedata)->instance->end_sync();
+}
+
+static void eevee_view_update(void *vedata)
+{
+  if (eevee::Instance *instance = reinterpret_cast<EEVEE_Data *>(vedata)->instance) {
+    instance->view_update();
+  }
 }
 
 static void eevee_engine_free()
@@ -176,7 +184,7 @@ DrawEngineType draw_engine_eevee_next_type = {
     /*cache_populate*/ &eevee_cache_populate,
     /*cache_finish*/ &eevee_cache_finish,
     /*draw_scene*/ &eevee_draw_scene,
-    /*view_update*/ nullptr,
+    /*view_update*/ &eevee_view_update,
     /*id_update*/ nullptr,
     /*render_to_image*/ &eevee_render_to_image,
     /*store_metadata*/ &eevee_store_metadata,

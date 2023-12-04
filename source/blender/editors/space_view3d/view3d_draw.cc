@@ -18,21 +18,21 @@
 #include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_camera.h"
 #include "BKE_collection.h"
-#include "BKE_context.h"
-#include "BKE_customdata.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
 #include "BKE_studiolight.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "BLF_api.h"
 
@@ -2496,10 +2496,6 @@ void ED_view3d_datamask(const Scene *scene,
             if (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_WEIGHT) {
               r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
             }
-            break;
-          }
-          case OB_MODE_SCULPT: {
-            r_cddata_masks->vmask |= CD_MASK_PAINT_MASK;
             break;
           }
         }

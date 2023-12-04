@@ -140,7 +140,7 @@ bool MTLCommandBufferManager::submit(bool wait)
     MTL_LOG_WARNING(
         "Maximum number of command buffers in flight. Host will wait until GPU work has "
         "completed. Consider increasing GHOST_ContextCGL::max_command_buffer_count or reducing "
-        "work fragmentation to better utilise system hardware. Command buffers are flushed upon "
+        "work fragmentation to better utilize system hardware. Command buffers are flushed upon "
         "GPUContext switches, this is the most common cause of excessive command buffer "
         "generation.");
   }
@@ -286,7 +286,7 @@ bool MTLCommandBufferManager::end_active_command_encoder()
 }
 
 id<MTLRenderCommandEncoder> MTLCommandBufferManager::ensure_begin_render_command_encoder(
-    MTLFrameBuffer *ctx_framebuffer, bool force_begin, bool *new_pass)
+    MTLFrameBuffer *ctx_framebuffer, bool force_begin, bool *r_new_pass)
 {
   /* Ensure valid frame-buffer. */
   BLI_assert(ctx_framebuffer != nullptr);
@@ -356,11 +356,11 @@ id<MTLRenderCommandEncoder> MTLCommandBufferManager::ensure_begin_render_command
     render_pass_state_.reset_state();
 
     /* Return true as new pass started. */
-    *new_pass = true;
+    *r_new_pass = true;
   }
   else {
     /* No new pass. */
-    *new_pass = false;
+    *r_new_pass = false;
   }
 
   BLI_assert(active_render_command_encoder_ != nil);

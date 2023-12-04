@@ -60,8 +60,8 @@ const EnumPropertyItem rna_enum_uilist_layout_type_items[] = {
 
 #  include "BLI_dynstr.h"
 
-#  include "BKE_context.h"
-#  include "BKE_main.h"
+#  include "BKE_context.hh"
+#  include "BKE_main.hh"
 #  include "BKE_report.h"
 #  include "BKE_screen.hh"
 

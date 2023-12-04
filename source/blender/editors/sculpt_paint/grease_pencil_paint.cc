@@ -4,7 +4,7 @@
 
 #include "BKE_brush.hh"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.h"
 #include "BKE_grease_pencil.hh"
@@ -43,10 +43,9 @@ static float calc_brush_radius(ViewContext *vc,
 template<typename T>
 static inline void linear_interpolation(const T &a, const T &b, MutableSpan<T> dst)
 {
-  dst.first() = a;
-  const float step = 1.0f / dst.size();
-  for (const int i : dst.index_range().drop_front(1)) {
-    dst[i] = bke::attribute_math::mix2(i * step, a, b);
+  const float step = 1.0f / float(dst.size());
+  for (const int i : dst.index_range()) {
+    dst[i] = bke::attribute_math::mix2(float(i + 1) * step, a, b);
   }
 }
 
@@ -81,8 +80,10 @@ static Array<float2> sample_curve_2d(Span<float2> positions, const int64_t resol
   return points;
 }
 
-/** Morph \a src onto \a target such that the points have the same spacing as in \a src and
- *  write the result to \a dst. */
+/**
+ * Morph \a src onto \a target such that the points have the same spacing as in \a src and
+ * write the result to \a dst.
+ */
 static void morph_points_to_curve(Span<float2> src, Span<float2> target, MutableSpan<float2> dst)
 {
   BLI_assert(src.size() == dst.size());
@@ -300,12 +301,13 @@ struct PaintOperationExecutor {
         corner_angle_threshold,
         memory);
 
-    /* Pre-blur the coordinates for the curve fitting. This generally leads to a better fit. */
+    /* Pre-blur the coordinates for the curve fitting. This generally leads to a better (more
+     * stable) fit. */
     Array<float2> coords_pre_blur(smooth_window.size());
     const int pre_blur_iterations = 3;
     ed::greasepencil::gaussian_blur_1D(coords_to_smooth,
                                        pre_blur_iterations,
-                                       1.0f,
+                                       settings_->active_smooth,
                                        true,
                                        true,
                                        false,

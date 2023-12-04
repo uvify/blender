@@ -18,7 +18,7 @@
 
 #include "attribute_convert.hh"
 #include "draw_attributes.hh"
-#include "draw_subdivision.h"
+#include "draw_subdivision.hh"
 #include "extract_mesh.hh"
 
 namespace blender::draw {
@@ -76,21 +76,6 @@ static void extract_data_mesh_mapped_corner(const Span<T> attribute,
       }
     });
   }
-}
-
-template<typename T>
-static void extract_data_mesh_vert(const MeshRenderData &mr,
-                                   const Span<T> attribute,
-                                   GPUVertBuf &vbo)
-{
-}
-
-template<typename T>
-static void extract_data_mesh_edge(const MeshRenderData &mr,
-                                   const Span<T> attribute,
-                                   GPUVertBuf &vbo)
-{
-  extract_data_mapped_corner(attribute, mr.corner_edges, vbo);
 }
 
 template<typename T>

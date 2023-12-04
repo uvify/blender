@@ -18,7 +18,7 @@
 #include "BKE_brush.hh"
 #include "BKE_colorband.h"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -48,14 +48,14 @@ static void do_color_smooth_task(Object *ob, const Brush *brush, PBVHNode *node)
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->cache->automasking, &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -110,7 +110,7 @@ static void do_paint_brush_task(Object *ob,
   IMB_colormanagement_srgb_to_scene_linear_v3(brush_color, brush_color);
 
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->cache->automasking, &automask_data, node);
 
   if (brush->flag & BRUSH_USE_GRADIENT) {
     switch (brush->gradient_stroke_mode) {
@@ -149,7 +149,7 @@ static void do_paint_brush_task(Object *ob,
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                           brush,
@@ -237,8 +237,8 @@ static void do_sample_wet_paint_task(SculptSession *ss,
 void SCULPT_do_paint_brush(PaintModeSettings *paint_mode_settings,
                            Sculpt *sd,
                            Object *ob,
-                           Span<PBVHNode *> nodes,
-                           Span<PBVHNode *> texnodes)
+                           blender::Span<PBVHNode *> nodes,
+                           blender::Span<PBVHNode *> texnodes)
 {
   using namespace blender;
   if (SCULPT_use_image_paint_brush(paint_mode_settings, ob)) {
@@ -352,14 +352,14 @@ static void do_smear_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
   }
 
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->cache->automasking, &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -489,7 +489,7 @@ static void do_smear_store_prev_colors_task(SculptSession *ss,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_smear_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
+void SCULPT_do_smear_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nodes)
 {
   using namespace blender;
   Brush *brush = BKE_paint_brush(&sd->paint);

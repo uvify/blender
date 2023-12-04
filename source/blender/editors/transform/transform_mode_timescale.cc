@@ -13,9 +13,9 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_nla.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "ED_screen.hh"
 

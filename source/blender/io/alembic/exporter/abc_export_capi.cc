@@ -17,9 +17,9 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_blender_version.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_scene.h"
 
 #include "BLI_fileops.h"

@@ -12,8 +12,6 @@ if(WITH_COMPOSITOR_CPU)
     operations
     ../blenkernel
     ../blentranslation
-    ../depsgraph
-    ../imbuf
     ../makesrna
     ../nodes
     ../windowmanager
@@ -22,7 +20,6 @@ if(WITH_COMPOSITOR_CPU)
     ../render
     ../render/intern
     ../../../extern/clew/include
-    ../../../intern/clog
 
     # RNA_prototypes.h
     ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -125,6 +122,8 @@ if(WITH_COMPOSITOR_CPU)
     nodes/COM_RenderLayersNode.h
     nodes/COM_SceneTimeNode.cc
     nodes/COM_SceneTimeNode.h
+    nodes/COM_SplitNode.cc
+    nodes/COM_SplitNode.h
     nodes/COM_SwitchNode.cc
     nodes/COM_SwitchNode.h
     nodes/COM_SwitchViewNode.cc
@@ -139,8 +138,6 @@ if(WITH_COMPOSITOR_CPU)
     # output nodes
     nodes/COM_CompositorNode.cc
     nodes/COM_CompositorNode.h
-    nodes/COM_SplitViewerNode.cc
-    nodes/COM_SplitViewerNode.h
     nodes/COM_ViewLevelsNode.cc
     nodes/COM_ViewLevelsNode.h
     nodes/COM_ViewerNode.cc
@@ -345,8 +342,6 @@ if(WITH_COMPOSITOR_CPU)
     operations/COM_GaussianXBlurOperation.h
     operations/COM_GaussianYBlurOperation.cc
     operations/COM_GaussianYBlurOperation.h
-    operations/COM_SummedAreaTableOperation.h
-    operations/COM_SummedAreaTableOperation.cc
     operations/COM_KuwaharaAnisotropicOperation.cc
     operations/COM_KuwaharaAnisotropicOperation.h
     operations/COM_KuwaharaAnisotropicStructureTensorOperation.cc
@@ -361,6 +356,8 @@ if(WITH_COMPOSITOR_CPU)
     operations/COM_PosterizeOperation.h
     operations/COM_SMAAOperation.cc
     operations/COM_SMAAOperation.h
+    operations/COM_SummedAreaTableOperation.cc
+    operations/COM_SummedAreaTableOperation.h
     operations/COM_VariableSizeBokehBlurOperation.cc
     operations/COM_VariableSizeBokehBlurOperation.h
 
@@ -600,7 +597,10 @@ if(WITH_COMPOSITOR_CPU)
   set(LIB
     bf_blenkernel
     PRIVATE bf::blenlib
+    PRIVATE bf::depsgraph
     PRIVATE bf::dna
+    PRIVATE bf::imbuf
+    PRIVATE bf::intern::clog
     PRIVATE bf::intern::guardedalloc
     extern_clew
     PRIVATE bf::intern::atomic
@@ -666,8 +666,8 @@ if(WITH_COMPOSITOR_CPU)
       tests/COM_BufferArea_test.cc
       tests/COM_BufferRange_test.cc
       tests/COM_BuffersIterator_test.cc
-      tests/COM_NodeOperation_test.cc
       tests/COM_ComputeSummedAreaTableOperation_test.cc
+      tests/COM_NodeOperation_test.cc
     )
     set(TEST_INC
     )

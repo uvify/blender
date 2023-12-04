@@ -9,8 +9,10 @@
 #include <cmath>
 #include <string.h>
 
+#include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 #include "BKE_fcurve.h"
+#include "BLI_math_vector_types.hh"
 #include "DNA_anim_types.h"
 #include "ED_anim_api.hh"
 #include "MEM_guardedalloc.h"
@@ -32,7 +34,7 @@ bool delete_keyframe_fcurve(AnimData *adt, FCurve *fcu, float cfra)
 
   /* Empty curves get automatically deleted. */
   if (BKE_fcurve_is_empty(fcu)) {
-    ANIM_fcurve_delete_from_animdata(nullptr, adt, fcu);
+    animdata_fcurve_delete(nullptr, adt, fcu);
   }
 
   return true;
@@ -46,10 +48,10 @@ bool delete_keyframe_fcurve(AnimData *adt, FCurve *fcu, float cfra)
 /* Change the Y position of a keyframe to match the input, adjusting handles. */
 static void replace_bezt_keyframe_ypos(BezTriple *dst, const BezTriple *bezt)
 {
-  /* just change the values when replacing, so as to not overwrite handles */
+  /* Just change the values when replacing, so as to not overwrite handles. */
   float dy = bezt->vec[1][1] - dst->vec[1][1];
 
-  /* just apply delta value change to the handle values */
+  /* Just apply delta value change to the handle values. */
   dst->vec[0][1] += dy;
   dst->vec[1][1] += dy;
   dst->vec[2][1] += dy;
@@ -65,14 +67,14 @@ int insert_bezt_fcurve(FCurve *fcu, const BezTriple *bezt, eInsertKeyFlags flag)
 {
   int i = 0;
 
-  /* are there already keyframes? */
+  /* Are there already keyframes? */
   if (fcu->bezt) {
     bool replace;
     i = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, bezt->vec[1][0], fcu->totvert, &replace);
 
-    /* replace an existing keyframe? */
+    /* Replace an existing keyframe? */
     if (replace) {
-      /* sanity check: 'i' may in rare cases exceed arraylen */
+      /* 'i' may in rare cases exceed arraylen. */
       if ((i >= 0) && (i < fcu->totvert)) {
         if (flag & INSERTKEY_OVERWRITE_FULL) {
           fcu->bezt[i] = *bezt;
@@ -93,7 +95,7 @@ int insert_bezt_fcurve(FCurve *fcu, const BezTriple *bezt, eInsertKeyFlags flag)
     }
     /* Keyframing modes allow not replacing the keyframe. */
     else if ((flag & INSERTKEY_REPLACE) == 0) {
-      /* insert new - if we're not restricted to replacing keyframes only */
+      /* Insert new - if we're not restricted to replacing keyframes only. */
       BezTriple *newb = static_cast<BezTriple *>(
           MEM_callocN((fcu->totvert + 1) * sizeof(BezTriple), "beztriple"));
 
@@ -103,15 +105,15 @@ int insert_bezt_fcurve(FCurve *fcu, const BezTriple *bezt, eInsertKeyFlags flag)
         memcpy(newb, fcu->bezt, i * sizeof(BezTriple));
       }
 
-      /* add beztriple to paste at index i */
+      /* Add beztriple to paste at index i. */
       *(newb + i) = *bezt;
 
-      /* add the beztriples that occur after the beztriple to be pasted (originally in fcu) */
+      /* Add the beztriples that occur after the beztriple to be pasted (originally in fcu). */
       if (i < fcu->totvert) {
         memcpy(newb + i + 1, fcu->bezt + i, (fcu->totvert - i) * sizeof(BezTriple));
       }
 
-      /* replace (+ free) old with new, only if necessary to do so */
+      /* Replace (+ free) old with new, only if necessary to do so. */
       MEM_freeN(fcu->bezt);
       fcu->bezt = newb;
 
@@ -121,26 +123,26 @@ int insert_bezt_fcurve(FCurve *fcu, const BezTriple *bezt, eInsertKeyFlags flag)
       return -1;
     }
   }
-  /* no keyframes already, but can only add if...
+  /* No keyframes yet, but can only add if...
    * 1) keyframing modes say that keyframes can only be replaced, so adding new ones won't know
    * 2) there are no samples on the curve
    *    NOTE: maybe we may want to allow this later when doing samples -> bezt conversions,
    *    but for now, having both is asking for trouble
    */
   else if ((flag & INSERTKEY_REPLACE) == 0 && (fcu->fpt == nullptr)) {
-    /* create new keyframes array */
+    /* Create new keyframes array. */
     fcu->bezt = static_cast<BezTriple *>(MEM_callocN(sizeof(BezTriple), "beztriple"));
     *(fcu->bezt) = *bezt;
     fcu->totvert = 1;
   }
-  /* cannot add anything */
+  /* Cannot add anything. */
   else {
-    /* return error code -1 to prevent any misunderstandings */
+    /* Return error code -1 to prevent any misunderstandings. */
     return -1;
   }
 
-  /* we need to return the index, so that some tools which do post-processing can
-   * detect where we added the BezTriple in the array
+  /* We need to return the index, so that some tools which do post-processing can
+   * detect where we added the BezTriple in the array.
    */
   return i;
 }
@@ -197,73 +199,81 @@ static void subdivide_nonauto_handles(const FCurve *fcu,
   bezt->h1 = bezt->h2 = HD_ALIGN;
 }
 
-int insert_vert_fcurve(
-    FCurve *fcu, float x, float y, eBezTriple_KeyframeType keyframe_type, eInsertKeyFlags flag)
+void initialize_bezt(BezTriple *beztr,
+                     const float2 position,
+                     const eBezTriple_KeyframeType keyframe_type,
+                     const eInsertKeyFlags flag,
+                     const eFCurve_Flags fcu_flags)
 {
-  BezTriple beztr = {{{0}}};
-  uint oldTot = fcu->totvert;
-  int a;
-
-  /* set all three points, for nicer start position
+  /* Set all three points, for nicer start position.
    * NOTE: +/- 1 on vec.x for left and right handles is so that 'free' handles work ok...
    */
-  beztr.vec[0][0] = x - 1.0f;
-  beztr.vec[0][1] = y;
-  beztr.vec[1][0] = x;
-  beztr.vec[1][1] = y;
-  beztr.vec[2][0] = x + 1.0f;
-  beztr.vec[2][1] = y;
-  beztr.f1 = beztr.f2 = beztr.f3 = SELECT;
+  beztr->vec[0][0] = position.x - 1.0f;
+  beztr->vec[0][1] = position.y;
+  beztr->vec[1][0] = position.x;
+  beztr->vec[1][1] = position.y;
+  beztr->vec[2][0] = position.x + 1.0f;
+  beztr->vec[2][1] = position.y;
+  beztr->f1 = beztr->f2 = beztr->f3 = SELECT;
 
-  /* set default handle types and interpolation mode */
+  /* Set default handle types and interpolation mode. */
   if (flag & INSERTKEY_NO_USERPREF) {
-    /* for Py-API, we want scripts to have predictable behavior,
-     * hence the option to not depend on the userpref defaults
+    /* For Py-API, we want scripts to have predictable behavior,
+     * hence the option to not depend on the userpref defaults.
      */
-    beztr.h1 = beztr.h2 = HD_AUTO_ANIM;
-    beztr.ipo = BEZT_IPO_BEZ;
+    beztr->h1 = beztr->h2 = HD_AUTO_ANIM;
+    beztr->ipo = BEZT_IPO_BEZ;
   }
   else {
     /* For UI usage - defaults should come from the user-preferences and/or tool-settings. */
-    beztr.h1 = beztr.h2 = U.keyhandles_new; /* use default handle type here */
+    beztr->h1 = beztr->h2 = U.keyhandles_new; /* Use default handle type here. */
 
-    /* use default interpolation mode, with exceptions for int/discrete values */
-    beztr.ipo = U.ipo_new;
+    /* Use default interpolation mode, with exceptions for int/discrete values. */
+    beztr->ipo = U.ipo_new;
   }
 
-  /* interpolation type used is constrained by the type of values the curve can take */
-  if (fcu->flag & FCURVE_DISCRETE_VALUES) {
-    beztr.ipo = BEZT_IPO_CONST;
+  /* Interpolation type used is constrained by the type of values the curve can take. */
+  if (fcu_flags & FCURVE_DISCRETE_VALUES) {
+    beztr->ipo = BEZT_IPO_CONST;
   }
-  else if ((beztr.ipo == BEZT_IPO_BEZ) && (fcu->flag & FCURVE_INT_VALUES)) {
-    beztr.ipo = BEZT_IPO_LIN;
+  else if ((beztr->ipo == BEZT_IPO_BEZ) && (fcu_flags & FCURVE_INT_VALUES)) {
+    beztr->ipo = BEZT_IPO_LIN;
   }
 
-  /* set keyframe type value (supplied), which should come from the scene settings in most cases */
-  BEZKEYTYPE(&beztr) = keyframe_type;
+  /* Set keyframe type value (supplied), which should come from the scene
+   * settings in most cases. */
+  BEZKEYTYPE(beztr) = keyframe_type;
 
-  /* set default values for "easing" interpolation mode settings
+  /* Set default values for "easing" interpolation mode settings.
    * NOTE: Even if these modes aren't currently used, if users switch
    *       to these later, we want these to work in a sane way out of
    *       the box.
    */
 
-  /* "back" easing - this value used to be used when overshoot=0, but that
+  /* "back" easing - This value used to be used when overshoot=0, but that
    *                 introduced discontinuities in how the param worked. */
-  beztr.back = 1.70158f;
+  beztr->back = 1.70158f;
 
-  /* "elastic" easing - values here were hand-optimized for a default duration of
-   *                    ~10 frames (typical mograph motion length) */
-  beztr.amplitude = 0.8f;
-  beztr.period = 4.1f;
+  /* "elastic" easing - Values here were hand-optimized for a default duration of
+   *                    ~10 frames (typical motion-graph motion length). */
+  beztr->amplitude = 0.8f;
+  beztr->period = 4.1f;
+}
 
-  /* add temp beztriple to keyframes */
+int insert_vert_fcurve(
+    FCurve *fcu, float x, float y, eBezTriple_KeyframeType keyframe_type, eInsertKeyFlags flag)
+{
+  BezTriple beztr = {{{0}}};
+  initialize_bezt(&beztr, {x, y}, keyframe_type, flag, eFCurve_Flags(fcu->flag));
+
+  uint oldTot = fcu->totvert;
+  int a;
+
+  /* Add temp beztriple to keyframes. */
   a = insert_bezt_fcurve(fcu, &beztr, flag);
   BKE_fcurve_active_keyframe_set(fcu, &fcu->bezt[a]);
 
-  /* what if 'a' is a negative index?
-   * for now, just exit to prevent any segfaults
-   */
+  /* If `a` is negative return to avoid segfaults. */
   if (a < 0) {
     return -1;
   }
@@ -291,7 +301,7 @@ int insert_vert_fcurve(
     }
   }
 
-  /* don't recalculate handles if fast is set
+  /* Don't recalculate handles if fast is set.
    * - this is a hack to make importers faster
    * - we may calculate twice (due to auto-handle needing to be calculated twice)
    */
@@ -299,7 +309,7 @@ int insert_vert_fcurve(
     BKE_fcurve_handles_recalc(fcu);
   }
 
-  /* return the index at which the keyframe was added */
+  /* Return the index at which the keyframe was added. */
   return a;
 }
 

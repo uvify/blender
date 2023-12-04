@@ -10,7 +10,6 @@ set(INC
   ../../blentranslation
   ../../draw
   ../../gpu
-  ../../imbuf
   ../../makesrna
   ../../nodes
   ../../render
@@ -38,7 +37,6 @@ set(SRC
   intern/shader_operation.cc
   intern/simple_operation.cc
   intern/static_cache_manager.cc
-  intern/static_shader_manager.cc
   intern/texture_pool.cc
   intern/utilities.cc
 
@@ -59,7 +57,6 @@ set(SRC
   COM_shader_operation.hh
   COM_simple_operation.hh
   COM_static_cache_manager.hh
-  COM_static_shader_manager.hh
   COM_texture_pool.hh
   COM_utilities.hh
 
@@ -71,6 +68,7 @@ set(SRC
   algorithms/intern/smaa.cc
   algorithms/intern/summed_area_table.cc
   algorithms/intern/symmetric_separable_blur.cc
+  algorithms/intern/symmetric_separable_blur_variable_size.cc
   algorithms/intern/transform.cc
 
   algorithms/COM_algorithm_jump_flooding.hh
@@ -81,9 +79,11 @@ set(SRC
   algorithms/COM_algorithm_smaa.hh
   algorithms/COM_algorithm_summed_area_table.hh
   algorithms/COM_algorithm_symmetric_separable_blur.hh
+  algorithms/COM_algorithm_symmetric_separable_blur_variable_size.hh
   algorithms/COM_algorithm_transform.hh
 
   cached_resources/intern/cached_mask.cc
+  cached_resources/intern/cached_shader.cc
   cached_resources/intern/cached_texture.cc
   cached_resources/intern/distortion_grid.cc
   cached_resources/intern/keying_screen.cc
@@ -95,6 +95,7 @@ set(SRC
 
   cached_resources/COM_cached_mask.hh
   cached_resources/COM_cached_resource.hh
+  cached_resources/COM_cached_shader.hh
   cached_resources/COM_cached_texture.hh
   cached_resources/COM_distortion_grid.hh
   cached_resources/COM_keying_screen.hh
@@ -110,7 +111,7 @@ set(LIB
   bf_gpu
   PRIVATE bf::intern::guardedalloc
   bf_nodes
-  bf_imbuf
+  PRIVATE bf::imbuf
   bf_render
   PRIVATE bf::blenlib
   bf_blenkernel
@@ -150,6 +151,7 @@ set(GLSL_SRC
   shaders/compositor_image_crop.glsl
   shaders/compositor_inpaint_compute_boundary.glsl
   shaders/compositor_inpaint_compute_region.glsl
+  shaders/compositor_inpaint_fill_region.glsl
   shaders/compositor_jump_flooding.glsl
   shaders/compositor_keying_compute_image.glsl
   shaders/compositor_keying_compute_matte.glsl
@@ -177,7 +179,7 @@ set(GLSL_SRC
   shaders/compositor_smaa_blending_weight_calculation.glsl
   shaders/compositor_smaa_edge_detection.glsl
   shaders/compositor_smaa_neighborhood_blending.glsl
-  shaders/compositor_split_viewer.glsl
+  shaders/compositor_split.glsl
   shaders/compositor_summed_area_table_compute_complete_blocks.glsl
   shaders/compositor_summed_area_table_compute_complete_x_prologues.glsl
   shaders/compositor_summed_area_table_compute_complete_y_prologues.glsl
@@ -186,6 +188,7 @@ set(GLSL_SRC
   shaders/compositor_symmetric_blur.glsl
   shaders/compositor_symmetric_blur_variable_size.glsl
   shaders/compositor_symmetric_separable_blur.glsl
+  shaders/compositor_symmetric_separable_blur_variable_size.glsl
   shaders/compositor_tone_map_photoreceptor.glsl
   shaders/compositor_tone_map_simple.glsl
   shaders/compositor_write_output.glsl
@@ -291,12 +294,13 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/compositor_realize_on_domain_info.hh
   shaders/infos/compositor_screen_lens_distortion_info.hh
   shaders/infos/compositor_smaa_info.hh
-  shaders/infos/compositor_split_viewer_info.hh
+  shaders/infos/compositor_split_info.hh
   shaders/infos/compositor_summed_area_table_info.hh
   shaders/infos/compositor_sun_beams_info.hh
   shaders/infos/compositor_symmetric_blur_info.hh
   shaders/infos/compositor_symmetric_blur_variable_size_info.hh
   shaders/infos/compositor_symmetric_separable_blur_info.hh
+  shaders/infos/compositor_symmetric_separable_blur_variable_size_info.hh
   shaders/infos/compositor_tone_map_photoreceptor_info.hh
   shaders/infos/compositor_tone_map_simple_info.hh
   shaders/infos/compositor_write_output_info.hh

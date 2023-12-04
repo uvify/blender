@@ -35,12 +35,12 @@
 #  include "BKE_appdir.h"
 #  include "BKE_blender_version.h"
 #  include "BKE_blendfile.h"
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 
 #  include "BKE_global.h"
 #  include "BKE_image_format.h"
 #  include "BKE_lib_id.h"
-#  include "BKE_main.h"
+#  include "BKE_main.hh"
 #  include "BKE_report.h"
 #  include "BKE_scene.h"
 #  include "BKE_sound.h"
@@ -1389,11 +1389,6 @@ static int arg_handle_playback_mode(int argc, const char **argv, void * /*data*/
 {
   /* Ignore the animation player if `-b` was given first. */
   if (G.background == 0) {
-#  ifdef WITH_FFMPEG
-    /* Setup FFmpeg with current debug flags. */
-    IMB_ffmpeg_init();
-#  endif
-
     /* Skip this argument (`-a`). */
     WM_main_playanim(argc - 1, argv + 1);
 

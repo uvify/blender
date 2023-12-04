@@ -12,9 +12,9 @@
 #include "BLI_rect.h"
 
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_screen.hh"
 
 #include "ED_image.hh"

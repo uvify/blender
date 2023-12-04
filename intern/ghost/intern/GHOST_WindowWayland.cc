@@ -195,10 +195,6 @@ enum eGWL_PendingWindowActions {
    * The state of the window frame has changed, apply the state from #GWL_Window::frame_pending.
    */
   PENDING_WINDOW_FRAME_CONFIGURE = 0,
-#  ifdef GHOST_OPENGL_ALPHA
-  /** Draw an opaque region behind the window. */
-  PENDING_OPAQUE_SET,
-#  endif
   /**
    * The DPI for a monitor has changed or the monitors (outputs)
    * this window is visible on may have changed. Recalculate the windows scale.
@@ -330,7 +326,7 @@ struct GWL_Window {
    * These pending actions can't be performed when WAYLAND handlers are running from a thread.
    * Postpone their execution until the main thread can handle them.
    */
-  std::atomic<bool> pending_actions[PENDING_NUM];
+  std::atomic<bool> pending_actions[PENDING_NUM] = {false};
 #endif /* USE_EVENT_BACKGROUND_THREAD */
 };
 
@@ -338,7 +334,10 @@ static void gwl_window_resize_for_backend(GWL_Window *win, const int32_t size[2]
 {
 #ifdef WITH_OPENGL_BACKEND
   if (win->ghost_context_type == GHOST_kDrawingContextTypeOpenGL) {
-    wl_egl_window_resize(win->backend.egl_window, UNPACK2(size), 0, 0);
+    /* Null on window initialization. */
+    if (win->backend.egl_window) {
+      wl_egl_window_resize(win->backend.egl_window, UNPACK2(size), 0, 0);
+    }
   }
 #endif
 #ifdef WITH_VULKAN_BACKEND
@@ -767,11 +766,6 @@ static void gwl_window_pending_actions_handle(GWL_Window *win)
   if (actions[PENDING_WINDOW_FRAME_CONFIGURE]) {
     gwl_window_frame_update_from_pending(win);
   }
-#  ifdef GHOST_OPENGL_ALPHA
-  if (actions[PENDING_OPAQUE_SET]) {
-    win->ghost_window->setOpaque();
-  }
-#  endif
   if (actions[PENDING_OUTPUT_SCALE_UPDATE_DEFERRED]) {
     gwl_window_pending_actions_tag(win, PENDING_OUTPUT_SCALE_UPDATE);
     /* Force postponing scale update to ensure all scale information has been taken into account
@@ -1150,7 +1144,7 @@ static void libdecor_frame_handle_configure(libdecor_frame *frame,
 #  ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_frame_guard{static_cast<GWL_Window *>(data)->frame_pending_mutex};
   const bool is_main_thread = [data] {
-    GWL_Window *win = static_cast<GWL_Window *>(data);
+    const GWL_Window *win = static_cast<GWL_Window *>(data);
     const GHOST_SystemWayland *system = win->ghost_system;
     return system->main_thread_id == std::this_thread::get_id();
   }();
@@ -1516,20 +1510,6 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
 
   wl_surface_add_listener(window_->wl.surface, &wl_surface_listener, window_);
 
-#ifdef WITH_OPENGL_BACKEND
-  if (type == GHOST_kDrawingContextTypeOpenGL) {
-    window_->backend.egl_window = wl_egl_window_create(
-        window_->wl.surface, int(window_->frame.size[0]), int(window_->frame.size[1]));
-  }
-#endif
-#ifdef WITH_VULKAN_BACKEND
-  if (type == GHOST_kDrawingContextTypeVulkan) {
-    window_->backend.vulkan_window_info = new GHOST_ContextVK_WindowInfo;
-    window_->backend.vulkan_window_info->size[0] = window_->frame.size[0];
-    window_->backend.vulkan_window_info->size[1] = window_->frame.size[1];
-  }
-#endif
-
   wp_fractional_scale_manager_v1 *fractional_scale_manager =
       system->wp_fractional_scale_manager_get();
   if (fractional_scale_manager) {
@@ -1592,13 +1572,6 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
 
   wl_surface_set_user_data(window_->wl.surface, this);
 
-  /* Call top-level callbacks. */
-  wl_surface_commit(window_->wl.surface);
-
-#ifdef GHOST_OPENGL_ALPHA
-  setOpaque();
-#endif
-
   /* NOTE: the method used for XDG & LIBDECOR initialization (using `initial_configure_seen`)
    * follows the method used in SDL 3.16. */
 
@@ -1611,6 +1584,9 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
     {
       decor.scale_fractional_from_output = scale_fractional_from_output;
     }
+
+    /* Commit needed so the top-level callbacks run (and `toplevel` can be accessed). */
+    wl_surface_commit(window_->wl.surface);
 
     /* Additional round-trip is needed to ensure `xdg_toplevel` is set. */
     wl_display_roundtrip(system_->wl_display_get());
@@ -1642,12 +1618,7 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
   else
 #endif /* WITH_GHOST_WAYLAND_LIBDECOR */
   {
-    /* Call top-level callbacks. */
     WGL_XDG_Decor_Window &decor = *window_->xdg_decor;
-    while (!decor.initial_configure_seen) {
-      wl_display_flush(system->wl_display_get());
-      wl_display_dispatch(system->wl_display_get());
-    }
 
     if (system_->xdg_decor_manager_get()) {
       decor.toplevel_decor = zxdg_decoration_manager_v1_get_toplevel_decoration(
@@ -1659,7 +1630,35 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
     }
 
     gwl_window_state_set(window_, state);
+
+    /* Commit needed to so configure callback runs. */
+    wl_surface_commit(window_->wl.surface);
+    while (!decor.initial_configure_seen) {
+      wl_display_flush(system->wl_display_get());
+      wl_display_dispatch(system->wl_display_get());
+    }
   }
+
+  /* Postpone binding the buffer until after it's decor has been configured:
+   * - Ensure the window is sized properly (with XDG window decorations), see: #113059.
+   * - Avoids flickering on startup.
+   */
+#ifdef WITH_OPENGL_BACKEND
+  if (type == GHOST_kDrawingContextTypeOpenGL) {
+    window_->backend.egl_window = wl_egl_window_create(
+        window_->wl.surface, int(window_->frame.size[0]), int(window_->frame.size[1]));
+  }
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (type == GHOST_kDrawingContextTypeVulkan) {
+    window_->backend.vulkan_window_info = new GHOST_ContextVK_WindowInfo;
+    window_->backend.vulkan_window_info->size[0] = window_->frame.size[0];
+    window_->backend.vulkan_window_info->size[1] = window_->frame.size[1];
+  }
+#endif
+
+  /* Commit after setting the buffer. */
+  wl_surface_commit(window_->wl.surface);
 
   /* Drawing context. */
   if (setDrawingContextType(type) == GHOST_kFailure) {
@@ -1983,19 +1982,6 @@ bool GHOST_WindowWayland::isDialog() const
   return window_->is_dialog;
 }
 
-#ifdef GHOST_OPENGL_ALPHA
-void GHOST_WindowWayland::setOpaque() const
-{
-  struct wl_region *region;
-
-  /* Make the window opaque. */
-  region = wl_compositor_create_region(system_->wl_compositor());
-  wl_region_add(region, 0, 0, UNPACK2(window_->size));
-  wl_surface_set_opaque_region(window_->wl.surface, region);
-  wl_region_destroy(region);
-}
-#endif
-
 GHOST_Context *GHOST_WindowWayland::newDrawingContext(GHOST_TDrawingContextType type)
 {
   switch (type) {
@@ -2182,19 +2168,6 @@ GHOST_TSuccess GHOST_WindowWayland::deactivate()
 
 GHOST_TSuccess GHOST_WindowWayland::notify_size()
 {
-#ifdef GHOST_OPENGL_ALPHA
-#  ifdef USE_EVENT_BACKGROUND_THREAD
-  /* Actual activation is handled when processing pending events. */
-  const bool is_main_thread = system_->main_thread_id == std::this_thread::get_id();
-  if (!is_main_thread) {
-    gwl_window_pending_actions_tag(window_, PENDING_OPAQUE_SET);
-  }
-#  endif
-  {
-    setOpaque();
-  }
-#endif
-
   return system_->pushEvent_maybe_pending(
       new GHOST_Event(system_->getMilliSeconds(), GHOST_kEventWindowSize, this));
 }

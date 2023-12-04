@@ -9,8 +9,8 @@
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.h"
 
-#include "BKE_bvhutils.h"
-#include "BKE_editmesh.h"
+#include "BKE_bvhutils.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
 
@@ -55,12 +55,12 @@ static void mesh_looptri_raycast_backface_culling_cb(void *userdata,
                                                      BVHTreeRayHit *hit)
 {
   const BVHTreeFromMesh *data = (BVHTreeFromMesh *)userdata;
-  const float(*vert_positions)[3] = data->vert_positions;
-  const MLoopTri *lt = &data->looptri[index];
+  const blender::Span<blender::float3> positions = data->vert_positions;
+  const MLoopTri *lt = &data->looptris[index];
   const float *vtri_co[3] = {
-      vert_positions[data->corner_verts[lt->tri[0]]],
-      vert_positions[data->corner_verts[lt->tri[1]]],
-      vert_positions[data->corner_verts[lt->tri[2]]],
+      positions[data->corner_verts[lt->tri[0]]],
+      positions[data->corner_verts[lt->tri[1]]],
+      positions[data->corner_verts[lt->tri[2]]],
   };
   float dist = bvhtree_ray_tri_intersection(ray, hit->dist, UNPACK3(vtri_co));
 
@@ -104,7 +104,7 @@ static bool raycastMesh(SnapObjectContext *sctx,
     local_depth *= local_scale;
   }
 
-  /* Test BoundBox */
+  /* Test bounding box */
   if (ob_eval->data == me_eval) {
     const Bounds<float3> bounds = *me_eval->bounds_min_max();
     /* was BKE_boundbox_ray_hit_check, see: cf6ca226fa58 */
@@ -202,7 +202,7 @@ static bool nearest_world_mesh(SnapObjectContext *sctx,
   }
 
   BVHTreeNearest nearest{};
-  nearest.dist_sq = sctx->ret.dist_px_sq;
+  nearest.dist_sq = sctx->ret.dist_nearest_sq;
   if (nearest_world_tree(
           sctx, treedata.tree, treedata.nearest_callback, obmat, &treedata, &nearest)) {
     SnapData::register_result(sctx, ob_eval, &me_eval->id, obmat, &nearest);

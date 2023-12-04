@@ -1165,13 +1165,16 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_mask")
                 layout.menu("VIEW3D_MT_face_sets")
                 layout.template_node_operator_asset_root_items()
-            if mode_string == 'SCULPT_CURVES':
+            elif mode_string == 'SCULPT_CURVES':
                 layout.menu("VIEW3D_MT_select_sculpt_curves")
                 layout.menu("VIEW3D_MT_sculpt_curves")
+                layout.template_node_operator_asset_root_items()
+            else:
                 layout.template_node_operator_asset_root_items()
 
         else:
             layout.menu("VIEW3D_MT_object")
+            layout.template_node_operator_asset_root_items()
 
 
 # ********** Menu **********
@@ -1200,14 +1203,10 @@ class VIEW3D_MT_transform_base:
     # TODO: get rid of the custom text strings?
     def draw(self, context):
         layout = self.layout
-        alt_navigation = getattr(
-            context.window_manager.keyconfigs.active.preferences,
-            "use_alt_navigation",
-            False)
 
-        layout.operator("transform.translate").alt_navigation = alt_navigation
-        layout.operator("transform.rotate").alt_navigation = alt_navigation
-        layout.operator("transform.resize", text="Scale").alt_navigation = alt_navigation
+        layout.operator("transform.translate")
+        layout.operator("transform.rotate")
+        layout.operator("transform.resize", text="Scale")
 
         layout.separator()
 
@@ -1228,18 +1227,13 @@ class VIEW3D_MT_transform_base:
 # Generic transform menu - geometry types
 class VIEW3D_MT_transform(VIEW3D_MT_transform_base, Menu):
     def draw(self, context):
-        alt_navigation = getattr(
-            context.window_manager.keyconfigs.active.preferences,
-            "use_alt_navigation",
-            False)
-
         # base menu
         VIEW3D_MT_transform_base.draw(self, context)
 
         # generic...
         layout = self.layout
         if context.mode == 'EDIT_MESH':
-            layout.operator("transform.shrink_fatten", text="Shrink/Fatten").alt_navigation = alt_navigation
+            layout.operator("transform.shrink_fatten", text="Shrink/Fatten")
             layout.operator("transform.skin_resize")
         elif context.mode in ['EDIT_CURVE', 'EDIT_GREASE_PENCIL', 'EDIT_CURVES']:
             layout.operator("transform.transform", text="Radius").mode = 'CURVE_SHRINKFATTEN'
@@ -1248,10 +1242,8 @@ class VIEW3D_MT_transform(VIEW3D_MT_transform_base, Menu):
             layout.separator()
             props = layout.operator("transform.translate", text="Move Texture Space")
             props.texture_space = True
-            props.alt_navigation = alt_navigation
             props = layout.operator("transform.resize", text="Scale Texture Space")
             props.texture_space = True
-            props.alt_navigation = alt_navigation
 
 
 # Object-specific extensions to Transform menu
@@ -1405,7 +1397,6 @@ class VIEW3D_MT_view(Menu):
     def draw(self, context):
         layout = self.layout
         view = context.space_data
-        prefs = context.preferences
 
         layout.prop(view, "show_region_toolbar")
         layout.prop(view, "show_region_ui")
@@ -2172,10 +2163,16 @@ class VIEW3D_MT_select_edit_grease_pencil(Menu):
 
 
 class VIEW3D_MT_paint_grease_pencil(Menu):
-    bl_label = "Paint"
+    bl_label = "Draw"
 
     def draw(self, _context):
-        pass
+        layout = self.layout
+
+        layout.menu("GREASE_PENCIL_MT_layer_active", text="Active Layer")
+
+        layout.separator()
+
+        layout.menu("VIEW3D_MT_edit_greasepencil_showhide")
 
 
 class VIEW3D_MT_paint_gpencil(Menu):
@@ -2755,6 +2752,8 @@ class VIEW3D_MT_object(Menu):
         layout.operator("object.delete", text="Delete").use_global = False
         layout.operator("object.delete", text="Delete Global").use_global = True
 
+        layout.template_node_operator_asset_menu_items(catalog_path="Object")
+
 
 class VIEW3D_MT_object_animation(Menu):
     bl_label = "Animation"
@@ -2762,7 +2761,8 @@ class VIEW3D_MT_object_animation(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe...")
+        layout.operator("anim.keyframe_insert", text="Insert Keyframe")
+        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe with Keying Set")
         layout.operator("anim.keyframe_delete_v3d", text="Delete Keyframes...")
         layout.operator("anim.keyframe_clear_v3d", text="Clear Keyframes...")
         layout.operator("anim.keying_set_active_set", text="Change Keying Set...")
@@ -3026,12 +3026,15 @@ class VIEW3D_MT_object_context_menu(Menu):
 
         layout.separator()
 
-        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe...")
+        layout.operator("anim.keyframe_insert", text="Insert Keyframe")
+        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe with Keying Set")
 
         layout.separator()
 
         layout.operator_context = 'EXEC_REGION_WIN'
         layout.operator("object.delete", text="Delete").use_global = False
+
+        layout.template_node_operator_asset_menu_items(catalog_path="Object")
 
 
 class VIEW3D_MT_object_shading(Menu):
@@ -3109,6 +3112,8 @@ class VIEW3D_MT_object_apply(Menu):
         layout.operator("object.parent_inverse_apply",
                         text="Parent Inverse",
                         text_ctxt=i18n_contexts.default)
+
+        layout.template_node_operator_asset_menu_items(catalog_path="Object/Apply")
 
 
 class VIEW3D_MT_object_parent(Menu):
@@ -3192,6 +3197,7 @@ class VIEW3D_MT_object_quick_effects(Menu):
         layout.operator("object.quick_explode")
         layout.operator("object.quick_smoke")
         layout.operator("object.quick_liquid")
+        layout.template_node_operator_asset_menu_items(catalog_path="Object/Quick Effects")
 
 
 class VIEW3D_MT_object_showhide(Menu):
@@ -3283,6 +3289,8 @@ class VIEW3D_MT_object_convert(Menu):
 
         if ob and ob.type == 'CURVES':
             layout.operator("curves.convert_to_particle_system", text="Particle System")
+
+        layout.template_node_operator_asset_menu_items(catalog_path="Object/Convert")
 
 
 class VIEW3D_MT_make_links(Menu):
@@ -3777,7 +3785,9 @@ class VIEW3D_MT_face_sets(Menu):
 
         layout.operator("sculpt.face_set_invert_visibility", text="Invert Visible Face Sets")
 
-        props = layout.operator("sculpt.reveal_all", text="Show All Face Sets")
+        props = layout.operator("paint.hide_show", text="Show All Face Sets")
+        props.action = "SHOW"
+        props.area = "ALL"
 
         layout.separator()
 
@@ -4177,7 +4187,8 @@ class VIEW3D_MT_pose_context_menu(Menu):
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe...")
+        layout.operator("anim.keyframe_insert", text="Insert Keyframe")
+        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe with Keying Set")
 
         layout.separator()
 
@@ -4481,11 +4492,6 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.operator("mesh.delete", text="Delete Edges").type = 'EDGE'
 
         if is_face_mode:
-            alt_navigation = getattr(
-                context.window_manager.keyconfigs.active.preferences,
-                "use_alt_navigation",
-                False)
-
             col = row.column(align=True)
 
             col.label(text="Face", icon='FACESEL')
@@ -4497,11 +4503,11 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.separator()
 
             col.operator("view3d.edit_mesh_extrude_move_normal",
-                         text="Extrude Faces").alt_navigation = alt_navigation
+                         text="Extrude Faces")
             col.operator("view3d.edit_mesh_extrude_move_shrink_fatten",
-                         text="Extrude Faces Along Normals").alt_navigation = alt_navigation
+                         text="Extrude Faces Along Normals")
             col.operator("mesh.extrude_faces_move",
-                         text="Extrude Individual Faces").TRANSFORM_OT_shrink_fatten.alt_navigation = alt_navigation
+                         text="Extrude Individual Faces")
 
             col.operator("mesh.inset")
             col.operator("mesh.poke")
@@ -4553,11 +4559,6 @@ class VIEW3D_MT_edit_mesh_extrude(Menu):
     def draw(self, context):
         from math import pi
 
-        alt_navigation = getattr(
-            context.window_manager.keyconfigs.active.preferences,
-            "use_alt_navigation",
-            False)
-
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
 
@@ -4567,22 +4568,22 @@ class VIEW3D_MT_edit_mesh_extrude(Menu):
 
         if mesh.total_face_sel:
             layout.operator("view3d.edit_mesh_extrude_move_normal",
-                            text="Extrude Faces").alt_navigation = alt_navigation
+                            text="Extrude Faces")
             layout.operator("view3d.edit_mesh_extrude_move_shrink_fatten",
-                            text="Extrude Faces Along Normals").alt_navigation = alt_navigation
+                            text="Extrude Faces Along Normals")
             layout.operator(
                 "mesh.extrude_faces_move",
-                text="Extrude Individual Faces").TRANSFORM_OT_shrink_fatten.alt_navigation = alt_navigation
+                text="Extrude Individual Faces")
             layout.operator("view3d.edit_mesh_extrude_manifold_normal",
-                            text="Extrude Manifold").alt_navigation = alt_navigation
+                            text="Extrude Manifold")
 
         if mesh.total_edge_sel and (select_mode[0] or select_mode[1]):
             layout.operator("mesh.extrude_edges_move",
-                            text="Extrude Edges").TRANSFORM_OT_translate.alt_navigation = alt_navigation
+                            text="Extrude Edges")
 
         if mesh.total_vert_sel and select_mode[0]:
             layout.operator("mesh.extrude_vertices_move",
-                            text="Extrude Vertices").TRANSFORM_OT_translate.alt_navigation = alt_navigation
+                            text="Extrude Vertices")
 
         layout.separator()
 
@@ -4741,22 +4742,15 @@ class VIEW3D_MT_edit_mesh_faces(Menu):
     bl_idname = "VIEW3D_MT_edit_mesh_faces"
 
     def draw(self, context):
-        alt_navigation = getattr(
-            context.window_manager.keyconfigs.active.preferences,
-            "use_alt_navigation",
-            False)
-
         layout = self.layout
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         layout.operator("view3d.edit_mesh_extrude_move_normal",
-                        text="Extrude Faces").alt_navigation = alt_navigation
+                        text="Extrude Faces")
         layout.operator("view3d.edit_mesh_extrude_move_shrink_fatten",
-                        text="Extrude Faces Along Normals").alt_navigation = alt_navigation
-        layout.operator(
-            "mesh.extrude_faces_move",
-            text="Extrude Individual Faces").TRANSFORM_OT_shrink_fatten.alt_navigation = alt_navigation
+                        text="Extrude Faces Along Normals")
+        layout.operator("mesh.extrude_faces_move", text="Extrude Individual Faces")
 
         layout.separator()
 
@@ -5023,6 +5017,10 @@ class VIEW3D_MT_edit_greasepencil_delete(Menu):
 
     def draw(self, _context):
         layout = self.layout
+
+        layout.operator("grease_pencil.delete")
+
+        layout.separator()
 
         layout.operator_enum("grease_pencil.dissolve", "type")
 
@@ -5811,6 +5809,20 @@ class VIEW3D_MT_edit_gpencil_showhide(Menu):
         layout.operator("gpencil.hide", text="Hide Inactive Layers").unselected = True
 
 
+class VIEW3D_MT_edit_greasepencil_showhide(Menu):
+    bl_label = "Show/Hide"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("grease_pencil.layer_reveal", text="Show All Layers")
+
+        layout.separator()
+
+        layout.operator("grease_pencil.layer_hide", text="Hide Active Layer").unselected = False
+        layout.operator("grease_pencil.layer_hide", text="Hide Inactive Layers").unselected = True
+
+
 class VIEW3D_MT_edit_greasepencil(Menu):
     bl_label = "Grease Pencil"
 
@@ -5818,6 +5830,18 @@ class VIEW3D_MT_edit_greasepencil(Menu):
         layout = self.layout
         layout.menu("VIEW3D_MT_transform")
         layout.menu("VIEW3D_MT_mirror")
+
+        layout.separator()
+
+        layout.menu("GREASE_PENCIL_MT_layer_active", text="Active Layer")
+
+        layout.separator()
+
+        layout.operator("grease_pencil.duplicate_move")
+
+        layout.separator()
+
+        layout.menu("VIEW3D_MT_edit_greasepencil_showhide")
 
         layout.separator()
 
@@ -5833,7 +5857,13 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
 
         layout.separator()
 
+        layout.operator("grease_pencil.set_active_material")
+
+        layout.separator()
+
         layout.operator("grease_pencil.cyclical_set", text="Toggle Cyclic").type = 'TOGGLE'
+        layout.operator("grease_pencil.stroke_switch_direction")
+        layout.operator_menu_enum("grease_pencil.caps_set", text="Set Caps", property="type")
 
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):
@@ -5842,6 +5872,10 @@ class VIEW3D_MT_edit_greasepencil_point(Menu):
     def draw(self, _context):
         layout = self.layout
         layout.operator("grease_pencil.stroke_smooth", text="Smooth Points")
+
+        layout.separator()
+        layout.operator("grease_pencil.set_uniform_thickness")
+        layout.operator("grease_pencil.set_uniform_opacity")
 
 
 class VIEW3D_MT_edit_curves(Menu):
@@ -6107,7 +6141,9 @@ class VIEW3D_MT_sculpt_face_sets_edit_pie(Menu):
 
         pie.operator("sculpt.face_set_invert_visibility", text="Invert Visible")
 
-        props = pie.operator("sculpt.reveal_all", text="Show All")
+        props = pie.operator("paint.hide_show", text="Show All")
+        props.action = "SHOW"
+        props.area = "ALL"
 
 
 class VIEW3D_MT_wpaint_vgroup_lock_pie(Menu):
@@ -6732,7 +6768,7 @@ class VIEW3D_PT_shading_render_pass(Panel):
     bl_region_type = 'HEADER'
     bl_label = "Render Pass"
     bl_parent_id = "VIEW3D_PT_shading"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
 
     @classmethod
     def poll(cls, context):
@@ -8050,6 +8086,32 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
             col.operator("gpencil.reproject", text="Reproject")
 
 
+class VIEW3D_MT_greasepencil_material_active(Menu):
+    bl_label = "Active Material"
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.active_object
+        if ob is None or len(ob.material_slots) == 0:
+            return False
+
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator_context = 'INVOKE_REGION_WIN'
+        ob = context.active_object
+
+        for slot in ob.material_slots:
+            mat = slot.material
+            if not mat:
+                continue
+            mat.id_data.preview_ensure()
+            if mat and mat.id_data and mat.id_data.preview:
+                icon = mat.id_data.preview.icon_id
+                layout.operator("grease_pencil.set_material", text=mat.name, icon_value=icon).slot = mat.name
+
+
 class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
     bl_label = ""
 
@@ -8784,6 +8846,7 @@ classes = (
     VIEW3D_MT_edit_mesh_merge,
     VIEW3D_MT_edit_mesh_split,
     VIEW3D_MT_edit_mesh_showhide,
+    VIEW3D_MT_greasepencil_material_active,
     VIEW3D_MT_paint_grease_pencil,
     VIEW3D_MT_paint_gpencil,
     VIEW3D_MT_draw_gpencil,
@@ -8793,6 +8856,7 @@ classes = (
     VIEW3D_MT_edit_gpencil_point,
     VIEW3D_MT_edit_gpencil_delete,
     VIEW3D_MT_edit_gpencil_showhide,
+    VIEW3D_MT_edit_greasepencil_showhide,
     VIEW3D_MT_weight_gpencil,
     VIEW3D_MT_gpencil_animation,
     VIEW3D_MT_gpencil_simplify,

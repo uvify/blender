@@ -21,8 +21,8 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
-#include "BKE_main.h"
+#include "BKE_context.hh"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 #include "BKE_workspace.h"
 

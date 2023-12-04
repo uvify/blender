@@ -26,8 +26,8 @@
 #  include "DNA_scene_types.h"
 
 #  include "BKE_deform.h"
-#  include "BKE_lattice.h"
-#  include "BKE_main.h"
+#  include "BKE_lattice.hh"
+#  include "BKE_main.hh"
 #  include "BLI_string.h"
 
 #  include "DEG_depsgraph.hh"

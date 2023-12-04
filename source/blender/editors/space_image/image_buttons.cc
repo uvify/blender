@@ -19,7 +19,7 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_node.h"
@@ -53,7 +53,7 @@ ImageUser *ntree_get_active_iuser(bNodeTree *ntree)
 {
   if (ntree) {
     LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-      if (ELEM(node->type, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER)) {
+      if (node->type == CMP_NODE_VIEWER) {
         if (node->flag & NODE_DO_OUTPUT) {
           return static_cast<ImageUser *>(node->storage);
         }

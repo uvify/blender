@@ -34,6 +34,7 @@
 #include "BLI_kdopbvh.h"
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
+#include "BLI_math_base_safe.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -56,16 +57,16 @@
 #include "BKE_effect.h"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
@@ -198,7 +199,7 @@ static void particle_settings_foreach_id(ID *id, LibraryForeachIDData *data)
   if (psett->boids) {
     LISTBASE_FOREACH (BoidState *, state, &psett->boids->states) {
       LISTBASE_FOREACH (BoidRule *, rule, &state->rules) {
-        if (rule->type == eBoidRuleType_Avoid) {
+        if (ELEM(rule->type, eBoidRuleType_Avoid, eBoidRuleType_Goal)) {
           BoidRuleGoalAvoid *gabr = (BoidRuleGoalAvoid *)rule;
           BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, gabr->ob, IDWALK_CB_NOP);
         }
@@ -2396,7 +2397,7 @@ bool do_guides(Depsgraph *depsgraph,
         /* curve direction */
         cross_v3_v3v3(temp, eff->guide_dir, guidedir);
         angle = dot_v3v3(eff->guide_dir, guidedir) / len_v3(eff->guide_dir);
-        angle = saacos(angle);
+        angle = safe_acosf(angle);
         axis_angle_to_quat(rot2, temp, angle);
         mul_qt_v3(rot2, vec_to_point);
 
@@ -2871,7 +2872,7 @@ static void psys_thread_create_path(ParticleTask *task,
             normalize_v3(v1);
             normalize_v3(v2);
 
-            d = RAD2DEGF(saacos(dot_v3v3(v1, v2)));
+            d = RAD2DEGF(safe_acosf(dot_v3v3(v1, v2)));
           }
 
           if (p_max > p_min) {
@@ -3237,7 +3238,7 @@ static void cache_key_incremental_rotation(ParticleCacheKey *key0,
         copy_v4_v4(key1->rot, key2->rot);
       }
       else {
-        angle = saacos(cosangle);
+        angle = safe_acosf(cosangle);
         cross_v3_v3v3(normal, prev_tangent, tangent);
         axis_angle_to_quat(q, normal, angle);
         mul_qt_qtqt(key1->rot, q, key2->rot);

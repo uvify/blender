@@ -5,9 +5,9 @@
 #include "workbench_private.hh"
 
 #include "BKE_camera.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_mesh_types.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
@@ -153,7 +153,7 @@ void SceneState::init(Object *camera_ob /*=nullptr*/)
   }
 
   if (assign_if_different(overlays_enabled, v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS))) {
-    /** Reset TAA when enabling overlays, since we won't have valid sample0 depth textures.
+    /* Reset TAA when enabling overlays, since we won't have valid sample0 depth textures.
      * (See #113741) */
     reset_taa = true;
   }

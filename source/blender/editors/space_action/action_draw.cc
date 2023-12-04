@@ -30,7 +30,7 @@
 
 #include "BKE_action.h"
 #include "BKE_bake_geometry_nodes_modifier.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_pointcache.h"
 
@@ -886,10 +886,10 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
       const blender::bke::bake::ModifierCache &modifier_cache = *nmd->runtime->cache;
       {
         std::lock_guard lock{modifier_cache.mutex};
-        for (const std::unique_ptr<blender::bke::bake::NodeCache> &node_cache_ptr :
-             modifier_cache.cache_by_id.values())
+        for (const std::unique_ptr<blender::bke::bake::SimulationNodeCache> &node_cache_ptr :
+             modifier_cache.simulation_cache_by_id.values())
         {
-          const blender::bke::bake::NodeCache &node_cache = *node_cache_ptr;
+          const blender::bke::bake::SimulationNodeCache &node_cache = *node_cache_ptr;
           if (node_cache.frame_caches.is_empty()) {
             all_simulations_baked = false;
             continue;

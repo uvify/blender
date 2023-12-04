@@ -14,10 +14,10 @@
 #include "BLI_math_vector.h"
 
 #include "BKE_animsys.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcache.h"
 #include "BKE_report.h"

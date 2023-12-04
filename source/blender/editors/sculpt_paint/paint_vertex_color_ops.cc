@@ -20,7 +20,7 @@
 #include "BLI_vector.hh"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_mesh.hh"
@@ -304,8 +304,7 @@ static void transform_active_color(bContext *C,
   Object *obact = CTX_data_active_object(C);
 
   /* Ensure valid sculpt state. */
-  BKE_sculpt_update_object_for_edit(
-      CTX_data_ensure_evaluated_depsgraph(C), obact, true, false, true);
+  BKE_sculpt_update_object_for_edit(CTX_data_ensure_evaluated_depsgraph(C), obact, true);
 
   SCULPT_undo_push_begin(obact, op);
 

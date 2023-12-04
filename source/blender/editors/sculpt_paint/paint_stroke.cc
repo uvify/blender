@@ -27,8 +27,8 @@
 
 #include "BKE_brush.hh"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_image.h"
 #include "BKE_paint.hh"
 
@@ -108,7 +108,7 @@ struct PaintStroke {
   float last_tablet_event_pressure;
 
   float zoom_2d;
-  int pen_flip;
+  bool pen_flip;
 
   /* Tilt, as read from the event. */
   float x_tilt;

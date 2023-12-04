@@ -31,10 +31,10 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 
 using Alembic::Abc::FloatArraySamplePtr;

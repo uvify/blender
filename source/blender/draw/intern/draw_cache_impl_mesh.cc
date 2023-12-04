@@ -31,15 +31,15 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_attribute.h"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
-#include "BKE_editmesh_tangent.h"
+#include "BKE_editmesh_tangent.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_tangent.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -59,7 +59,7 @@
 
 #include "draw_cache_extract.hh"
 #include "draw_cache_inline.h"
-#include "draw_subdivision.h"
+#include "draw_subdivision.hh"
 
 #include "draw_cache_impl.hh" /* own include */
 #include "draw_manager.h"
@@ -272,7 +272,7 @@ static void mesh_cd_calc_active_mask_uv_layer(const Object *object,
 
 static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Object *object,
                                                    const Mesh *me,
-                                                   GPUMaterial **gpumat_array,
+                                                   const GPUMaterial *const *gpumat_array,
                                                    int gpumat_array_len,
                                                    DRW_Attributes *attributes)
 {
@@ -291,7 +291,7 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Object *object,
                                                "";
 
   for (int i = 0; i < gpumat_array_len; i++) {
-    GPUMaterial *gpumat = gpumat_array[i];
+    const GPUMaterial *gpumat = gpumat_array[i];
     if (gpumat == nullptr) {
       continue;
     }
@@ -953,9 +953,9 @@ GPUBatch *DRW_mesh_batch_cache_get_edit_mesh_analysis(Mesh *me)
   return DRW_batch_request(&cache.batch.edit_mesh_analysis);
 }
 
-void DRW_mesh_get_attributes(Object *object,
-                             Mesh *me,
-                             GPUMaterial **gpumat_array,
+void DRW_mesh_get_attributes(const Object *object,
+                             const Mesh *me,
+                             const GPUMaterial *const *gpumat_array,
                              int gpumat_array_len,
                              DRW_Attributes *r_attrs,
                              DRW_MeshCDMask *r_cd_needed)
@@ -1506,7 +1506,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
   const bool do_update_sculpt_normals = ob->sculpt && ob->sculpt->pbvh;
   if (do_update_sculpt_normals) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
-    BKE_pbvh_update_normals(ob->sculpt->pbvh, mesh->runtime->subdiv_ccg);
+    BKE_pbvh_update_normals(ob->sculpt->pbvh, mesh->runtime->subdiv_ccg.get());
   }
 
   cache.batch_ready |= batch_requested;

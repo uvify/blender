@@ -13,7 +13,7 @@
 #include "ANIM_visualkey.hh"
 
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -22,8 +22,6 @@
 #include "DNA_constraint_types.h"
 #include "DNA_object_types.h"
 #include "DNA_rigidbody_types.h"
-
-#include "ED_keyframing.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"

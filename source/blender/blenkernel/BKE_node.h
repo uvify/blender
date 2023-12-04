@@ -906,7 +906,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define SH_NODE_TEX_MAGIC 148
 #define SH_NODE_TEX_WAVE 149
 #define SH_NODE_TEX_NOISE 150
-#define SH_NODE_TEX_MUSGRAVE 152
+#define SH_NODE_TEX_MUSGRAVE_DEPRECATED 152
 #define SH_NODE_TEX_COORD 155
 #define SH_NODE_ADD_SHADER 156
 #define SH_NODE_TEX_ENVIRONMENT 157
@@ -1017,7 +1017,8 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define CMP_NODE_CHROMA_MATTE 237
 #define CMP_NODE_CHANNEL_MATTE 238
 #define CMP_NODE_FLIP 239
-#define CMP_NODE_SPLITVIEWER 240
+/* Split viewer node is now a regular split node: CMP_NODE_SPLIT. */
+#define CMP_NODE_SPLITVIEWER__DEPRECATED 240
 // #define CMP_NODE_INDEX_MASK  241
 #define CMP_NODE_MAP_UV 242
 #define CMP_NODE_ID_MASK 243
@@ -1054,6 +1055,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define CMP_NODE_DESPECKLE 273
 #define CMP_NODE_ANTIALIASING 274
 #define CMP_NODE_KUWAHARA 275
+#define CMP_NODE_SPLIT 276
 
 #define CMP_NODE_GLARE 301
 #define CMP_NODE_TONEMAP 302
@@ -1291,17 +1293,17 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_IMAGE 1191
 #define GEO_NODE_INTERPOLATE_CURVES 1192
 #define GEO_NODE_EDGES_TO_FACE_GROUPS 1193
-#define GEO_NODE_POINTS_TO_SDF_VOLUME 1194
-#define GEO_NODE_MESH_TO_SDF_VOLUME 1195
-#define GEO_NODE_SDF_VOLUME_SPHERE 1196
-#define GEO_NODE_MEAN_FILTER_SDF_VOLUME 1197
-#define GEO_NODE_OFFSET_SDF_VOLUME 1198
+// #define GEO_NODE_POINTS_TO_SDF_VOLUME 1194
+// #define GEO_NODE_MESH_TO_SDF_VOLUME 1195
+// #define GEO_NODE_SDF_VOLUME_SPHERE 1196
+// #define GEO_NODE_MEAN_FILTER_SDF_VOLUME 1197
+// #define GEO_NODE_OFFSET_SDF_VOLUME 1198
 #define GEO_NODE_INDEX_OF_NEAREST 1199
 /* Function nodes use the range starting at 1200. */
 #define GEO_NODE_SIMULATION_INPUT 2100
 #define GEO_NODE_SIMULATION_OUTPUT 2101
-#define GEO_NODE_INPUT_SIGNED_DISTANCE 2102
-#define GEO_NODE_SAMPLE_VOLUME 2103
+// #define GEO_NODE_INPUT_SIGNED_DISTANCE 2102
+// #define GEO_NODE_SAMPLE_VOLUME 2103
 #define GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_EDGE 2104
 /* Leaving out two indices to avoid crashes with files that were created during the development of
  * the repeat zone. */
@@ -1316,6 +1318,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INPUT_EDGE_SMOOTH 2115
 #define GEO_NODE_SPLIT_TO_INSTANCES 2116
 #define GEO_NODE_INPUT_NAMED_LAYER_SELECTION 2117
+#define GEO_NODE_INDEX_SWITCH 2118
 
 /** \} */
 

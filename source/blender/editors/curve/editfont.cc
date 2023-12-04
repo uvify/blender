@@ -27,14 +27,14 @@
 #include "DNA_text_types.h"
 #include "DNA_vfont_types.h"
 
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_report.h"
-#include "BKE_vfont.h"
+#include "BKE_vfont.hh"
 
 #include "BLI_string_utf8.h"
 

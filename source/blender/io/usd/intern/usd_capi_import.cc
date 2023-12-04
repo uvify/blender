@@ -13,12 +13,12 @@
 #include "BKE_blender_version.h"
 #include "BKE_cachefile.h"
 #include "BKE_cdderivedmesh.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_library.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
 #include "BKE_report.h"
@@ -222,6 +222,7 @@ static void import_startjob(void *customdata, wmJobWorkerStatus *worker_status)
 
     WM_main_add_notifier(NC_SCENE | ND_LAYER, nullptr);
 
+    BKE_view_layer_synced_ensure(data->scene, data->view_layer);
     data->view_layer->active_collection = BKE_layer_collection_first_from_scene_collection(
         data->view_layer, import_collection);
   }

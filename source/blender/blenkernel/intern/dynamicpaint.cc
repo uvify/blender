@@ -38,25 +38,25 @@
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "BKE_armature.h"
-#include "BKE_bvhutils.h" /* bvh tree */
+#include "BKE_armature.hh"
+#include "BKE_bvhutils.hh" /* bvh tree */
 #include "BKE_collection.h"
 #include "BKE_collision.h"
 #include "BKE_colorband.h"
 #include "BKE_constraint.h"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
 #include "BKE_dynamicpaint.h"
 #include "BKE_effect.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
@@ -3448,9 +3448,9 @@ static void mesh_tris_spherecast_dp(void *userdata,
                                     BVHTreeRayHit *hit)
 {
   const BVHTreeFromMesh *data = (BVHTreeFromMesh *)userdata;
-  const float(*positions)[3] = data->vert_positions;
-  const MLoopTri *looptris = data->looptri;
-  const int *corner_verts = data->corner_verts;
+  const blender::Span<blender::float3> positions = data->vert_positions;
+  const MLoopTri *looptris = data->looptris.data();
+  const int *corner_verts = data->corner_verts.data();
 
   const float *t0, *t1, *t2;
   float dist;
@@ -3480,9 +3480,9 @@ static void mesh_tris_nearest_point_dp(void *userdata,
                                        BVHTreeNearest *nearest)
 {
   const BVHTreeFromMesh *data = (BVHTreeFromMesh *)userdata;
-  const float(*positions)[3] = data->vert_positions;
-  const MLoopTri *looptris = data->looptri;
-  const int *corner_verts = data->corner_verts;
+  const blender::Span<blender::float3> positions = data->vert_positions;
+  const MLoopTri *looptris = data->looptris.data();
+  const int *corner_verts = data->corner_verts.data();
   float nearest_tmp[3], dist_sq;
 
   const float *t0, *t1, *t2;

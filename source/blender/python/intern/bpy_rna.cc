@@ -50,11 +50,11 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h" /* evil G.* */
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
 /* Only for types. */
@@ -5460,7 +5460,7 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
     buffer_is_compat = false;
     if (PyObject_CheckBuffer(seq)) {
       Py_buffer buf;
-      if (PyObject_GetBuffer(seq, &buf, PyBUF_SIMPLE | PyBUF_FORMAT) == -1) {
+      if (PyObject_GetBuffer(seq, &buf, PyBUF_ND | PyBUF_FORMAT) == -1) {
         /* Request failed. A `PyExc_BufferError` will have been raised,
          * so clear it to silently fall back to accessing as a sequence. */
         PyErr_Clear();
@@ -5521,7 +5521,7 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
     buffer_is_compat = false;
     if (PyObject_CheckBuffer(seq)) {
       Py_buffer buf;
-      if (PyObject_GetBuffer(seq, &buf, PyBUF_SIMPLE | PyBUF_FORMAT) == -1) {
+      if (PyObject_GetBuffer(seq, &buf, PyBUF_ND | PyBUF_FORMAT) == -1) {
         /* Request failed. A `PyExc_BufferError` will have been raised,
          * so clear it to silently fall back to accessing as a sequence. */
         PyErr_Clear();
@@ -5665,7 +5665,7 @@ static PyObject *pyprop_array_foreach_getset(BPy_PropertyArrayRNA *self,
   }
 
   Py_buffer buf;
-  if (PyObject_GetBuffer(seq, &buf, PyBUF_SIMPLE | PyBUF_FORMAT) == -1) {
+  if (PyObject_GetBuffer(seq, &buf, PyBUF_ND | PyBUF_FORMAT) == -1) {
     PyErr_Clear();
 
     switch (prop_type) {
@@ -8781,19 +8781,8 @@ static int bpy_class_call(bContext *C, PointerRNA *ptr, FunctionRNA *func, Param
       reports = CTX_wm_reports(C);
     }
 
-    /* Typically null reports are sent to the output,
-     * in this case however PyErr_Print is responsible for that,
-     * so only run this if reports are non-null. */
     if (reports) {
-      /* Create a temporary report list so none of the reports are printed (only stored).
-       * Only do this when reports is non-null because the error is printed to the `stderr`
-       * #PyErr_Print below. */
-      ReportList reports_temp = {{0}};
-      BKE_reports_init(&reports_temp, reports->flag | RPT_PRINT_HANDLED_BY_OWNER);
-      reports_temp.storelevel = reports->storelevel;
-      BPy_errors_to_report(&reports_temp);
-      BKE_reports_move_to_reports(reports, &reports_temp);
-      BKE_reports_free(&reports_temp);
+      BPy_errors_to_report(reports);
     }
 
     /* Also print in the console for Python. */
@@ -9091,8 +9080,15 @@ PyDoc_STRVAR(pyrna_unregister_class_doc,
              "\n"
              "   Unload the Python class from blender.\n"
              "\n"
-             "   If the class has an *unregister* class method it will be called\n"
-             "   before unregistering.\n");
+             "   :arg cls: Blender type class, \n"
+             "      see :mod:`bpy.utils.register_class` for classes which can \n"
+             "      be registered.\n"
+             "   :type cls: class\n"
+             "\n"
+             "   .. note::\n"
+             "\n"
+             "      If the class has an *unregister* class method it will be called\n"
+             "      before unregistering.\n");
 PyMethodDef meth_bpy_unregister_class = {
     "unregister_class",
     pyrna_unregister_class,

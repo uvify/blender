@@ -22,12 +22,12 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
-#include "GPU_select.h"
+#include "GPU_select.hh"
 #include "GPU_state.h"
 
 #include "RNA_access.hh"

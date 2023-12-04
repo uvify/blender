@@ -36,7 +36,7 @@
 #include "DNA_view3d_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_curve_legacy.h"
@@ -45,7 +45,7 @@
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_library.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"

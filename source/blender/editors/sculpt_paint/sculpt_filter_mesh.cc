@@ -23,8 +23,8 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_context.h"
-#include "BKE_modifier.h"
+#include "BKE_context.hh"
+#include "BKE_modifier.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -363,12 +363,12 @@ static void mesh_filter_task(Object *ob,
    * boundaries. */
   const bool relax_face_sets = !(ss->filter_cache->iteration_count % 3 == 0);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->filter_cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->filter_cache->automasking, &automask_data, node);
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     float orig_co[3], val[3], avg[3], disp[3], disp2[3], transform[3][3], final_pos[3];
     float fade = vd.mask;
@@ -664,10 +664,10 @@ static void mesh_filter_surface_smooth_displace_task(Object *ob,
   PBVHVertexIter vd;
 
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->filter_cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->filter_cache->automasking, &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     float fade = vd.mask;
     fade = 1.0f - fade;
@@ -851,7 +851,7 @@ static void sculpt_mesh_filter_cancel(bContext *C, wmOperator * /*op*/)
   }
 
   /* Gather all PBVH leaf nodes. */
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
+  blender::Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
   for (PBVHNode *node : nodes) {
     PBVHVertexIter vd;
@@ -935,8 +935,7 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
 
   sculpt_mesh_update_strength(op, ss, prev_mval, mval);
 
-  bool needs_pmap = sculpt_mesh_filter_needs_pmap(filter_type);
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, needs_pmap, false, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
   sculpt_mesh_filter_apply(C, op);
 
@@ -991,7 +990,7 @@ static int sculpt_mesh_filter_start(bContext *C, wmOperator *op)
   const bool use_automasking = SCULPT_is_automasking_enabled(sd, nullptr, nullptr);
   const bool needs_topology_info = sculpt_mesh_filter_needs_pmap(filter_type) || use_automasking;
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, needs_topology_info, false, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
   SculptSession *ss = ob->sculpt;
 
   const eMeshFilterDeformAxis deform_axis = eMeshFilterDeformAxis(

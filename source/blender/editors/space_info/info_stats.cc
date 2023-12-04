@@ -36,18 +36,18 @@
 #include "BLT_translation.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_blender_version.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_curves.hh"
 #include "BKE_displist.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
@@ -105,11 +105,10 @@ static bool stats_mesheval(const Mesh *me_eval, bool is_selected, SceneStats *st
 
   int totvert, totedge, totface, totloop;
 
-  const SubdivCCG *subdiv_ccg = me_eval->runtime->subdiv_ccg;
   const SubsurfRuntimeData *subsurf_runtime_data = me_eval->runtime->subsurf_runtime_data;
 
-  if (subdiv_ccg != nullptr) {
-    BKE_subdiv_ccg_topology_counters(subdiv_ccg, &totvert, &totedge, &totface, &totloop);
+  if (const std::unique_ptr<SubdivCCG> &subdiv_ccg = me_eval->runtime->subdiv_ccg) {
+    BKE_subdiv_ccg_topology_counters(*subdiv_ccg, totvert, totedge, totface, totloop);
   }
   else if (subsurf_runtime_data && subsurf_runtime_data->resolution != 0) {
     totvert = subsurf_runtime_data->stats_totvert;

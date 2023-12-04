@@ -10,12 +10,14 @@
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
 #include "BLI_task.h"
 
 #include "DNA_meshdata_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_kelvinlet.h"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -39,6 +41,9 @@
 #include <cmath>
 #include <cstdlib>
 
+using blender::float3;
+using blender::MutableSpan;
+
 void ED_sculpt_init_transform(bContext *C,
                               Object *ob,
                               const float mval_fl[2],
@@ -57,7 +62,7 @@ void ED_sculpt_init_transform(bContext *C,
   copy_v3_v3(ss->prev_pivot_scale, ss->pivot_scale);
 
   SCULPT_undo_push_begin_ex(ob, undo_name);
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, false, false, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
   ss->pivot_rot[3] = 1.0f;
 
@@ -207,7 +212,7 @@ static void sculpt_elastic_transform_task(Object *ob,
 
   SculptSession *ss = ob->sculpt;
 
-  float(*proxy)[3] = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
   SculptOrigVertData orig_data;
   SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
@@ -299,7 +304,7 @@ void ED_sculpt_update_modal_transform(bContext *C, Object *ob)
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
 
   SCULPT_vertex_random_access_ensure(ss);
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, false, false, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
   switch (sd->transform_mode) {
     case SCULPT_TRANSFORM_MODE_ALL_VERTICES: {
@@ -393,7 +398,7 @@ static int sculpt_set_pivot_position_exec(bContext *C, wmOperator *op)
 
   int mode = RNA_enum_get(op->ptr, "mode");
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, false, true, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
   /* Pivot to center. */
   if (mode == SCULPT_PIVOT_POSITION_ORIGIN) {
@@ -415,7 +420,7 @@ static int sculpt_set_pivot_position_exec(bContext *C, wmOperator *op)
     }
   }
   else {
-    Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
+    blender::Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
     float avg[3];
     int total = 0;

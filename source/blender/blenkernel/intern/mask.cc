@@ -29,14 +29,14 @@
 #include "DNA_mask_types.h"
 
 #include "BKE_animsys.h"
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_idtype.h"
 
 #include "BKE_anim_data.h"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"

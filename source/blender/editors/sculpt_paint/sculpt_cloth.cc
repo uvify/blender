@@ -22,12 +22,12 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_ccg.h"
 #include "BKE_collision.h"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
-#include "BKE_modifier.h"
+#include "BKE_context.hh"
+#include "BKE_modifier.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -55,6 +55,7 @@
 #include <cstdlib>
 #include <cstring>
 
+using blender::Span;
 using blender::Vector;
 
 static void cloth_brush_simulation_location_get(SculptSession *ss,
@@ -470,11 +471,10 @@ static void do_cloth_brush_apply_forces_task(Object *ob,
   }
 
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      ob, ss, SCULPT_automasking_active_cache_get(ss), &automask_data, node);
+  SCULPT_automasking_node_begin(ob, SCULPT_automasking_active_cache_get(ss), &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     float force[3];
     float sim_location[3];
@@ -735,11 +735,10 @@ static void do_cloth_brush_solve_simulation_task(Object *ob,
 
   AutomaskingCache *automasking = SCULPT_automasking_active_cache_get(ss);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      ob, ss, SCULPT_automasking_active_cache_get(ss), &automask_data, node);
+  SCULPT_automasking_node_begin(ob, SCULPT_automasking_active_cache_get(ss), &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     float sim_location[3];
     cloth_brush_simulation_location_get(ss, brush, sim_location);
@@ -795,7 +794,7 @@ static void cloth_brush_satisfy_constraints(SculptSession *ss,
 {
 
   AutomaskingCache *automasking = SCULPT_automasking_active_cache_get(ss);
-  AutomaskingNodeData automask_data = {nullptr};
+  AutomaskingNodeData automask_data{};
 
   automask_data.have_orig_data = true;
 
@@ -1377,12 +1376,11 @@ static void cloth_filter_apply_forces_task(Object *ob,
   }
   mul_v3_fl(sculpt_gravity, sd->gravity_factor * filter_strength);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      ob, ss, SCULPT_automasking_active_cache_get(ss), &automask_data, node);
+  SCULPT_automasking_node_begin(ob, SCULPT_automasking_active_cache_get(ss), &automask_data, node);
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     float fade = vd.mask;
     fade *= SCULPT_automasking_factor_get(
@@ -1473,7 +1471,7 @@ static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent 
 
   SCULPT_vertex_random_access_ensure(ss);
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob,  false);
 
   const int totverts = SCULPT_vertex_count_get(ss);
 
@@ -1524,7 +1522,7 @@ static int sculpt_cloth_filter_invoke(bContext *C, wmOperator *op, const wmEvent
   SCULPT_vertex_random_access_ensure(ss);
 
   /* Needs mask data to be available as it is used when solving the constraints. */
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob,  false);
 
   SCULPT_stroke_id_next(ob);
 

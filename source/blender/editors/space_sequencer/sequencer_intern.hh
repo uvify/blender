@@ -15,6 +15,7 @@
 
 /* Internal exports only. */
 
+class SeqQuadsBatch;
 struct ARegion;
 struct ARegionType;
 struct Depsgraph;
@@ -234,7 +235,7 @@ void SEQUENCER_OT_select_side(wmOperatorType *ot);
 void SEQUENCER_OT_select_box(wmOperatorType *ot);
 void SEQUENCER_OT_select_inverse(wmOperatorType *ot);
 void SEQUENCER_OT_select_grouped(wmOperatorType *ot);
-Sequence *find_nearest_seq(const Scene *scene, const View2D *v2d, int *hand, const int mval[2]);
+Sequence *find_nearest_seq(const Scene *scene, const View2D *v2d, const int mval[2], int *r_hand);
 
 /* `sequencer_add.cc` */
 
@@ -310,21 +311,17 @@ void SEQUENCER_OT_retiming_key_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_freeze_frame_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_transition_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot);
-int sequencer_retiming_key_select_exec(struct bContext *C, struct wmOperator *op);
-int sequencer_select_exec(struct bContext *C, struct wmOperator *op);
-int sequencer_retiming_key_remove_exec(struct bContext *C, struct wmOperator *op);
-int sequencer_retiming_select_all_exec(struct bContext *C, struct wmOperator *op);
-int sequencer_retiming_box_select_exec(struct bContext *C, struct wmOperator *op);
+int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op);
+int sequencer_select_exec(bContext *C, wmOperator *op);
+int sequencer_retiming_key_remove_exec(bContext *C, wmOperator *op);
+int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op);
+int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op);
 
 /* `sequencer_retiming_draw.cc` */
-void sequencer_draw_retiming(const struct bContext *C);
-blender::Vector<Sequence *> sequencer_visible_strips_get(const struct bContext *C);
-struct SeqRetimingKey *try_to_realize_virtual_key(const struct bContext *C,
-                                                  struct Sequence *seq,
-                                                  const int mval[2]);
-struct SeqRetimingKey *retiming_mousover_key_get(const struct bContext *C,
-                                                 const int mval[2],
-                                                 Sequence **r_seq);
+void sequencer_draw_retiming(const bContext *C, SeqQuadsBatch *quads);
+blender::Vector<Sequence *> sequencer_visible_strips_get(const bContext *C);
+SeqRetimingKey *try_to_realize_virtual_key(const bContext *C, Sequence *seq, const int mval[2]);
+SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], Sequence **r_seq);
 int left_fake_key_frame_get(const bContext *C, const Sequence *seq);
 int right_fake_key_frame_get(const bContext *C, const Sequence *seq);
 bool retiming_keys_are_visible(const bContext *C);

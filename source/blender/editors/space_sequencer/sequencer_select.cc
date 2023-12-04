@@ -13,13 +13,14 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_ghash.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_scene_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_report.h"
 
 #include "WM_api.hh"
@@ -291,7 +292,7 @@ Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int se
   return nullptr;
 }
 
-Sequence *find_nearest_seq(const Scene *scene, const View2D *v2d, int *hand, const int mval[2])
+Sequence *find_nearest_seq(const Scene *scene, const View2D *v2d, const int mval[2], int *r_hand)
 {
   Sequence *seq;
   Editing *ed = SEQ_editing_get(scene);
@@ -299,7 +300,7 @@ Sequence *find_nearest_seq(const Scene *scene, const View2D *v2d, int *hand, con
   float pixelx;
   float handsize;
   float displen;
-  *hand = SEQ_SIDE_NONE;
+  *r_hand = SEQ_SIDE_NONE;
 
   if (ed == nullptr) {
     return nullptr;
@@ -344,10 +345,10 @@ Sequence *find_nearest_seq(const Scene *scene, const View2D *v2d, int *hand, con
             }
 
             if (handsize + SEQ_time_left_handle_frame_get(scene, seq) >= x) {
-              *hand = SEQ_SIDE_LEFT;
+              *r_hand = SEQ_SIDE_LEFT;
             }
             else if (-handsize + SEQ_time_right_handle_frame_get(scene, seq) <= x) {
-              *hand = SEQ_SIDE_RIGHT;
+              *r_hand = SEQ_SIDE_RIGHT;
             }
           }
         }
@@ -925,7 +926,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     seq = seq_select_seq_from_preview(C, mval, toggle, extend, center);
   }
   else {
-    seq = find_nearest_seq(scene, v2d, &handle_clicked, mval);
+    seq = find_nearest_seq(scene, v2d, mval, &handle_clicked);
   }
 
   /* NOTE: `side_of_frame` and `linked_time` functionality is designed to be shared on one keymap,
@@ -1248,7 +1249,7 @@ static int sequencer_select_linked_pick_invoke(bContext *C, wmOperator *op, cons
   int selected, hand;
 
   /* This works like UV, not mesh. */
-  mouse_seq = find_nearest_seq(scene, v2d, &hand, event->mval);
+  mouse_seq = find_nearest_seq(scene, v2d, event->mval, &hand);
   if (!mouse_seq) {
     return OPERATOR_FINISHED; /* User error as with mesh?? */
   }
@@ -1758,7 +1759,7 @@ static int sequencer_box_select_invoke(bContext *C, wmOperator *op, const wmEven
     int hand_dummy;
     int mval[2];
     WM_event_drag_start_mval(event, region, mval);
-    Sequence *seq = find_nearest_seq(scene, v2d, &hand_dummy, mval);
+    Sequence *seq = find_nearest_seq(scene, v2d, mval, &hand_dummy);
     if (seq != nullptr) {
       return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
     }
