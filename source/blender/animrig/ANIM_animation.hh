@@ -25,6 +25,7 @@ struct PointerRNA;
 
 namespace blender::animrig {
 
+/* Forward declarations for the types defined later in this file. */
 class Layer;
 class Strip;
 class Output;
