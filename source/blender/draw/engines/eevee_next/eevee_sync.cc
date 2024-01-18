@@ -59,7 +59,7 @@ ObjectHandle &SyncModule::sync_object(const ObjectRef &ob_ref)
 WorldHandle SyncModule::sync_world()
 {
   WorldHandle handle;
-  handle.recalc = world_updated_ ? ID_RECALC_SHADING : 0;
+  handle.recalc = world_updated_ ? int(ID_RECALC_SHADING) : 0;
   world_updated_ = false;
   return handle;
 }
@@ -230,11 +230,9 @@ bool SyncModule::sync_sculpt(Object *ob,
 
   /* Use a valid bounding box. The PBVH module already does its own culling, but a valid */
   /* bounding box is still needed for directional shadow tile-map bounds computation. */
-  float3 min, max;
-  BKE_pbvh_bounding_box(ob_ref.object->sculpt->pbvh, min, max);
-  float3 center = (min + max) * 0.5;
-  float3 half_extent = max - center;
-  half_extent += inflate_bounds;
+  const Bounds<float3> bounds = BKE_pbvh_bounding_box(ob_ref.object->sculpt->pbvh);
+  const float3 center = math::midpoint(bounds.min, bounds.max);
+  const float3 half_extent = bounds.max - center + inflate_bounds;
   inst_.manager->update_handle_bounds(res_handle, center, half_extent);
 
   inst_.manager->extract_object_attributes(res_handle, ob_ref, material_array.gpu_materials);
@@ -576,7 +574,8 @@ void foreach_hair_particle_handle(Object *ob, ObjectHandle ob_handle, HairHandle
       const int draw_as = (part_settings->draw_as == PART_DRAW_REND) ? part_settings->ren_as :
                                                                        part_settings->draw_as;
       if (draw_as != PART_DRAW_PATH ||
-          !DRW_object_is_visible_psys_in_active_context(ob, particle_sys)) {
+          !DRW_object_is_visible_psys_in_active_context(ob, particle_sys))
+      {
         continue;
       }
 

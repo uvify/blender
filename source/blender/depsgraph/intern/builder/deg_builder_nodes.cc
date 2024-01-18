@@ -16,6 +16,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -71,8 +72,8 @@
 #include "BKE_key.h"
 #include "BKE_lattice.hh"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_light.h"
 #include "BKE_mask.h"
 #include "BKE_material.h"
@@ -1831,7 +1832,7 @@ void DepsgraphNodeBuilder::build_armature(bArmature *armature)
   add_operation_node(
       &armature->id, NodeType::ARMATURE, OperationCode::ARMATURE_EVAL, [](::Depsgraph *) {});
   build_armature_bones(&armature->bonebase);
-  build_armature_bone_collections(&armature->collections);
+  build_armature_bone_collections(armature->collections_span());
 }
 
 void DepsgraphNodeBuilder::build_armature_bones(ListBase *bones)
@@ -1842,9 +1843,10 @@ void DepsgraphNodeBuilder::build_armature_bones(ListBase *bones)
   }
 }
 
-void DepsgraphNodeBuilder::build_armature_bone_collections(ListBase *collections)
+void DepsgraphNodeBuilder::build_armature_bone_collections(
+    blender::Span<BoneCollection *> collections)
 {
-  LISTBASE_FOREACH (BoneCollection *, bcoll, collections) {
+  for (BoneCollection *bcoll : collections) {
     build_idproperties(bcoll->prop);
   }
 }

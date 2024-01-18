@@ -17,6 +17,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_action_types.h"
@@ -68,7 +69,7 @@
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_query.hh"
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_modifier.hh"
@@ -119,20 +120,30 @@ namespace blender::deg {
 
 namespace {
 
-bool driver_target_depends_on_time(const DriverTarget *target)
+bool is_time_dependent_scene_driver_target(const DriverTarget *target)
 {
-  if (target->idtype == ID_SCE &&
-      (target->rna_path != nullptr && STREQ(target->rna_path, "frame_current")))
+  return target->rna_path != nullptr && STREQ(target->rna_path, "frame_current");
+}
+
+bool driver_target_depends_on_time(const DriverVar *variable, const DriverTarget *target)
+{
+  if (variable->type == DVAR_TYPE_CONTEXT_PROP &&
+      target->context_property == DTAR_CONTEXT_PROPERTY_ACTIVE_SCENE)
   {
-    return true;
+    return is_time_dependent_scene_driver_target(target);
   }
+
+  if (target->idtype == ID_SCE) {
+    return is_time_dependent_scene_driver_target(target);
+  }
+
   return false;
 }
 
 bool driver_variable_depends_on_time(const DriverVar *variable)
 {
   for (int i = 0; i < variable->num_targets; ++i) {
-    if (driver_target_depends_on_time(&variable->targets[i])) {
+    if (driver_target_depends_on_time(variable, &variable->targets[i])) {
       return true;
     }
   }
@@ -2800,7 +2811,7 @@ void DepsgraphRelationBuilder::build_armature(bArmature *armature)
   build_animdata(&armature->id);
   build_parameters(&armature->id);
   build_armature_bones(&armature->bonebase);
-  build_armature_bone_collections(&armature->collections);
+  build_armature_bone_collections(armature->collections_span());
 }
 
 void DepsgraphRelationBuilder::build_armature_bones(ListBase *bones)
@@ -2811,9 +2822,10 @@ void DepsgraphRelationBuilder::build_armature_bones(ListBase *bones)
   }
 }
 
-void DepsgraphRelationBuilder::build_armature_bone_collections(ListBase *collections)
+void DepsgraphRelationBuilder::build_armature_bone_collections(
+    blender::Span<BoneCollection *> collections)
 {
-  LISTBASE_FOREACH (BoneCollection *, bcoll, collections) {
+  for (BoneCollection *bcoll : collections) {
     build_idproperties(bcoll->prop);
   }
 }

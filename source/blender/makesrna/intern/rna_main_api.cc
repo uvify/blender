@@ -52,7 +52,7 @@
 #  include "BKE_object.hh"
 #  include "BKE_paint.hh"
 #  include "BKE_particle.h"
-#  include "BKE_pointcloud.h"
+#  include "BKE_pointcloud.hh"
 #  include "BKE_scene.h"
 #  include "BKE_sound.h"
 #  include "BKE_speaker.h"
@@ -308,12 +308,12 @@ static Mesh *rna_Main_meshes_new(Main *bmain, const char *name)
   char safe_name[MAX_ID_NAME - 2];
   rna_idname_validate(name, safe_name);
 
-  Mesh *me = BKE_mesh_add(bmain, safe_name);
-  id_us_min(&me->id);
+  Mesh *mesh = BKE_mesh_add(bmain, safe_name);
+  id_us_min(&mesh->id);
 
   WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
 
-  return me;
+  return mesh;
 }
 
 /* copied from Mesh_getFromObject and adapted to RNA interface */
@@ -408,7 +408,7 @@ static Image *rna_Main_images_load(Main *bmain,
                 RPT_ERROR,
                 "Cannot read '%s': %s",
                 filepath,
-                errno ? strerror(errno) : TIP_("unsupported image format"));
+                errno ? strerror(errno) : RPT_("unsupported image format"));
   }
 
   id_us_min((ID *)ima);
@@ -477,7 +477,7 @@ static VFont *rna_Main_fonts_load(Main *bmain,
                 RPT_ERROR,
                 "Cannot read '%s': %s",
                 filepath,
-                errno ? strerror(errno) : TIP_("unsupported font format"));
+                errno ? strerror(errno) : RPT_("unsupported font format"));
   }
 
   WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
@@ -602,7 +602,7 @@ static Text *rna_Main_texts_load(Main *bmain,
                 RPT_ERROR,
                 "Cannot read '%s': %s",
                 filepath,
-                errno ? strerror(errno) : TIP_("unable to load text"));
+                errno ? strerror(errno) : RPT_("unable to load text"));
   }
 
   WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
@@ -701,7 +701,7 @@ static MovieClip *rna_Main_movieclip_load(Main *bmain,
                 RPT_ERROR,
                 "Cannot read '%s': %s",
                 filepath,
-                errno ? strerror(errno) : TIP_("unable to load movie clip"));
+                errno ? strerror(errno) : RPT_("unable to load movie clip"));
   }
 
   id_us_min((ID *)clip);

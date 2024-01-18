@@ -62,9 +62,10 @@ def _paths_with_extension_repos():
 
     import os
     addon_paths = [(path, "") for path in paths()]
-
     if _preferences.experimental.use_extension_repos:
         for repo in _preferences.filepaths.extension_repos:
+            if not repo.enabled:
+                continue
             dirpath = repo.directory
             if not os.path.isdir(dirpath):
                 continue
@@ -372,8 +373,32 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
             # If the add-on doesn't exist, don't print full trace-back because the back-trace is in this case
             # is verbose without any useful details. A missing path is better communicated in a short message.
             # Account for `ImportError` & `ModuleNotFoundError`.
-            if isinstance(ex, ImportError) and ex.name == module_name:
-                print("Add-on not loaded:", repr(module_name), "cause:", str(ex))
+            if isinstance(ex, ImportError):
+                if ex.name == module_name:
+                    print("Add-on not loaded: \"%s\", cause: %s" % (module_name, str(ex)))
+
+                # Issue with an add-on from an extension repository, report a useful message.
+                elif module_name.startswith(ex.name + ".") and module_name.startswith(_ext_base_pkg_idname + "."):
+                    repo_id = module_name[len(_ext_base_pkg_idname) + 1:].rpartition(".")[0]
+                    repo = next(
+                        (repo for repo in _preferences.filepaths.extension_repos if repo.module == repo_id),
+                        None,
+                    )
+                    if repo is None:
+                        print(
+                            "Add-on not loaded: \"%s\", cause: extension repository \"%s\" doesn't exist" %
+                            (module_name, repo_id)
+                        )
+                    elif not repo.enabled:
+                        print(
+                            "Add-on not loaded: \"%s\", cause: extension repository \"%s\" is disabled" %
+                            (module_name, repo_id)
+                        )
+                    else:
+                        # The repository exists and is enabled, it should have imported.
+                        print("Add-on not loaded: \"%s\", cause: %s" % (module_name, str(ex)))
+                else:
+                    handle_error(ex)
             else:
                 handle_error(ex)
 
@@ -601,6 +626,8 @@ def _extension_preferences_idmap():
     repos_idmap = {}
     if _preferences.experimental.use_extension_repos:
         for repo in _preferences.filepaths.extension_repos:
+            if not repo.enabled:
+                continue
             repos_idmap[repo.as_pointer()] = repo.module
     return repos_idmap
 
@@ -609,6 +636,8 @@ def _extension_dirpath_from_preferences():
     repos_dict = {}
     if _preferences.experimental.use_extension_repos:
         for repo in _preferences.filepaths.extension_repos:
+            if not repo.enabled:
+                continue
             repos_dict[repo.module] = repo.directory
     return repos_dict
 

@@ -7,6 +7,7 @@ set(INC
   ../blenkernel
   ../bmesh
   ../draw
+  ../functions
   ../makesrna
   ../modifiers
   ../sequencer
@@ -152,7 +153,6 @@ set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
-  PRIVATE bf::functions
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
 )
@@ -179,6 +179,5 @@ if(WITH_GTESTS)
   set(TEST_LIB
     bf_depsgraph
   )
-  include(GTestTesting)
-  blender_add_test_lib(bf_depsgraph_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
+  blender_add_test_suite_lib(depsgraph "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
 endif()
