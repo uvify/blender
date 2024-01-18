@@ -15,6 +15,7 @@
 
 #include "DNA_anim_types.h"
 
+#include "BLI_math_vector.hh"
 #include "BLI_set.hh"
 
 struct AnimationEvalContext;
@@ -162,6 +163,12 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
    * If it cannot be found, a new one is created.
    */
   FCurve *fcurve_find_or_create(const Output &out, const char *rna_path, int array_index);
+
+  FCurve *keyframe_insert(const Output &out,
+                          const char *rna_path,
+                          int array_index,
+                          float2 time_value,
+                          eBezTriple_KeyframeType keytype);
 };
 static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");
@@ -182,14 +189,6 @@ class ChannelsForOutput : public ::AnimationChannelsForOutput {
 };
 static_assert(sizeof(ChannelsForOutput) == sizeof(::AnimationChannelsForOutput),
               "DNA struct and its C++ wrapper must have the same size");
-
-FCurve *keyframe_insert(KeyframeStrip &key_strip,
-                        const Output &out,
-                        const char *rna_path,
-                        int array_index,
-                        float value,
-                        float time,
-                        eBezTriple_KeyframeType keytype);
 
 /**
  * Assign the animation to the ID.

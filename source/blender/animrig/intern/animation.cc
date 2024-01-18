@@ -439,6 +439,42 @@ FCurve *KeyframeStrip::fcurve_find_or_create(const Output &out,
   return fcurve;
 }
 
+FCurve *KeyframeStrip::keyframe_insert(const Output &out,
+                                       const char *rna_path,
+                                       const int array_index,
+                                       const float2 time_value,
+                                       const eBezTriple_KeyframeType keytype)
+{
+  FCurve *fcurve = this->fcurve_find_or_create(out, rna_path, array_index);
+
+  if (!BKE_fcurve_is_keyframable(fcurve)) {
+    /* TODO: handle this properly, in a way that can be communicated to the user. */
+    std::fprintf(stderr,
+                 "FCurve %s[%d] for output %s doesn't allow inserting keys.\n",
+                 rna_path,
+                 array_index,
+                 out.fallback);
+    return nullptr;
+  }
+
+  /* TODO: maybe move the settings to a parameter, instead of just the keyframe type? */
+  KeyframeSettings settings = get_keyframe_settings(true);
+  settings.keyframe_type = keytype;
+
+  /* TODO: Handle the eInsertKeyFlags. */
+  const int index = insert_vert_fcurve(fcurve, time_value, settings, eInsertKeyFlags(0));
+  if (index < 0) {
+    std::fprintf(stderr,
+                 "Could not insert key into FCurve %s[%d] for output %s.\n",
+                 rna_path,
+                 array_index,
+                 out.fallback);
+    return nullptr;
+  }
+
+  return fcurve;
+}
+
 /* KeyframeAnimationStrip C++ implementation. */
 
 blender::Span<const FCurve *> ChannelsForOutput::fcurves() const
@@ -458,45 +494,6 @@ const FCurve *ChannelsForOutput::fcurve(const int64_t index) const
 FCurve *ChannelsForOutput::fcurve(const int64_t index)
 {
   return this->fcurve_array[index];
-}
-
-FCurve *keyframe_insert(KeyframeStrip &key_strip,
-                        const Output &out,
-                        const char *rna_path,
-                        const int array_index,
-                        const float value,
-                        const float time,
-                        const eBezTriple_KeyframeType keytype)
-{
-  FCurve *fcurve = key_strip.fcurve_find_or_create(out, rna_path, array_index);
-
-  if (!BKE_fcurve_is_keyframable(fcurve)) {
-    /* TODO: handle this properly, in a way that can be communicated to the user. */
-    std::fprintf(stderr,
-                 "FCurve %s[%d] for output %s doesn't allow inserting keys.\n",
-                 rna_path,
-                 array_index,
-                 out.fallback);
-    return nullptr;
-  }
-
-  /* TODO: Move this function from the editors module to the animrig module. */
-  /* TODO: Handle the eInsertKeyFlags. */
-
-  KeyframeSettings settings = get_keyframe_settings(true);
-  settings.keyframe_type = keytype;
-
-  const int index = insert_vert_fcurve(fcurve, {time, value}, settings, eInsertKeyFlags(0));
-  if (index < 0) {
-    std::fprintf(stderr,
-                 "Could not insert key into FCurve %s[%d] for output %s.\n",
-                 rna_path,
-                 array_index,
-                 out.fallback);
-    return nullptr;
-  }
-
-  return fcurve;
 }
 
 }  // namespace blender::animrig

@@ -91,7 +91,7 @@ TEST_F(AnimationLayersTest, add_output_multiple)
   BKE_animation_free_data(&anim);
 }
 
-TEST_F(AnimationLayersTest, keyframe_insert)
+TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
 {
   Animation anim = {};
   ID cube = {};
@@ -101,8 +101,8 @@ TEST_F(AnimationLayersTest, keyframe_insert)
   Layer *layer = anim.layer_add("Kübus layer");
   KeyframeStrip &key_strip = layer->strip(0)->as<KeyframeStrip>();
 
-  FCurve *fcurve_loc_a = keyframe_insert(
-      key_strip, *out, "location", 0, 47.0f, 1.0f, BEZT_KEYTYPE_KEYFRAME);
+  FCurve *fcurve_loc_a = key_strip.keyframe_insert(
+      *out, "location", 0, {1.0f, 47.0f}, BEZT_KEYTYPE_KEYFRAME);
   ASSERT_NE(nullptr, fcurve_loc_a)
       << "Expect all the necessary data structures to be created on insertion of a key";
 
@@ -112,8 +112,8 @@ TEST_F(AnimationLayersTest, keyframe_insert)
   EXPECT_EQ(out->stable_index, chan_for_out->output_stable_index);
 
   /* Insert a second key, should insert into the same FCurve as before. */
-  FCurve *fcurve_loc_b = keyframe_insert(
-      key_strip, *out, "location", 0, 47.1f, 5.0f, BEZT_KEYTYPE_KEYFRAME);
+  FCurve *fcurve_loc_b = key_strip.keyframe_insert(
+      *out, "location", 0, {5.0f, 47.1f}, BEZT_KEYTYPE_KEYFRAME);
   ASSERT_EQ(fcurve_loc_a, fcurve_loc_b)
       << "Expect same (output/rna path/array index) tuple to return the same FCurve.";
 
@@ -122,8 +122,8 @@ TEST_F(AnimationLayersTest, keyframe_insert)
   EXPECT_EQ(47.1f, evaluate_fcurve(fcurve_loc_a, 5.0f));
 
   /* Insert another key for another property, should create another FCurve. */
-  FCurve *fcurve_rot = keyframe_insert(
-      key_strip, *out, "rotation_quaternion", 0, 0.25f, 1.0f, BEZT_KEYTYPE_KEYFRAME);
+  FCurve *fcurve_rot = key_strip.keyframe_insert(
+      *out, "rotation_quaternion", 0, {1.0f, 0.25f}, BEZT_KEYTYPE_KEYFRAME);
   EXPECT_NE(fcurve_loc_b, fcurve_rot)
       << "Expected rotation and location curves to be different FCurves.";
   EXPECT_EQ(2, chan_for_out->fcurves().size()) << "Expected a second FCurve to be created.";
