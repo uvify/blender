@@ -103,11 +103,6 @@ Layer *Animation::layer_add(const char *name)
   Layer *new_layer = animationlayer_alloc();
   STRNCPY_UTF8(new_layer->name, name);
 
-  /* FIXME: For now, just add a keyframe strip. This may not be the right choice
-   * going forward, and maybe it's better to allocate the strip at the first
-   * use. */
-  new_layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
-
   grow_array_and_append<::AnimationLayer *>(&this->layer_array, &this->layer_array_num, new_layer);
   this->layer_active_index = this->layer_array_num - 1;
 
@@ -271,7 +266,6 @@ bool Output::assign_id(ID *animated_id)
   /* The ID type bytes can be stripped from the name, as that information is
    * already stored in this->idtype. This also makes it easier to combine
    * names when multiple IDs share the same this-> */
-  /* TODO: handle the case where there are more IDs in runtime->ids. */
   STRNCPY_UTF8(this->fallback, animated_id->name + 2);
 
   /* This does NOT update the ID itself, as that also requires actually setting its Animation* to

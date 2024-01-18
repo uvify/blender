@@ -38,10 +38,11 @@ TEST_F(AnimationLayersTest, add_layer)
   EXPECT_EQ(1.0f, layer->influence) << "Expected DNA defaults to be used.";
   EXPECT_EQ(0, anim.layer_active_index)
       << "Expected newly added layer to become the active layer.";
+  ASSERT_EQ(0, layer->strips().size()) << "Expected newly added layer to have no strip.";
 
-  ASSERT_EQ(1, layer->strips().size()) << "Expected newly added layer to have a single strip.";
+  Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  ASSERT_EQ(1, layer->strips().size());
 
-  Strip *strip = layer->strip(0);
   constexpr float inf = std::numeric_limits<float>::infinity();
   EXPECT_EQ(-inf, strip->frame_start) << "Expected strip to be infinite.";
   EXPECT_EQ(inf, strip->frame_end) << "Expected strip to be infinite.";
@@ -99,7 +100,9 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
   Output *out = anim.output_add();
   out->assign_id(&cube);
   Layer *layer = anim.layer_add("Kübus layer");
-  KeyframeStrip &key_strip = layer->strip(0)->as<KeyframeStrip>();
+
+  Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
 
   FCurve *fcurve_loc_a = key_strip.keyframe_insert(
       *out, "location", 0, {1.0f, 47.0f}, BEZT_KEYTYPE_KEYFRAME);
