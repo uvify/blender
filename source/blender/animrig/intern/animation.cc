@@ -13,7 +13,7 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_fcurve.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 
 #include "ED_keyframing.hh"
 
@@ -482,7 +482,11 @@ FCurve *keyframe_insert(KeyframeStrip &key_strip,
 
   /* TODO: Move this function from the editors module to the animrig module. */
   /* TODO: Handle the eInsertKeyFlags. */
-  const int index = insert_vert_fcurve(fcurve, time, value, keytype, eInsertKeyFlags(0));
+
+  KeyframeSettings settings = get_keyframe_settings(true);
+  settings.keyframe_type = keytype;
+
+  const int index = insert_vert_fcurve(fcurve, {time, value}, settings, eInsertKeyFlags(0));
   if (index < 0) {
     std::fprintf(stderr,
                  "Could not insert key into FCurve %s[%d] for output %s.\n",
