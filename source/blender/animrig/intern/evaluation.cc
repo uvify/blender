@@ -144,6 +144,10 @@ static std::optional<EvaluationResult> evaluate_keyframe_strip(
     PathResolvedRNA anim_rna;
     if (!BKE_animsys_rna_path_resolve(animated_id_ptr, fcu->rna_path, fcu->array_index, &anim_rna))
     {
+      printf("Cannot resolve RNA path %s[%d] on ID %s\n",
+             fcu->rna_path,
+             fcu->array_index,
+             animated_id_ptr->owner_id->name);
       continue;
     }
 
