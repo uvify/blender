@@ -39,11 +39,10 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
-
-#include "PIL_time.h"
 
 #include "BKE_appdir.h"
 #include "BKE_cloth.hh"
@@ -61,8 +60,6 @@
 #include "BKE_softbody.h"
 
 #include "BLO_read_write.hh"
-
-#include "DEG_depsgraph_query.hh"
 
 #include "BIK_api.h"
 
@@ -3297,7 +3294,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
   char run[32], cur[32], etd[32];
   int cancel = 0;
 
-  stime = ptime = PIL_check_seconds_timer();
+  stime = ptime = BLI_check_seconds_timer();
 
   for (int fr = scene->r.cfra; fr <= endframe; fr += baker->quick_step, scene->r.cfra = fr) {
     BKE_scene_graph_update_for_newframe(depsgraph);
@@ -3311,7 +3308,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
       printf("bake: frame %d :: %d\n", scene->r.cfra, endframe);
     }
     else {
-      ctime = PIL_check_seconds_timer();
+      ctime = BLI_check_seconds_timer();
 
       fetd = (ctime - ptime) * (endframe - scene->r.cfra) / baker->quick_step;
 
@@ -3343,7 +3340,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
 
   if (use_timer) {
     /* start with newline because of \r above */
-    ptcache_dt_to_str(run, sizeof(run), PIL_check_seconds_timer() - stime);
+    ptcache_dt_to_str(run, sizeof(run), BLI_check_seconds_timer() - stime);
     printf("\nBake %s %s (%i frames simulated).\n",
            (cancel ? "canceled after" : "finished in"),
            run,
@@ -3351,7 +3348,6 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
   }
 
   /* clear baking flag */
-  PTCacheID pid_eval;
   if (pid && cache) {
     cache->flag &= ~(PTCACHE_BAKING | PTCACHE_REDO_NEEDED);
     cache->flag |= PTCACHE_SIMULATION_VALID;
@@ -3359,13 +3355,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
       cache->flag |= PTCACHE_BAKED;
       /* write info file */
       if (cache->flag & PTCACHE_DISK_CACHE) {
-        ID *id = pid->owner_id;
-        Object *ob = (GS(id->name) == ID_OB) ? reinterpret_cast<Object *>(id) : nullptr;
-        Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-        ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
-        ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
-        BKE_ptcache_id_from_particles(&pid_eval, ob_eval, psys_eval);
-        BKE_ptcache_write(&pid_eval, 0);
+        BKE_ptcache_write(pid, 0);
       }
     }
   }
@@ -3395,13 +3385,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
         if (bake) {
           cache->flag |= PTCACHE_BAKED;
           if (cache->flag & PTCACHE_DISK_CACHE) {
-            ID *id = pid->owner_id;
-            Object *ob = (GS(id->name) == ID_OB) ? reinterpret_cast<Object *>(id) : nullptr;
-            Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-            ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
-            ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
-            BKE_ptcache_id_from_particles(&pid_eval, ob_eval, psys_eval);
-            BKE_ptcache_write(&pid_eval, 0);
+            BKE_ptcache_write(pid, 0);
           }
         }
       }
