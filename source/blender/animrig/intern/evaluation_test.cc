@@ -81,12 +81,12 @@ TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
   AnimationEvalContext anim_eval_context = {};
   anim_eval_context.eval_time = 3.0f;
 
-  std::optional<EvaluationResult> result = evaluate_layer(
+  EvaluationResult result = evaluate_layer(
       &animated_id_ptr, *layer, out->stable_index, anim_eval_context);
 
   /* Check the result. */
-  ASSERT_TRUE(result.has_value());
-  AnimatedProperty *loc0_result = result->lookup_ptr(PropIdentifier("location", 0));
+  ASSERT_FALSE(result.is_empty());
+  AnimatedProperty *loc0_result = result.lookup_ptr(PropIdentifier("location", 0));
   ASSERT_NE(nullptr, loc0_result) << "location[0] should have been animated";
   EXPECT_EQ(47.3f, loc0_result->value);
 

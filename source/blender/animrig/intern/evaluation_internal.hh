@@ -9,7 +9,6 @@
 
 #include "RNA_access.hh"
 
-#include <optional>
 #include <string>
 
 namespace blender::animrig::internal {
@@ -66,16 +65,31 @@ class AnimatedProperty {
  * about how to do the mixing (LERP, quaternion SLERP, etc.).
  */
 class EvaluationResult {
- public:
-  EvaluationResult() = default;
-  EvaluationResult(const EvaluationResult &other) = default;
-  ~EvaluationResult() = default;
-
  protected:
   using EvaluationMap = Map<PropIdentifier, AnimatedProperty>;
   EvaluationMap result_;
 
  public:
+  EvaluationResult() = default;
+  EvaluationResult(const EvaluationResult &other) = default;
+  EvaluationResult(EvaluationResult &&other) : result_(std::move(other.result_)) {}
+  ~EvaluationResult() = default;
+
+ public:
+  operator bool() const
+  {
+    return !is_empty();
+  }
+  bool is_empty() const
+  {
+    return result_.is_empty();
+  }
+  EvaluationResult &operator=(EvaluationResult other)
+  {
+    std::swap(result_, other.result_);
+    return *this;
+  }
+
   void store(const StringRef rna_path,
              const int array_index,
              const float value,
@@ -111,9 +125,9 @@ class EvaluationResult {
  * Evaluate the animation data on the given layer, for the given output. This
  * just returns the evaluation result, without taking any other layers,
  * blending, influence, etc. into account. */
-std::optional<EvaluationResult> evaluate_layer(PointerRNA *animated_id_ptr,
-                                               Layer &layer,
-                                               output_index_t output_index,
-                                               const AnimationEvalContext &anim_eval_context);
+EvaluationResult evaluate_layer(PointerRNA *animated_id_ptr,
+                                Layer &layer,
+                                output_index_t output_index,
+                                const AnimationEvalContext &anim_eval_context);
 
 }  // namespace blender::animrig::internal

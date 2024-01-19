@@ -11,8 +11,6 @@
 
 #include "BLI_map.hh"
 
-#include <optional>
-
 #include "evaluation_internal.hh"
 
 namespace blender::animrig {
@@ -37,12 +35,12 @@ void apply_evaluation_result(const EvaluationResult &evaluation_result,
                              PointerRNA *animated_id_ptr,
                              bool flush_to_original);
 
-std::optional<EvaluationResult> evaluate_animation(PointerRNA *animated_id_ptr,
-                                                   Animation &animation,
-                                                   const output_index_t output_index,
-                                                   const AnimationEvalContext &anim_eval_context)
+EvaluationResult evaluate_animation(PointerRNA *animated_id_ptr,
+                                    Animation &animation,
+                                    const output_index_t output_index,
+                                    const AnimationEvalContext &anim_eval_context)
 {
-  std::optional<EvaluationResult> last_result;
+  EvaluationResult last_result;
 
   /* Evaluate each layer in order. */
   for (Layer *layer : animation.layers()) {
@@ -65,7 +63,7 @@ std::optional<EvaluationResult> evaluate_animation(PointerRNA *animated_id_ptr,
     }
 
     /* Complex case: blend this layer's result into the previous layer's result. */
-    last_result = blend_layer_results(*last_result, *layer_result, *layer);
+    last_result = blend_layer_results(last_result, layer_result, *layer);
   }
 
   return last_result;
@@ -77,13 +75,13 @@ void evaluate_and_apply_animation(PointerRNA *animated_id_ptr,
                                   const AnimationEvalContext &anim_eval_context,
                                   const bool flush_to_original)
 {
-  auto evaluation_result = evaluate_animation(
+  EvaluationResult evaluation_result = evaluate_animation(
       animated_id_ptr, animation, output_index, anim_eval_context);
   if (!evaluation_result) {
     return;
   }
 
-  apply_evaluation_result(*evaluation_result, animated_id_ptr, flush_to_original);
+  apply_evaluation_result(evaluation_result, animated_id_ptr, flush_to_original);
 }
 
 /* Copy of the same-named function in anim_sys.cc, with the check on action groups removed. */
@@ -132,11 +130,10 @@ static void animsys_write_orig_anim_rna(PointerRNA *ptr,
   }
 }
 
-static std::optional<EvaluationResult> evaluate_keyframe_strip(
-    PointerRNA *animated_id_ptr,
-    KeyframeStrip &key_strip,
-    const output_index_t output_index,
-    const AnimationEvalContext &offset_eval_context)
+static EvaluationResult evaluate_keyframe_strip(PointerRNA *animated_id_ptr,
+                                                KeyframeStrip &key_strip,
+                                                const output_index_t output_index,
+                                                const AnimationEvalContext &offset_eval_context)
 {
   ChannelsForOutput *chans_for_out = key_strip.chans_for_out(output_index);
   if (!chans_for_out) {
@@ -188,11 +185,10 @@ void apply_evaluation_result(const EvaluationResult &evaluation_result,
 }
 
 /* Returns whether the strip was evaluated. */
-static std::optional<EvaluationResult> evaluate_strip(
-    PointerRNA *animated_id_ptr,
-    Strip &strip,
-    const output_index_t output_index,
-    const AnimationEvalContext &anim_eval_context)
+static EvaluationResult evaluate_strip(PointerRNA *animated_id_ptr,
+                                       Strip &strip,
+                                       const output_index_t output_index,
+                                       const AnimationEvalContext &anim_eval_context)
 {
   AnimationEvalContext offset_eval_context = anim_eval_context;
   /* Positive offset means the entire strip is pushed "to the right", so
@@ -268,10 +264,10 @@ EvaluationResult blend_layer_results(const EvaluationResult &last_result,
 
 namespace internal {
 
-std::optional<EvaluationResult> evaluate_layer(PointerRNA *animated_id_ptr,
-                                               Layer &layer,
-                                               const output_index_t output_index,
-                                               const AnimationEvalContext &anim_eval_context)
+EvaluationResult evaluate_layer(PointerRNA *animated_id_ptr,
+                                Layer &layer,
+                                const output_index_t output_index,
+                                const AnimationEvalContext &anim_eval_context)
 {
   for (Strip *strip : layer.strips()) {
     if (!strip->contains_frame(anim_eval_context.eval_time)) {
