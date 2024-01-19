@@ -3922,11 +3922,11 @@ void BKE_animsys_evaluate_animdata(ID *id,
   if (recalc & ADT_RECALC_ANIM) {
     if (adt->animation && adt->output_stable_index) {
       /* Animation data-blocks take precedence over the old Action + NLA system. */
-      blender::animrig::evaluate_animation(&id_ptr,
-                                           adt->animation->wrap(),
-                                           adt->output_stable_index,
-                                           *anim_eval_context,
-                                           flush_to_original);
+      blender::animrig::evaluate_and_apply_animation(&id_ptr,
+                                                     adt->animation->wrap(),
+                                                     adt->output_stable_index,
+                                                     *anim_eval_context,
+                                                     flush_to_original);
     }
     else {
       /* evaluate NLA data */

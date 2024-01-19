@@ -30,10 +30,10 @@ namespace blender::animrig {
  * \param flush_to_original when true, look up the original data-block (assuming
  * the given one is an evaluated copy) and update that too.
  */
-void evaluate_animation(PointerRNA *animated_id_ptr,
-                        Animation &animation,
-                        output_index_t output_index,
-                        const AnimationEvalContext &anim_eval_context,
-                        bool flush_to_original);
+void evaluate_and_apply_animation(PointerRNA *animated_id_ptr,
+                                  Animation &animation,
+                                  output_index_t output_index,
+                                  const AnimationEvalContext &anim_eval_context,
+                                  bool flush_to_original);
 
 }  // namespace blender::animrig

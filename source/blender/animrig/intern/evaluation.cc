@@ -37,11 +37,10 @@ void apply_evaluation_result(const EvaluationResult &evaluation_result,
                              PointerRNA *animated_id_ptr,
                              bool flush_to_original);
 
-void evaluate_animation(PointerRNA *animated_id_ptr,
-                        Animation &animation,
-                        const output_index_t output_index,
-                        const AnimationEvalContext &anim_eval_context,
-                        const bool flush_to_original)
+std::optional<EvaluationResult> evaluate_animation(PointerRNA *animated_id_ptr,
+                                                   Animation &animation,
+                                                   const output_index_t output_index,
+                                                   const AnimationEvalContext &anim_eval_context)
 {
   std::optional<EvaluationResult> last_result;
 
@@ -69,11 +68,22 @@ void evaluate_animation(PointerRNA *animated_id_ptr,
     last_result = blend_layer_results(*last_result, *layer_result, *layer);
   }
 
-  if (!last_result) {
+  return last_result;
+}
+
+void evaluate_and_apply_animation(PointerRNA *animated_id_ptr,
+                                  Animation &animation,
+                                  const output_index_t output_index,
+                                  const AnimationEvalContext &anim_eval_context,
+                                  const bool flush_to_original)
+{
+  auto evaluation_result = evaluate_animation(
+      animated_id_ptr, animation, output_index, anim_eval_context);
+  if (!evaluation_result) {
     return;
   }
 
-  apply_evaluation_result(*last_result, animated_id_ptr, flush_to_original);
+  apply_evaluation_result(*evaluation_result, animated_id_ptr, flush_to_original);
 }
 
 /* Copy of the same-named function in anim_sys.cc, with the check on action groups removed. */
