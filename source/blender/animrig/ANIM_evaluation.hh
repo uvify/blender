@@ -22,6 +22,14 @@ struct PointerRNA;
 
 namespace blender::animrig {
 
+/**
+ * Top level animation evaluation function.
+ *
+ * Animate the given ID, using the animation data-block and the given output.
+ *
+ * \param flush_to_original when true, look up the original data-block (assuming
+ * the given one is an evaluated copy) and update that too.
+ */
 void evaluate_animation(PointerRNA *animated_id_ptr,
                         Animation &animation,
                         output_index_t output_index,
