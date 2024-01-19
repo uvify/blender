@@ -203,7 +203,7 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "Convert faces into thickened edges"},
     {eModifierType_GreasePencilSubdiv,
      "GREASEPENCIL_SUBDIV",
-     ICON_GREASEPENCIL,
+     ICON_MOD_SUBSURF,
      "Subdivide strokes",
      "Grease Pencil subdivide modifier"},
 
@@ -1801,8 +1801,9 @@ static void rna_GreasePencilModifier_material_set(PointerRNA *ptr,
     }
 
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilOpacity);
-RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilOpacity);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilSubdiv);
+
+RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilOpacity);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilSubdiv);
 
 static void rna_GreasePencilOpacityModifier_opacity_factor_range(
@@ -7694,13 +7695,6 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_vertex_group(
       srna, "rna_GreasePencilOpacityModifier_vertex_group_name_set");
   rna_def_modifier_grease_pencil_custom_curve(srna);
-
-  prop = RNA_def_property(srna, "open_influence_panel", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(
-      prop, nullptr, "flag", MOD_GREASE_PENCIL_OPACITY_OPEN_INFLUENCE_PANEL);
-  RNA_def_property_ui_text(prop, "Open Influence Panel", "Open the influence panel");
-  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
 
   RNA_define_lib_overridable(true);
 
