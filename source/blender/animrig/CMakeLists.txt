@@ -45,6 +45,7 @@ set(SRC
   ANIM_rna.hh
   ANIM_visualkey.hh
   intern/bone_collections_internal.hh
+  intern/evaluation_internal.hh
 )
 
 set(LIB
@@ -67,6 +68,7 @@ if(WITH_GTESTS)
   set(TEST_SRC
     intern/animation_test.cc
     intern/bone_collections_test.cc
+    intern/evaluation_test.cc
   )
   set(TEST_LIB
     PRIVATE bf::animrig
