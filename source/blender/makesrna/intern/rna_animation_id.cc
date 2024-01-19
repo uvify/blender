@@ -261,9 +261,9 @@ static FCurve *rna_KeyframeAnimationStrip_key_insert(KeyframeAnimationStrip *str
 
   animrig::KeyframeStrip &key_strip = strip->wrap();
   const animrig::Output &out = output->wrap();
+  const animrig::KeyframeSettings settings = animrig::get_keyframe_settings(true);
 
-  FCurve *fcurve = key_strip.keyframe_insert(
-      out, rna_path, array_index, {time, value}, BEZT_KEYTYPE_KEYFRAME);
+  FCurve *fcurve = key_strip.keyframe_insert(out, rna_path, array_index, {time, value}, settings);
   return fcurve;
 }
 

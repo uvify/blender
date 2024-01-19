@@ -18,7 +18,6 @@
 #include "testing/testing.h"
 
 namespace blender::animrig::tests {
-
 class AnimationLayersTest : public testing::Test {
  public:
   static void SetUpTestSuite()
@@ -104,8 +103,8 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
   Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
   KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
 
-  FCurve *fcurve_loc_a = key_strip.keyframe_insert(
-      *out, "location", 0, {1.0f, 47.0f}, BEZT_KEYTYPE_KEYFRAME);
+  const KeyframeSettings settings = get_keyframe_settings(false);
+  FCurve *fcurve_loc_a = key_strip.keyframe_insert(*out, "location", 0, {1.0f, 47.0f}, settings);
   ASSERT_NE(nullptr, fcurve_loc_a)
       << "Expect all the necessary data structures to be created on insertion of a key";
 
@@ -115,8 +114,7 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
   EXPECT_EQ(out->stable_index, chan_for_out->output_stable_index);
 
   /* Insert a second key, should insert into the same FCurve as before. */
-  FCurve *fcurve_loc_b = key_strip.keyframe_insert(
-      *out, "location", 0, {5.0f, 47.1f}, BEZT_KEYTYPE_KEYFRAME);
+  FCurve *fcurve_loc_b = key_strip.keyframe_insert(*out, "location", 0, {5.0f, 47.1f}, settings);
   ASSERT_EQ(fcurve_loc_a, fcurve_loc_b)
       << "Expect same (output/rna path/array index) tuple to return the same FCurve.";
 
@@ -126,7 +124,7 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
 
   /* Insert another key for another property, should create another FCurve. */
   FCurve *fcurve_rot = key_strip.keyframe_insert(
-      *out, "rotation_quaternion", 0, {1.0f, 0.25f}, BEZT_KEYTYPE_KEYFRAME);
+      *out, "rotation_quaternion", 0, {1.0f, 0.25f}, settings);
   EXPECT_NE(fcurve_loc_b, fcurve_rot)
       << "Expected rotation and location curves to be different FCurves.";
   EXPECT_EQ(2, chan_for_out->fcurves().size()) << "Expected a second FCurve to be created.";

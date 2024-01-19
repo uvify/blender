@@ -437,7 +437,7 @@ FCurve *KeyframeStrip::keyframe_insert(const Output &out,
                                        const char *rna_path,
                                        const int array_index,
                                        const float2 time_value,
-                                       const eBezTriple_KeyframeType keytype)
+                                       const KeyframeSettings &settings)
 {
   FCurve *fcurve = this->fcurve_find_or_create(out, rna_path, array_index);
 
@@ -450,10 +450,6 @@ FCurve *KeyframeStrip::keyframe_insert(const Output &out,
                  out.fallback);
     return nullptr;
   }
-
-  /* TODO: maybe move the settings to a parameter, instead of just the keyframe type? */
-  KeyframeSettings settings = get_keyframe_settings(true);
-  settings.keyframe_type = keytype;
 
   /* TODO: Handle the eInsertKeyFlags. */
   const int index = insert_vert_fcurve(fcurve, time_value, settings, eInsertKeyFlags(0));

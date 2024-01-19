@@ -13,6 +13,8 @@
 #  error This is a C++ header.
 #endif
 
+#include "ANIM_fcurve.hh"
+
 #include "DNA_anim_types.h"
 
 #include "BLI_math_vector.hh"
@@ -169,7 +171,7 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
                           const char *rna_path,
                           int array_index,
                           float2 time_value,
-                          eBezTriple_KeyframeType keytype);
+                          const KeyframeSettings &settings);
 };
 static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");
