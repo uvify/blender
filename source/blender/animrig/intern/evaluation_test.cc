@@ -8,7 +8,7 @@
 
 #include "BKE_animation.h"
 #include "BKE_animsys.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 
 #include "DNA_object_types.h"
 

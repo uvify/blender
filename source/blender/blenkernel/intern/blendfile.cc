@@ -27,10 +27,10 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "BKE_addon.h"
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_blender.h"
 #include "BKE_blender_version.h"
 #include "BKE_blendfile.hh"
@@ -38,7 +38,7 @@
 #include "BKE_colorband.hh"
 #include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_ipo.h"
 #include "BKE_keyconfig.h"
 #include "BKE_layer.h"
@@ -373,8 +373,8 @@ static void swap_old_bmain_data_for_blendfile(ReuseOldBMainData *reuse_data, con
   }
 
   FOREACH_MAIN_LISTBASE_ID_BEGIN (new_lb, reused_id_iter) {
-    /* Necessary as all `session_uuid` are renewed on blendfile loading. */
-    BKE_lib_libblock_session_uuid_renew(reused_id_iter);
+    /* Necessary as all `session_uid` are renewed on blendfile loading. */
+    BKE_lib_libblock_session_uid_renew(reused_id_iter);
 
     /* Ensure that the reused ID is remapped to itself, since it is known to be in the `new_bmain`.
      */
@@ -590,7 +590,7 @@ static void view3d_data_consistency_ensure(wmWindow *win, Scene *scene, ViewLaye
        * be found. */
       Base *base;
       for (base = static_cast<Base *>(view_layer->object_bases.first); base; base = base->next) {
-        if (base->local_view_bits & v3d->local_view_uuid) {
+        if (base->local_view_bits & v3d->local_view_uid) {
           break;
         }
       }
@@ -602,7 +602,7 @@ static void view3d_data_consistency_ensure(wmWindow *win, Scene *scene, ViewLaye
       /* No valid object found for the local view3D, it has to be cleared off. */
       MEM_freeN(v3d->localvd);
       v3d->localvd = nullptr;
-      v3d->local_view_uuid = 0;
+      v3d->local_view_uid = 0;
 
       /* Region-base storage is different depending on whether the space is active or not. */
       ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase : &sl->regionbase;

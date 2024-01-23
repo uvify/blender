@@ -6,7 +6,7 @@
 
 #include "BKE_animation.h"
 #include "BKE_fcurve.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 
 #include "DNA_anim_types.h"
 
