@@ -19,8 +19,7 @@
 
 #include "BLT_translation.h"
 
-#include "IMB_imbuf.hh"
-#include "IMB_imbuf_types.hh"
+#include "IMB_interp.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_customdata_types.h"
@@ -1600,7 +1599,7 @@ void ED_keymap_paint(wmKeyConfig *keyconf)
 
   /* Curves Sculpt mode. */
   keymap = WM_keymap_ensure(keyconf, "Sculpt Curves", SPACE_EMPTY, RGN_TYPE_WINDOW);
-  keymap->poll = CURVES_SCULPT_mode_poll;
+  keymap->poll = curves_sculpt_poll;
 
   /* sculpt expand. */
   expand::modal_keymap(keyconf);
