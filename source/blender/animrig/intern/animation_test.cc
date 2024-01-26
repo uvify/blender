@@ -91,6 +91,43 @@ TEST_F(AnimationLayersTest, add_output_multiple)
   BKE_animation_free_data(&anim);
 }
 
+TEST_F(AnimationLayersTest, strip)
+{
+  constexpr float inf = std::numeric_limits<float>::infinity();
+  Strip strip;
+
+  strip.resize(-inf, inf);
+  EXPECT_TRUE(strip.contains_frame(0.0f));
+  EXPECT_TRUE(strip.contains_frame(-100000.0f));
+  EXPECT_TRUE(strip.contains_frame(100000.0f));
+  EXPECT_TRUE(strip.is_last_frame(inf));
+
+  strip.resize(1.0f, 2.0f);
+  EXPECT_FALSE(strip.contains_frame(0.0f))
+      << "Strip should not contain frames before its first frame";
+  EXPECT_TRUE(strip.contains_frame(1.0f)) << "Strip should contain its first frame.";
+  EXPECT_TRUE(strip.contains_frame(2.0f)) << "Strip should contain its last frame.";
+  EXPECT_FALSE(strip.contains_frame(2.0001f))
+      << "Strip should not contain frames after its last frame";
+
+  EXPECT_FALSE(strip.is_last_frame(1.0f));
+  EXPECT_FALSE(strip.is_last_frame(1.5f));
+  EXPECT_FALSE(strip.is_last_frame(1.9999f));
+  EXPECT_TRUE(strip.is_last_frame(2.0f));
+  EXPECT_FALSE(strip.is_last_frame(2.0001f));
+
+  /* Same test as above, but with much larger end frame number. This is 2 hours at 24 FPS. */
+  strip.resize(1.0f, 172800.0f);
+  EXPECT_TRUE(strip.contains_frame(172800.0f)) << "Strip should contain its last frame.";
+  EXPECT_FALSE(strip.contains_frame(172800.1f))
+      << "Strip should not contain frames after its last frame";
+
+  /* You can't get much closer to the end frame before it's considered equal. */
+  EXPECT_FALSE(strip.is_last_frame(172799.925f));
+  EXPECT_TRUE(strip.is_last_frame(172800.0f));
+  EXPECT_FALSE(strip.is_last_frame(172800.075f));
+}
+
 TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
 {
   Animation anim = {};

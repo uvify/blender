@@ -269,6 +269,14 @@ EvaluationResult evaluate_layer(PointerRNA *animated_id_ptr,
                                 const output_index_t output_index,
                                 const AnimationEvalContext &anim_eval_context)
 {
+  /* TODO: implement cross-blending between overlapping strips. For now, this is not supported.
+   * Instead, the first strong result is taken (see below), and if that is not available, the last
+   * weak result will be used.
+   *
+   * Weak result: obtained from evaluating the final frame of the strip.
+   * Strong result: any result that is not a weak result. */
+  EvaluationResult last_weak_result;
+
   for (Strip *strip : layer.strips()) {
     if (!strip->contains_frame(anim_eval_context.eval_time)) {
       continue;
@@ -280,12 +288,18 @@ EvaluationResult evaluate_layer(PointerRNA *animated_id_ptr,
       continue;
     }
 
-    /* TODO: evaluate overlapping strips indepently, and mix the results. For
-     * now, just limit to the first available strip on this layer. */
+    const bool is_weak_result = strip->is_last_frame(anim_eval_context.eval_time);
+    if (is_weak_result) {
+      /* Keep going until a strong result is found. */
+      last_weak_result = strip_result;
+      continue;
+    }
+
+    /* Found a strong result, just return it. */
     return strip_result;
   }
 
-  return {};
+  return last_weak_result;
 }
 
 }  // namespace internal

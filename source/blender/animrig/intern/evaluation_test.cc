@@ -224,4 +224,45 @@ TEST_F(AnimationEvaluationTest, strip_boundaries__nonoverlapping)
   EXPECT_TRUE(test_evaluate_layer_no_result("location", 0, 10.999f));
   EXPECT_TRUE(test_evaluate_layer_no_result("location", 0, 20.001f));
 }
+
+TEST_F(AnimationEvaluationTest, strip_boundaries__overlapping_edge)
+{
+  /* Two finite strips that are overlapping on their edge. */
+  Strip *strip1 = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  Strip *strip2 = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  strip1->resize(1.0f, 10.0f);
+  strip2->resize(10.0f, 19.0f);
+  strip2->frame_offset = 9;
+
+  /* Set some keys. */
+  {
+    KeyframeStrip &key_strip1 = strip1->as<KeyframeStrip>();
+    key_strip1.keyframe_insert(*out, "location", 0, {1.0f, 47.0f}, settings);
+    key_strip1.keyframe_insert(*out, "location", 0, {5.0f, 327.0f}, settings);
+    key_strip1.keyframe_insert(*out, "location", 0, {10.0f, 48.0f}, settings);
+  }
+  {
+    KeyframeStrip &key_strip2 = strip2->as<KeyframeStrip>();
+    key_strip2.keyframe_insert(*out, "location", 0, {1.0f, 47.0f}, settings);
+    key_strip2.keyframe_insert(*out, "location", 0, {5.0f, 327.0f}, settings);
+    key_strip2.keyframe_insert(*out, "location", 0, {10.0f, 48.0f}, settings);
+  }
+
+  /* Check Strip 1. */
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {1.0f, 47.0f}));
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {3.0f, 187.0f}));
+
+  /* Check overlapping frame. */
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {10.0f, 47.0f}))
+      << "On the overlapping frame, only Strip 2 should be evaluated.";
+
+  /* Check Strip 2. */
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {12.0f, 187.0f}));
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {19.0f, 48.0f}));
+
+  /* Check outside the range of the strips. */
+  EXPECT_TRUE(test_evaluate_layer_no_result("location", 0, 0.999f));
+  EXPECT_TRUE(test_evaluate_layer_no_result("location", 0, 19.001f));
+}
+
 }  // namespace blender::animrig::tests

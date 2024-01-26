@@ -120,6 +120,7 @@ class Strip : public ::AnimationStrip {
   template<typename T> T &as();
 
   bool contains_frame(float frame_time) const;
+  bool is_last_frame(float frame_time) const;
 
   /**
    * Set the start and end frame.

@@ -8,6 +8,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_listbase_wrapper.hh"
+#include "BLI_math_base.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
@@ -306,6 +307,13 @@ void unassign_animation(ID *animated_id)
 bool Strip::contains_frame(const float frame_time) const
 {
   return frame_start <= frame_time && frame_time <= frame_end;
+}
+
+bool Strip::is_last_frame(const float frame_time) const
+{
+  /* GoogleTest also uses 4 ULPs in their float equality checks. */
+  const int diff_ulp = 4;
+  return compare_ff_relative(this->frame_end, frame_time, FLT_EPSILON, diff_ulp);
 }
 
 void Strip::resize(const float frame_start, const float frame_end)
