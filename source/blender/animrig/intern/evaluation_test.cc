@@ -32,6 +32,10 @@ class AnimationEvaluationTest : public testing::Test {
   Output *out;
   Layer *layer;
 
+  KeyframeSettings settings = get_keyframe_settings(false);
+  AnimationEvalContext anim_eval_context = {};
+  PointerRNA cube_rna_ptr;
+
  public:
   static void SetUpTestSuite()
   {
@@ -45,6 +49,11 @@ class AnimationEvaluationTest : public testing::Test {
     out = anim.output_add();
     out->assign_id(&cube.id);
     layer = anim.layer_add("Kübus layer");
+
+    /* Make it easier to predict test values. */
+    settings.interpolation = BEZT_IPO_LIN;
+
+    cube_rna_ptr = RNA_pointer_create(&cube.id, &RNA_Object, &cube.id);
   }
 
   void TearDown() override
@@ -57,9 +66,6 @@ TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
 {
   Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
   KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
-
-  KeyframeSettings settings = get_keyframe_settings(false);
-  settings.interpolation = BEZT_IPO_LIN; /* Makes it easier to predict test values. */
 
   /* Set some keys. */
   key_strip.keyframe_insert(*out, "location", 0, {1.0f, 47.1f}, settings);
@@ -77,12 +83,9 @@ TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
   cube.rot[2] = 7.0f;
 
   /* Evaluate. */
-  PointerRNA animated_id_ptr = RNA_pointer_create(&cube.id, &RNA_Object, &cube.id);
-  AnimationEvalContext anim_eval_context = {};
   anim_eval_context.eval_time = 3.0f;
-
   EvaluationResult result = evaluate_layer(
-      &animated_id_ptr, *layer, out->stable_index, anim_eval_context);
+      &cube_rna_ptr, *layer, out->stable_index, anim_eval_context);
 
   /* Check the result. */
   ASSERT_FALSE(result.is_empty());
