@@ -120,6 +120,15 @@ class Strip : public ::AnimationStrip {
   template<typename T> T &as();
 
   bool contains_frame(float frame_time) const;
+
+  /**
+   * Set the start and end frame.
+   *
+   * Note that this does not do anything else. There is no check whether the
+   * frame numbers are valid (i.e. frame_start <= frame_end). Infinite values
+   * (negative for frame_start, positive for frame_end) are supported.
+   */
+  void resize(float frame_start, float frame_end);
 };
 static_assert(sizeof(Strip) == sizeof(::AnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");

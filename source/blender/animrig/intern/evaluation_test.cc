@@ -15,6 +15,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
+#include "BLI_math_base.h"
 #include "BLI_string_utf8.h"
 
 #include <optional>
@@ -60,6 +61,69 @@ class AnimationEvaluationTest : public testing::Test {
   {
     BKE_animation_free_data(&anim);
   }
+
+  /** Evaluate the layer, and return result for the given property. */
+  std::optional<float> evaluate_single_property(const StringRef rna_path,
+                                                const int array_index,
+                                                const float eval_time)
+  {
+    anim_eval_context.eval_time = eval_time;
+    EvaluationResult result = evaluate_layer(
+        &cube_rna_ptr, *layer, out->stable_index, anim_eval_context);
+
+    const AnimatedProperty *loc0_result = result.lookup_ptr(PropIdentifier(rna_path, array_index));
+    if (!loc0_result) {
+      return {};
+    }
+    return loc0_result->value;
+  }
+
+  /** Evaluate the layer, and test that the given property evaluates to the expected value. */
+  testing::AssertionResult test_evaluate_layer(const StringRef rna_path,
+                                               const int array_index,
+                                               const float2 eval_time__expect_value)
+  {
+    const float eval_time = eval_time__expect_value[0];
+    const float expect_value = eval_time__expect_value[1];
+
+    const std::optional<float> opt_eval_value = evaluate_single_property(
+        rna_path, array_index, eval_time);
+    if (!opt_eval_value) {
+      return testing::AssertionFailure()
+             << rna_path << "[" << array_index << "] should have been animated";
+    }
+
+    const float eval_value = *opt_eval_value;
+    const uint diff_ulps = ulp_diff_ff(expect_value, eval_value);
+    if (diff_ulps >= 4) {
+      return testing::AssertionFailure()
+             << std::endl
+             << "    " << rna_path << "[" << array_index
+             << "] evaluation did not produce the expected result:" << std::endl
+             << "      evaluted to: " << testing::PrintToString(eval_value) << std::endl
+             << "      expected   : " << testing::PrintToString(expect_value) << std::endl;
+    }
+
+    return testing::AssertionSuccess();
+  };
+
+  /** Evaluate the layer, and test that the given property is not part of the result. */
+  testing::AssertionResult test_evaluate_layer_no_result(const StringRef rna_path,
+                                                         const int array_index,
+                                                         const float eval_time)
+  {
+    const std::optional<float> eval_value = evaluate_single_property(
+        rna_path, array_index, eval_time);
+    if (eval_value) {
+      return testing::AssertionFailure()
+             << std::endl
+             << "    " << rna_path << "[" << array_index
+             << "] evaluation should NOT produce a value:" << std::endl
+             << "      evaluted to: " << testing::PrintToString(*eval_value) << std::endl;
+    }
+
+    return testing::AssertionSuccess();
+  }
 };
 
 TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
@@ -101,4 +165,63 @@ TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
   EXPECT_EQ(7.0f, cube.rot[2]) << "Evaluation should not modify the animated ID";
 }
 
+TEST_F(AnimationEvaluationTest, strip_boundaries__single_strip)
+{
+  /* Single finite strip, check first, middle, and last frame. */
+  Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  strip->resize(1.0f, 10.0f);
+
+  /* Set some keys. */
+  KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
+  key_strip.keyframe_insert(*out, "location", 0, {1.0f, 47.0f}, settings);
+  key_strip.keyframe_insert(*out, "location", 0, {5.0f, 327.0f}, settings);
+  key_strip.keyframe_insert(*out, "location", 0, {10.0f, 48.0f}, settings);
+
+  /* Evaluate the layer to see how it handles the boundaries + something in between. */
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {1.0f, 47.0f}));
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {3.0f, 187.0f}));
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {10.0f, 48.0f}));
+
+  EXPECT_TRUE(test_evaluate_layer_no_result("location", 0, 10.001f));
+}
+
+TEST_F(AnimationEvaluationTest, strip_boundaries__nonoverlapping)
+{
+  /* Two finite strips that are strictly distinct. */
+  Strip *strip1 = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  Strip *strip2 = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  strip1->resize(1.0f, 10.0f);
+  strip2->resize(11.0f, 20.0f);
+  strip2->frame_offset = 10;
+
+  /* Set some keys. */
+  {
+    KeyframeStrip &key_strip1 = strip1->as<KeyframeStrip>();
+    key_strip1.keyframe_insert(*out, "location", 0, {1.0f, 47.0f}, settings);
+    key_strip1.keyframe_insert(*out, "location", 0, {5.0f, 327.0f}, settings);
+    key_strip1.keyframe_insert(*out, "location", 0, {10.0f, 48.0f}, settings);
+  }
+  {
+    KeyframeStrip &key_strip2 = strip2->as<KeyframeStrip>();
+    key_strip2.keyframe_insert(*out, "location", 0, {1.0f, 47.0f}, settings);
+    key_strip2.keyframe_insert(*out, "location", 0, {5.0f, 327.0f}, settings);
+    key_strip2.keyframe_insert(*out, "location", 0, {10.0f, 48.0f}, settings);
+  }
+
+  /* Check Strip 1. */
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {1.0f, 47.0f}));
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {3.0f, 187.0f}));
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {10.0f, 48.0f}));
+
+  /* Check Strip 2. */
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {11.0f, 47.0f}));
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {13.0f, 187.0f}));
+  EXPECT_TRUE(test_evaluate_layer("location", 0, {20.0f, 48.0f}));
+
+  /* Check outside the range of the strips. */
+  EXPECT_TRUE(test_evaluate_layer_no_result("location", 0, 0.999f));
+  EXPECT_TRUE(test_evaluate_layer_no_result("location", 0, 10.001f));
+  EXPECT_TRUE(test_evaluate_layer_no_result("location", 0, 10.999f));
+  EXPECT_TRUE(test_evaluate_layer_no_result("location", 0, 20.001f));
+}
 }  // namespace blender::animrig::tests

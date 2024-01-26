@@ -308,6 +308,17 @@ bool Strip::contains_frame(const float frame_time) const
   return frame_start <= frame_time && frame_time <= frame_end;
 }
 
+void Strip::resize(const float frame_start, const float frame_end)
+{
+  BLI_assert(frame_start <= frame_end);
+  BLI_assert_msg(frame_start < std::numeric_limits<float>::infinity(),
+                 "only the end frame can be at positive infinity");
+  BLI_assert_msg(frame_end > -std::numeric_limits<float>::infinity(),
+                 "only the start frame can be at negative infinity");
+  this->frame_start = frame_start;
+  this->frame_end = frame_end;
+}
+
 /* ----- KeyframeAnimationStrip C++ implementation ----------- */
 
 blender::Span<const ChannelsForOutput *> KeyframeStrip::channels_for_output() const
