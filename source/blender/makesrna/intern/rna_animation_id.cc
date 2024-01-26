@@ -70,6 +70,8 @@ const EnumPropertyItem rna_enum_strip_type_items[] = {
 
 #  include "ANIM_animation.hh"
 
+#  include "DEG_depsgraph.hh"
+
 using namespace blender;
 
 static animrig::Animation &rna_animation(const PointerRNA *ptr)
@@ -90,6 +92,12 @@ static animrig::Layer &rna_data_layer(const PointerRNA *ptr)
 static animrig::Strip &rna_data_strip(const PointerRNA *ptr)
 {
   return reinterpret_cast<AnimationStrip *>(ptr->data)->wrap();
+}
+
+static void rna_Animation_tag_animupdate(Main *, Scene *, PointerRNA *ptr)
+{
+  animrig::Animation &anim = rna_animation(ptr);
+  DEG_id_tag_update(&anim.id, ID_RECALC_ANIMATION);
 }
 
 static animrig::KeyframeStrip &rna_data_keyframe_strip(const PointerRNA *ptr)
@@ -465,14 +473,14 @@ static void rna_def_animation_layer(BlenderRNA *brna)
       "How much of this layer is used when blending into the output of lower layers");
   RNA_def_property_ui_range(prop, 0.0, 1.0, 3, 2);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, nullptr);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_Animation_tag_animupdate");
 
   prop = RNA_def_property(srna, "mix_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "Mix Mode", "How animation of this layer is blended into the output of lower layers");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_enum_items(prop, rna_enum_layer_mix_mode_items);
-  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, nullptr);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_Animation_tag_animupdate");
 
   /* Collection properties .*/
   prop = RNA_def_property(srna, "strips", PROP_COLLECTION, PROP_NONE);
@@ -622,13 +630,17 @@ static void rna_def_animation_strip(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "frame_start", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Frame Start", "");
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_Animation_tag_animupdate");
 
   prop = RNA_def_property(srna, "frame_end", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop, "End", "");
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_Animation_tag_animupdate");
 
   prop = RNA_def_property(srna, "frame_offset", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Offset", "");
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_Animation_tag_animupdate");
 
+  /* Define Strip subclasses. */
   rna_def_animation_keyframe_strip(brna);
 }
 
