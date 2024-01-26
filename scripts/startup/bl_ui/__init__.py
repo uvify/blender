@@ -11,6 +11,7 @@ if "bpy" in locals():
     del reload
 
 _modules = [
+    "anim",
     "anim_layers",
     "asset_shelf",
     "node_add_menu",
