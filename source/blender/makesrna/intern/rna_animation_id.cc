@@ -57,6 +57,15 @@ const EnumPropertyItem rna_enum_layer_mix_mode_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_strip_type_items[] = {
+    {ANIM_STRIP_TYPE_KEYFRAME,
+     "KEYFRAME",
+     0,
+     "Keyframe",
+     "Strip containing keyframes on F-Curves"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifdef RNA_RUNTIME
 
 #  include "ANIM_animation.hh"
@@ -197,6 +206,15 @@ static int rna_iterator_animationlayer_strips_length(PointerRNA *ptr)
 {
   animrig::Layer &layer = rna_data_layer(ptr);
   return layer.strips().size();
+}
+
+struct AnimationStrip *rna_AnimationStrips_new(AnimationLayer *dna_layer, const int type)
+{
+  const eAnimationStrip_type strip_type = eAnimationStrip_type(type);
+
+  animrig::Layer &layer = dna_layer->wrap();
+  animrig::Strip *strip = layer.strip_add(strip_type);
+  return strip;
 }
 
 static StructRNA *rna_AnimationStrip_refine(PointerRNA *ptr)
@@ -404,13 +422,27 @@ static void rna_def_animationlayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
 
-  // FunctionRNA *func;
-  // PropertyRNA *parm;
+  FunctionRNA *func;
+  PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "AnimationStrips");
   srna = RNA_def_struct(brna, "AnimationStrips", nullptr);
   RNA_def_struct_sdna(srna, "AnimationLayer");
   RNA_def_struct_ui_text(srna, "Animation Strips", "Collection of animation strips");
+
+  /* Layer.strips.new(...) */
+  func = RNA_def_function(srna, "new", "rna_AnimationStrips_new");
+  RNA_def_function_ui_description(func, "Add a new infinite strip to the layer");
+  parm = RNA_def_enum(func,
+                      "type",
+                      rna_enum_strip_type_items,
+                      ANIM_STRIP_TYPE_KEYFRAME,
+                      "Type",
+                      "The type of strip to create");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  /* Return value. */
+  parm = RNA_def_pointer(func, "strip", "AnimationStrip", "", "Newly created animation strip");
+  RNA_def_function_return(func, parm);
 }
 
 static void rna_def_animation_layer(BlenderRNA *brna)
