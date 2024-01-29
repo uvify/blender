@@ -26,7 +26,7 @@
 #ifdef RNA_RUNTIME
 
 #  include "BKE_action.h"
-#  include "BKE_animation.h"
+#  include "BKE_animation.hh"
 #  include "BKE_armature.hh"
 #  include "BKE_brush.hh"
 #  include "BKE_camera.h"

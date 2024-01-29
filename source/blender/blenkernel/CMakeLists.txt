@@ -325,7 +325,7 @@ set(SRC
   BKE_anim_data.h
   BKE_anim_path.h
   BKE_anim_visualization.h
-  BKE_animation.h
+  BKE_animation.hh
   BKE_animsys.h
   BKE_anonymous_attribute_id.hh
   BKE_appdir.hh

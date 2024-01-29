@@ -4,7 +4,7 @@
 
 #include "ANIM_animation.hh"
 
-#include "BKE_animation.h"
+#include "BKE_animation.hh"
 #include "BKE_fcurve.h"
 #include "BKE_idtype.hh"
 

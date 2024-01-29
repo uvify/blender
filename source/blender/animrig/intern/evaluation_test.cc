@@ -6,7 +6,7 @@
 #include "ANIM_evaluation.hh"
 #include "evaluation_internal.hh"
 
-#include "BKE_animation.h"
+#include "BKE_animation.hh"
 #include "BKE_animsys.h"
 #include "BKE_idtype.hh"
 
