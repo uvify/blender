@@ -38,7 +38,7 @@ class PropIdentifier {
 
   uint64_t hash() const
   {
-    return get_default_hash_2(rna_path, array_index);
+    return get_default_hash(rna_path, array_index);
   }
 };
 
