@@ -12,6 +12,7 @@
 #pragma once
 
 struct Animation;
+struct AnimationLayer;
 struct AnimationStrip;
 struct Main;
 
@@ -19,6 +20,9 @@ Animation *BKE_animation_add(Main *bmain, const char name[]);
 
 /** Free any data used by this animation (does not free the animation itself). */
 void BKE_animation_free_data(Animation *animation);
+
+/** Free any data used by this animation layer (does not free the layer itself). */
+void BKE_animation_layer_free_data(AnimationLayer *layer);
 
 /** Free any data used by this animation strip (does not free the strip itself). */
 void BKE_animation_strip_free_data(AnimationStrip *strip);

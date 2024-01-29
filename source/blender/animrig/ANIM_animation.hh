@@ -48,6 +48,14 @@ class Animation : public ::Animation {
   Layer *layer(int64_t index);
 
   Layer *layer_add(const char *name);
+  /**
+   * Remove the layer from this animation.
+   *
+   * After this call, the passed reference is no longer valid, as the memory
+   * will have been freed. Any strips on the layer will be freed too.
+   *
+   * \return true when the layer was found & removed, false if it wasn't found. */
+  bool layer_remove(Layer &layer_to_remove);
 
   /* Animation Output access. */
   blender::Span<const Output *> outputs() const;
@@ -65,6 +73,10 @@ class Animation : public ::Animation {
   /* Find the output with the same stable index.
    * If that is not available, use the fallback string. */
   Output *find_suitable_output_for(const ID *animated_id);
+
+ protected:
+  /** Return the layer's index, or -1 if not found in this animation. */
+  int64_t find_layer_index(const Layer &layer) const;
 
  private:
   Output &output_allocate_();

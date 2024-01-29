@@ -52,6 +52,36 @@ TEST_F(AnimationLayersTest, add_layer)
   ASSERT_EQ(0, layer->strips().size()) << "Expected newly added layer to have no strip.";
 }
 
+TEST_F(AnimationLayersTest, remove_layer)
+{
+  Layer &layer0 = *anim.layer_add("Test Læür nul");
+  Layer &layer1 = *anim.layer_add("Test Læür één");
+  Layer &layer2 = *anim.layer_add("Test Læür twee");
+
+  /* Add some strips to check that they are freed correctly too (implicitly by the
+   * memory leak checker). */
+  layer0.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  layer1.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  layer2.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+
+  { /* Test removing a layer that is not owned. */
+    Animation other_anim = {};
+    Layer &other_layer = *other_anim.layer_add("Another Layer");
+    EXPECT_FALSE(anim.layer_remove(other_layer))
+        << "Removing a layer not owned by the animation should be gracefully rejected";
+    BKE_animation_free_data(&other_anim);
+  }
+
+  EXPECT_TRUE(anim.layer_remove(layer1));
+  EXPECT_EQ(2, anim.layers().size());
+
+  EXPECT_TRUE(anim.layer_remove(layer2));
+  EXPECT_EQ(1, anim.layers().size());
+
+  EXPECT_TRUE(anim.layer_remove(layer0));
+  EXPECT_EQ(0, anim.layers().size());
+}
+
 TEST_F(AnimationLayersTest, add_strip)
 {
   Layer *layer = anim.layer_add("Test Læür");

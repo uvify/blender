@@ -166,6 +166,22 @@ static AnimationLayer *rna_Animation_layers_new(Animation *anim, const char *nam
   return layer;
 }
 
+void rna_Animation_layers_remove(Animation *dna_animation,
+                                 bContext *C,
+                                 ReportList *reports,
+                                 AnimationLayer *dna_layer)
+{
+  animrig::Animation &anim = dna_animation->wrap();
+  animrig::Layer &layer = dna_layer->wrap();
+  if (!anim.layer_remove(layer)) {
+    BKE_report(reports, RPT_ERROR, "this layer does not belong to this animation");
+    return;
+  }
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
+  DEG_id_tag_update(&anim.id, ID_RECALC_ANIMATION);
+}
+
 static void rna_iterator_animation_outputs_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   animrig::Animation &anim = rna_animation(ptr);
@@ -383,6 +399,14 @@ static void rna_def_animation_layers(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "layer", "AnimationLayer", "", "Newly created animation layer");
   RNA_def_function_return(func, parm);
+
+  /* Animation.layers.remove(layer) */
+  func = RNA_def_function(srna, "remove", "rna_Animation_layers_remove");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Remove the layer from the animation");
+  parm = RNA_def_pointer(
+      func, "anim_layer", "AnimationLayer", "Animation Layer", "The layer to remove");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
 static void rna_def_animation(BlenderRNA *brna)

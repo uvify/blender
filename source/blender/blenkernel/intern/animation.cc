@@ -40,7 +40,6 @@ static AnimationStrip *anim_strip_duplicate_keyframe(const AnimationStrip *strip
 static AnimationChannelsForOutput *anim_channels_for_output_duplicate(
     const AnimationChannelsForOutput *channels_src);
 
-static void anim_layer_free_data(AnimationLayer *layer);
 static void anim_strip_free_data_keyframe(AnimationStrip *strip);
 static void anim_channels_for_output_free_data(AnimationChannelsForOutput *channels);
 
@@ -174,7 +173,7 @@ void BKE_animation_free_data(Animation *animation)
 
   /* Free layers. */
   for (animrig::Layer *layer : anim.layers()) {
-    anim_layer_free_data(layer);
+    BKE_animation_layer_free_data(layer);
     MEM_delete(layer);
   }
   MEM_SAFE_FREE(animation->layer_array);
@@ -193,7 +192,7 @@ static void animation_free_data(ID *id)
   BKE_animation_free_data((Animation *)id);
 }
 
-static void anim_layer_free_data(AnimationLayer *dna_layer)
+void BKE_animation_layer_free_data(AnimationLayer *dna_layer)
 {
   animrig::Layer &layer = dna_layer->wrap();
   for (animrig::Strip *strip : layer.strips()) {

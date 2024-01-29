@@ -60,7 +60,8 @@ template<typename T> static void grow_array(T **array, int *num, const int add_n
 {
   BLI_assert(add_num > 0);
   const int new_array_num = *num + add_num;
-  T *new_array = reinterpret_cast<T *>(MEM_cnew_array<T *>(new_array_num, __func__));
+  T *new_array = reinterpret_cast<T *>(
+      MEM_cnew_array<T *>(new_array_num, "animrig::animation/grow_array"));
 
   blender::uninitialized_relocate_n(*array, *num, new_array);
   if (*array != nullptr) {
@@ -122,6 +123,42 @@ Layer *Animation::layer_add(const char *name)
   this->layer_active_index = this->layer_array_num - 1;
 
   return new_layer;
+}
+
+bool Animation::layer_remove(Layer &layer_to_remove)
+{
+  const int64_t layer_index = this->find_layer_index(layer_to_remove);
+  if (layer_index < 0) {
+    return false;
+  }
+
+  BLI_assert(layer_index < this->layer_array_num);
+
+  /* Move [layer_index+1:end] to [layer_index:end-1], but only if the `layer_to_remove` is not
+   * already at the end. */
+  if (layer_index < this->layer_array_num - 1) {
+    ::AnimationLayer **start = this->layer_array + layer_index;
+    const int64_t num_to_move = this->layer_array_num - layer_index - 1;
+    memmove((void *)start, (void *)(start + 1), num_to_move * sizeof(::AnimationLayer *));
+  }
+
+  shrink_array<::AnimationLayer *>(&this->layer_array, &this->layer_array_num, 1);
+
+  BKE_animation_layer_free_data(&layer_to_remove);
+  MEM_delete(&layer_to_remove);
+
+  return true;
+}
+
+int64_t Animation::find_layer_index(const Layer &layer) const
+{
+  for (const int64_t layer_index : this->layers().index_range()) {
+    const Layer *visit_layer = this->layer(layer_index);
+    if (visit_layer == &layer) {
+      return layer_index;
+    }
+  }
+  return -1;
 }
 
 blender::Span<const Output *> Animation::outputs() const
