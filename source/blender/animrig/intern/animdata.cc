@@ -6,12 +6,14 @@
  * \ingroup animrig
  */
 
+#include "ANIM_animation.hh"
 #include "ANIM_animdata.hh"
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_fcurve.h"
 #include "BKE_lib_id.hh"
 #include "BLI_listbase.h"
+#include "BLI_math_base.h"
 #include "BLI_string.h"
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -166,6 +168,65 @@ void reevaluate_fcurve_errors(bAnimContext *ac)
   if (filtering_enabled) {
     ac->ads->filterflag |= ADS_FILTER_ONLY_ERRORS;
   }
+}
+
+const FCurve *fcurve_find_by_rna_path(const Animation &anim,
+                                      const ID *animated_id,
+                                      const float frame_time,
+                                      const char *rna_path,
+                                      const int array_index)
+{
+  const Output *out = anim.output_for_id(animated_id);
+  if (!out) {
+    /* No need to inspect anything if this ID does not have an animation Output. */
+    return nullptr;
+  }
+
+  /* Keep track of when we find an F-Curve on a strip that's not overlapping the
+   * given frame time. */
+  const FCurve *found_on_other_strip = nullptr;
+  float found_at_time_distance = std::numeric_limits<float>::infinity();
+
+  /* Iterate the layers top-down, as higher-up animation overrides (or at least can override)
+   * lower-down animation. */
+  for (int layer_idx = anim.layer_array_num - 1; layer_idx >= 0; layer_idx--) {
+    const Layer *layer = anim.layer(layer_idx);
+
+    /* TODO: refactor this into something nicer. */
+    for (const Strip *strip : layer->strips()) {
+      switch (strip->type) {
+        case ANIM_STRIP_TYPE_KEYFRAME: {
+          const KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
+          const ChannelsForOutput *chans_for_out = key_strip.chans_for_out(*out);
+          if (!chans_for_out) {
+            continue;
+          }
+          const FCurve *fcu = chans_for_out->fcurve_find(rna_path, array_index);
+          if (!fcu) {
+            continue;
+          }
+
+          if (strip->contains_frame(frame_time)) {
+            /* Found it! */
+            return fcu;
+          }
+
+          /* See if this at least a better match for any previously-found FCurve. */
+          const float this_distance = min_ff(fabs(frame_time - strip->frame_start),
+                                             fabs(frame_time - strip->frame_end));
+          if (this_distance < found_at_time_distance) {
+            found_on_other_strip = fcu;
+            found_at_time_distance = this_distance;
+          }
+        } break;
+      }
+      /* Explicit lack of 'default' clause, to get compiler warnings when strip types are added. */
+    }
+  }
+
+  /* If the flow ended here, there was no exact match for the given time, so
+   * return the best one found. */
+  return found_on_other_strip;
 }
 
 }  // namespace blender::animrig

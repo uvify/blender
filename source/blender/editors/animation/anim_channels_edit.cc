@@ -4549,6 +4549,7 @@ static rctf calculate_selection_fcurve_bounds_and_unhide(
   }
 
   Scene *scene = CTX_data_scene(C);
+  const float frame_time = BKE_scene_frame_get(scene);
   float frame_range[2];
   get_view_range(scene, true, frame_range);
   const bool include_handles = false;
@@ -4579,7 +4580,7 @@ static rctf calculate_selection_fcurve_bounds_and_unhide(
       const int length = RNA_property_array_length(&selected->ptr, prop);
       for (int i = 0; i < length; i++) {
         FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
-            anim_data, path, i, nullptr, nullptr);
+            selected_id, anim_data, frame_time, path, i, nullptr, nullptr);
         if (fcurve != nullptr) {
           fcurves.append(fcurve);
         }
@@ -4587,7 +4588,7 @@ static rctf calculate_selection_fcurve_bounds_and_unhide(
     }
     else {
       FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
-          anim_data, path, index, nullptr, nullptr);
+          selected_id, anim_data, frame_time, path, index, nullptr, nullptr);
       if (fcurve != nullptr) {
         fcurves.append(fcurve);
       }

@@ -18,6 +18,8 @@ struct bAction;
 
 namespace blender::animrig {
 
+class Animation;
+
 /**
  * Get (or add relevant data to be able to do so) the Active Action for the given
  * Animation Data block, given an ID block where the Animation Data should reside.
@@ -41,5 +43,27 @@ void reevaluate_fcurve_errors(bAnimContext *ac);
  * come from a NLA Strip being tweaked.
  */
 bool animdata_remove_empty_action(AnimData *adt);
+
+/**
+ * Compatibility helper function for `BKE_animadata_fcurve_find_by_rna_path()`.
+ *
+ * Searches each layer (top to bottom) to find an FCurve that matches the given
+ * RNA path & index.
+ *
+ * \see BKE_animadata_fcurve_find_by_rna_path
+ *
+ * \note The returned FCurve should NOT be used for keyframe manipulation. Its
+ * existence is an indicator for "this property is animated". However, it may
+ * have been found on an animation strip that is not even active at the given
+ * time, and thus manipulation is not appropriate.
+ *
+ * Again, this is just to hook up the new Animation data-block to the old
+ * Blender UI code.
+ */
+const FCurve *fcurve_find_by_rna_path(const Animation &anim,
+                                      const ID *animated_id,
+                                      const float frame_time,
+                                      const char *rna_path,
+                                      int array_index);
 
 }  // namespace blender::animrig

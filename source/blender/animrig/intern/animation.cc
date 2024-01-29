@@ -182,8 +182,14 @@ Output *Animation::output(const int64_t index)
 
 Output *Animation::output_for_stable_index(const output_index_t stable_index)
 {
+  const Output *out = const_cast<const Animation *>(this)->output_for_stable_index(stable_index);
+  return const_cast<Output *>(out);
+}
+
+const Output *Animation::output_for_stable_index(const output_index_t stable_index) const
+{
   /* TODO: implement hashmap lookup. */
-  for (Output *out : outputs()) {
+  for (const Output *out : outputs()) {
     if (out->stable_index == stable_index) {
       return out;
     }
@@ -198,6 +204,29 @@ Output *Animation::output_for_fallback(const char *fallback)
     }
   }
   return nullptr;
+}
+
+Output *Animation::output_for_id(const ID *animated_id)
+{
+  const Output *out = const_cast<const Animation *>(this)->output_for_id(animated_id);
+  return const_cast<Output *>(out);
+}
+
+const Output *Animation::output_for_id(const ID *animated_id) const
+
+{
+  const AnimData *adt = BKE_animdata_from_id(animated_id);
+
+  /* Note that there is no check that `adt->animation` is actually `this`. */
+
+  const Output *out = this->output_for_stable_index(adt->output_stable_index);
+  if (!out) {
+    return nullptr;
+  }
+  if (!out->is_suitable_for(animated_id)) {
+    return nullptr;
+  }
+  return out;
 }
 
 Output &Animation::output_allocate_()
@@ -444,6 +473,13 @@ template<> KeyframeStrip &Strip::as<KeyframeStrip>()
   return *reinterpret_cast<KeyframeStrip *>(this);
 }
 
+template<> const KeyframeStrip &Strip::as<KeyframeStrip>() const
+{
+  BLI_assert_msg(type == ANIM_STRIP_TYPE_KEYFRAME,
+                 "Strip is not of type ANIM_STRIP_TYPE_KEYFRAME");
+  return *reinterpret_cast<const KeyframeStrip *>(this);
+}
+
 const ChannelsForOutput *KeyframeStrip::chans_for_out(
     const output_index_t output_stable_index) const
 {
@@ -590,6 +626,17 @@ const FCurve *ChannelsForOutput::fcurve(const int64_t index) const
 FCurve *ChannelsForOutput::fcurve(const int64_t index)
 {
   return this->fcurve_array[index];
+}
+
+const FCurve *ChannelsForOutput::fcurve_find(const char *rna_path, const int array_index) const
+{
+  for (const FCurve *fcu : this->fcurves()) {
+    /* Check indices first, much cheaper than a string comparison. */
+    if (fcu->array_index == array_index && fcu->rna_path && STREQ(fcu->rna_path, rna_path)) {
+      return fcu;
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace blender::animrig

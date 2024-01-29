@@ -350,16 +350,17 @@ bool BKE_lib_override_library_property_is_animated(
     FCurve *fcurve;
     char *index_token_start = const_cast<char *>(
         RNA_path_array_index_token_find(liboverride_prop->rna_path, override_rna_prop));
+    const float frame_time = 0.0f; /* TODO: see if we can get the current frame from somewhere. */
     if (index_token_start != nullptr) {
       const char index_token_start_backup = *index_token_start;
       *index_token_start = '\0';
       fcurve = BKE_animadata_fcurve_find_by_rna_path(
-          anim_data, liboverride_prop->rna_path, rnaprop_index, nullptr, nullptr);
+          id, anim_data, frame_time, liboverride_prop->rna_path, rnaprop_index, nullptr, nullptr);
       *index_token_start = index_token_start_backup;
     }
     else {
       fcurve = BKE_animadata_fcurve_find_by_rna_path(
-          anim_data, liboverride_prop->rna_path, 0, nullptr, nullptr);
+          id, anim_data, frame_time, liboverride_prop->rna_path, 0, nullptr, nullptr);
     }
     if (fcurve != nullptr) {
       return true;

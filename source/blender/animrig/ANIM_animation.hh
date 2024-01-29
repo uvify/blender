@@ -64,14 +64,22 @@ class Animation : public ::Animation {
   Output *output(int64_t index);
 
   Output *output_for_stable_index(output_index_t stable_index);
+  const Output *output_for_stable_index(output_index_t stable_index) const;
   Output *output_for_fallback(const char *fallback);
+
+  Output *output_for_id(const ID *animated_id);
+  const Output *output_for_id(const ID *animated_id) const;
 
   Output *output_add();
   bool assign_id(Output &output, ID *animated_id);
   void unassign_id(ID *animated_id);
 
-  /* Find the output with the same stable index.
-   * If that is not available, use the fallback string. */
+  /**
+   * Find the output with the same stable index.
+   * If that is not available, use the fallback string.
+   *
+   * Note that this different from #output_for_id, which does not use the
+   * fallback string. */
   Output *find_suitable_output_for(const ID *animated_id);
 
  protected:
@@ -143,6 +151,7 @@ class Strip : public ::AnimationStrip {
   // TODO: add? Maybe?
   // template<typename T> bool is() const;
   template<typename T> T &as();
+  template<typename T> const T &as() const;
 
   bool contains_frame(float frame_time) const;
   bool is_last_frame(float frame_time) const;
@@ -224,6 +233,8 @@ class ChannelsForOutput : public ::AnimationChannelsForOutput {
   blender::MutableSpan<FCurve *> fcurves();
   const FCurve *fcurve(int64_t index) const;
   FCurve *fcurve(int64_t index);
+
+  const FCurve *fcurve_find(const char *rna_path, int array_index) const;
 };
 static_assert(sizeof(ChannelsForOutput) == sizeof(::AnimationChannelsForOutput),
               "DNA struct and its C++ wrapper must have the same size");

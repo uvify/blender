@@ -296,8 +296,10 @@ int BKE_fcurves_filter(ListBase *dst, ListBase *src, const char *dataPrefix, con
 /**
  * Find an F-Curve from its rna path and index.
  *
- * If there is an action assigned to the `animdata`, it will be searched for a matching F-curve
- * first. Drivers are searched only if no valid action F-curve could be found.
+ * The search order is as follows. The first match will be returned:
+ *   - Animation
+ *   - Action
+ *   - Drivers
  *
  * \note Typically, indices in RNA arrays are stored separately in F-curves, so the rna_path
  * should not include them (e.g. `rna_path='location[0]'` will not match any F-Curve on an Object,
@@ -305,8 +307,17 @@ int BKE_fcurves_filter(ListBase *dst, ListBase *src, const char *dataPrefix, con
  *
  * \note Return pointer parameters (`r_action`, `r_driven` and `r_special`) are all optional and
  * may be NULL.
+ *
+ * \note since Animation data-blocks may have multiple strips and multiple
+ * layers all containing an F-Curve for this property, what is returned is a
+ * best-effort guess. The topmost layer has priority, and so does a strip that
+ * overlaps with the given frame time. This means that if there is an FCurve for
+ * this property on a strip that doesn't overlap the given frame, it still may
+ * be returned.
  */
-struct FCurve *BKE_animadata_fcurve_find_by_rna_path(struct AnimData *animdata,
+struct FCurve *BKE_animadata_fcurve_find_by_rna_path(const struct ID *id,
+                                                     struct AnimData *animdata,
+                                                     float frame_time,
                                                      const char *rna_path,
                                                      const int rna_index,
                                                      struct bAction **r_action,
