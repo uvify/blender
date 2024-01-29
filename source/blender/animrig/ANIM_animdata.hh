@@ -57,6 +57,10 @@ bool animdata_remove_empty_action(AnimData *adt);
  * have been found on an animation strip that is not even active at the given
  * time, and thus manipulation is not appropriate.
  *
+ * This function should probably be limited to the active layer (for the given
+ * property, once pinning to layers is there), so that the "this is keyed" color
+ * is more accurate.
+ *
  * Again, this is just to hook up the new Animation data-block to the old
  * Blender UI code.
  */
