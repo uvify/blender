@@ -13,6 +13,7 @@
 #include "BLI_string_utf8.h"
 
 #include "BKE_anim_data.h"
+#include "BKE_animation.hh"
 #include "BKE_fcurve.h"
 #include "BKE_lib_id.hh"
 
@@ -74,6 +75,19 @@ template<typename T> static void grow_array_and_append(T **array, int *num, T it
 {
   grow_array(array, num, 1);
   (*array)[*num - 1] = item;
+}
+
+template<typename T> static void shrink_array(T **array, int *num, const int shrink_num)
+{
+  BLI_assert(shrink_num > 0);
+  const int new_array_num = *num - shrink_num;
+  T *new_array = reinterpret_cast<T *>(MEM_cnew_array<T *>(new_array_num, __func__));
+
+  blender::uninitialized_move_n(*array, new_array_num, new_array);
+  MEM_freeN(*array);
+
+  *array = new_array;
+  *num = new_array_num;
 }
 
 /* ----- Animation C++ implementation ----------- */
@@ -246,6 +260,42 @@ Strip *Layer::strip_add(const eAnimationStrip_type strip_type)
   grow_array_and_append<::AnimationStrip *>(&this->strip_array, &this->strip_array_num, &strip);
 
   return &strip;
+}
+
+bool Layer::strip_remove(Strip &strip_to_remove)
+{
+  const int64_t strip_index = this->find_strip_index(strip_to_remove);
+  if (strip_index < 0) {
+    return false;
+  }
+
+  BLI_assert(strip_index < this->strip_array_num);
+
+  /* Move [strip_index+1:end] to [strip_index:end-1], but only if the `strip_to_remove` is not
+   * already at the end. */
+  if (strip_index < this->strip_array_num - 1) {
+    ::AnimationStrip **start = this->strip_array + strip_index;
+    const int64_t num_to_move = this->strip_array_num - strip_index - 1;
+    memmove((void *)start, (void *)(start + 1), num_to_move * sizeof(::AnimationStrip *));
+  }
+
+  shrink_array<::AnimationStrip *>(&this->strip_array, &this->strip_array_num, 1);
+
+  BKE_animation_strip_free_data(&strip_to_remove);
+  MEM_delete(&strip_to_remove);
+
+  return true;
+}
+
+int64_t Layer::find_strip_index(const Strip &strip) const
+{
+  for (const int64_t strip_index : this->strips().index_range()) {
+    const Strip *visit_strip = this->strip(strip_index);
+    if (visit_strip == &strip) {
+      return strip_index;
+    }
+  }
+  return -1;
 }
 
 /* ----- AnimationOutput C++ implementation ----------- */

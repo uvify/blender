@@ -20,16 +20,28 @@
 namespace blender::animrig::tests {
 class AnimationLayersTest : public testing::Test {
  public:
+  Animation anim;
+
   static void SetUpTestSuite()
   {
     /* To make id_can_have_animdata() and friends work, the `id_types` array needs to be set up. */
     BKE_idtype_init();
   }
+
+  void SetUp() override
+  {
+    anim = {};
+    STRNCPY_UTF8(anim.id.name, "ANÄnimåtië");
+  }
+
+  void TearDown() override
+  {
+    BKE_animation_free_data(&anim);
+  }
 };
 
 TEST_F(AnimationLayersTest, add_layer)
 {
-  Animation anim = {};
   Layer *layer = anim.layer_add("layer name");
 
   EXPECT_EQ(anim.layer(0), layer);
@@ -38,21 +50,70 @@ TEST_F(AnimationLayersTest, add_layer)
   EXPECT_EQ(0, anim.layer_active_index)
       << "Expected newly added layer to become the active layer.";
   ASSERT_EQ(0, layer->strips().size()) << "Expected newly added layer to have no strip.";
+}
+
+TEST_F(AnimationLayersTest, add_strip)
+{
+  Layer *layer = anim.layer_add("Test Læür");
 
   Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
   ASSERT_EQ(1, layer->strips().size());
+  EXPECT_EQ(strip, layer->strip(0));
 
   constexpr float inf = std::numeric_limits<float>::infinity();
   EXPECT_EQ(-inf, strip->frame_start) << "Expected strip to be infinite.";
   EXPECT_EQ(inf, strip->frame_end) << "Expected strip to be infinite.";
   EXPECT_EQ(0, strip->frame_offset) << "Expected infinite strip to have no offset.";
 
-  BKE_animation_free_data(&anim);
+  Strip *another_strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  ASSERT_EQ(2, layer->strips().size());
+  EXPECT_EQ(another_strip, layer->strip(1));
+
+  EXPECT_EQ(-inf, another_strip->frame_start) << "Expected strip to be infinite.";
+  EXPECT_EQ(inf, another_strip->frame_end) << "Expected strip to be infinite.";
+  EXPECT_EQ(0, another_strip->frame_offset) << "Expected infinite strip to have no offset.";
+
+  /* Add some keys to check that also the strip data is freed correctly. */
+  const KeyframeSettings settings = get_keyframe_settings(false);
+  Output &out = *anim.output_add();
+  strip->as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
+  another_strip->as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
+}
+
+TEST_F(AnimationLayersTest, remove_strip)
+{
+  Layer &layer = *anim.layer_add("Test Læür");
+  Strip &strip0 = *layer.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  Strip &strip1 = *layer.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+  Strip &strip2 = *layer.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+
+  /* Add some keys to check that also the strip data is freed correctly. */
+  const KeyframeSettings settings = get_keyframe_settings(false);
+  Output &out = *anim.output_add();
+  strip0.as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
+  strip1.as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
+  strip2.as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
+
+  EXPECT_TRUE(layer.strip_remove(strip1));
+  EXPECT_EQ(2, layer.strips().size());
+
+  EXPECT_TRUE(layer.strip_remove(strip2));
+  EXPECT_EQ(1, layer.strips().size());
+
+  EXPECT_TRUE(layer.strip_remove(strip0));
+  EXPECT_EQ(0, layer.strips().size());
+
+  { /* Test removing a strip that is not owned. */
+    Layer &other_layer = *anim.layer_add("Another Layer");
+    Strip &other_strip = *other_layer.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
+
+    EXPECT_FALSE(layer.strip_remove(other_strip))
+        << "Removing a strip not owned by the layer should be gracefully rejected";
+  }
 }
 
 TEST_F(AnimationLayersTest, add_output)
 {
-  Animation anim = {};
   ID cube = {};
   STRNCPY_UTF8(cube.name, "OBKüüübus");
 
@@ -67,13 +128,10 @@ TEST_F(AnimationLayersTest, add_output)
   out->assign_id(&cube);
   EXPECT_EQ("Küüübus", std::string(out->fallback));
   EXPECT_EQ(GS(cube.name), out->idtype);
-
-  BKE_animation_free_data(&anim);
 }
 
 TEST_F(AnimationLayersTest, add_output_multiple)
 {
-  Animation anim = {};
   ID cube = {};
   STRNCPY_UTF8(cube.name, "OBKüüübus");
   ID suzanne = {};
@@ -87,8 +145,6 @@ TEST_F(AnimationLayersTest, add_output_multiple)
   EXPECT_EQ(2, anim.last_output_stable_index);
   EXPECT_EQ(1, out_cube->stable_index);
   EXPECT_EQ(2, out_suzanne->stable_index);
-
-  BKE_animation_free_data(&anim);
 }
 
 TEST_F(AnimationLayersTest, strip)
@@ -130,7 +186,6 @@ TEST_F(AnimationLayersTest, strip)
 
 TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
 {
-  Animation anim = {};
   ID cube = {};
   STRNCPY_UTF8(cube.name, "OBKüüübus");
   Output *out = anim.output_add();
@@ -167,8 +222,6 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
   EXPECT_EQ(2, chan_for_out->fcurves().size()) << "Expected a second FCurve to be created.";
 
   /* TODO: test with finite strips & strip offsets. */
-
-  BKE_animation_free_data(&anim);
 }
 
 }  // namespace blender::animrig::tests

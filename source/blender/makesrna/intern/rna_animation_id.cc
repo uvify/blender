@@ -22,6 +22,7 @@
 
 #include "rna_internal.h"
 
+#include "WM_api.hh"
 #include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_layer_mix_mode_items[] = {
@@ -216,13 +217,32 @@ static int rna_iterator_animationlayer_strips_length(PointerRNA *ptr)
   return layer.strips().size();
 }
 
-struct AnimationStrip *rna_AnimationStrips_new(AnimationLayer *dna_layer, const int type)
+AnimationStrip *rna_AnimationStrips_new(AnimationLayer *dna_layer, const int type)
 {
   const eAnimationStrip_type strip_type = eAnimationStrip_type(type);
 
   animrig::Layer &layer = dna_layer->wrap();
   animrig::Strip *strip = layer.strip_add(strip_type);
+
+  // TODO: notifiers.
   return strip;
+}
+
+void rna_AnimationStrips_remove(ID *animation_id,
+                                AnimationLayer *dna_layer,
+                                bContext *C,
+                                ReportList *reports,
+                                AnimationStrip *dna_strip)
+{
+  animrig::Layer &layer = dna_layer->wrap();
+  animrig::Strip &strip = dna_strip->wrap();
+  if (!layer.strip_remove(strip)) {
+    BKE_report(reports, RPT_ERROR, "this strip does not belong to this layer");
+    return;
+  }
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
+  DEG_id_tag_update(animation_id, ID_RECALC_ANIMATION);
 }
 
 static StructRNA *rna_AnimationStrip_refine(PointerRNA *ptr)
@@ -450,6 +470,14 @@ static void rna_def_animationlayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
   /* Return value. */
   parm = RNA_def_pointer(func, "strip", "AnimationStrip", "", "Newly created animation strip");
   RNA_def_function_return(func, parm);
+
+  /* Layer.strips.remove(strip) */
+  func = RNA_def_function(srna, "remove", "rna_AnimationStrips_remove");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Remove the strip from the animation layer");
+  parm = RNA_def_pointer(
+      func, "anim_strip", "AnimationStrip", "Animation Strip", "The strip to remove");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
 static void rna_def_animation_layer(BlenderRNA *brna)

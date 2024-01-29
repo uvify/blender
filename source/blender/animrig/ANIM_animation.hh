@@ -85,6 +85,19 @@ class Layer : public ::AnimationLayer {
   Strip *strip(int64_t index);
 
   Strip *strip_add(eAnimationStrip_type strip_type);
+
+  /**
+   * Remove the strip from this layer.
+   *
+   * After this call, the passed reference is no longer valid, as the memory
+   * will have been freed.
+   *
+   * \return true when the strip was found & removed, false if it wasn't found. */
+  bool strip_remove(Strip &strip);
+
+ protected:
+  /** Return the strip's index, or -1 if not found in this layer. */
+  int64_t find_strip_index(const Strip &strip) const;
 };
 static_assert(sizeof(Layer) == sizeof(::AnimationLayer),
               "DNA struct and its C++ wrapper must have the same size");

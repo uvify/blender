@@ -13,6 +13,7 @@
 
 #include "BLO_read_write.hh"
 
+#include "BKE_animation.hh"
 #include "BKE_fcurve.h"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
@@ -40,7 +41,6 @@ static AnimationChannelsForOutput *anim_channels_for_output_duplicate(
     const AnimationChannelsForOutput *channels_src);
 
 static void anim_layer_free_data(AnimationLayer *layer);
-static void anim_strip_free_data(AnimationStrip *strip);
 static void anim_strip_free_data_keyframe(AnimationStrip *strip);
 static void anim_channels_for_output_free_data(AnimationChannelsForOutput *channels);
 
@@ -197,14 +197,14 @@ static void anim_layer_free_data(AnimationLayer *dna_layer)
 {
   animrig::Layer &layer = dna_layer->wrap();
   for (animrig::Strip *strip : layer.strips()) {
-    anim_strip_free_data(strip);
+    BKE_animation_strip_free_data(strip);
     MEM_delete(strip);
   }
   MEM_SAFE_FREE(layer.strip_array);
   layer.strip_array_num = 0;
 }
 
-static void anim_strip_free_data(AnimationStrip *strip)
+void BKE_animation_strip_free_data(AnimationStrip *strip)
 {
   anim_strip_freeer freeer = get_strip_freeer(eAnimationStrip_type(strip->type));
   return freeer(strip);
