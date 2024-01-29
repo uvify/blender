@@ -438,7 +438,7 @@ static void rna_def_animationlayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_sdna(srna, "AnimationLayer");
   RNA_def_struct_ui_text(srna, "Animation Strips", "Collection of animation strips");
 
-  /* Layer.strips.new(...) */
+  /* Layer.strips.new(type='...') */
   func = RNA_def_function(srna, "new", "rna_AnimationStrips_new");
   RNA_def_function_ui_description(func, "Add a new infinite strip to the layer");
   parm = RNA_def_enum(func,
@@ -447,7 +447,6 @@ static void rna_def_animationlayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
                       ANIM_STRIP_TYPE_KEYFRAME,
                       "Type",
                       "The type of strip to create");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* Return value. */
   parm = RNA_def_pointer(func, "strip", "AnimationStrip", "", "Newly created animation strip");
   RNA_def_function_return(func, parm);
