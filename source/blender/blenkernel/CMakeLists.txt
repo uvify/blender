@@ -71,6 +71,7 @@ set(SRC
   intern/attribute_math.cc
   intern/autoexec.cc
   intern/bake_geometry_nodes_modifier.cc
+  intern/bake_data_block_map.cc
   intern/bake_items.cc
   intern/bake_items_paths.cc
   intern/bake_items_serialize.cc
@@ -151,6 +152,7 @@ set(SRC
   intern/gpencil_update_cache_legacy.cc
   intern/grease_pencil.cc
   intern/grease_pencil_convert_legacy.cc
+  intern/grease_pencil_vertex_groups.cc
   intern/icons.cc
   intern/icons_rasterize.cc
   intern/idprop.cc
@@ -337,6 +339,7 @@ set(SRC
   BKE_attribute_math.hh
   BKE_autoexec.hh
   BKE_bake_geometry_nodes_modifier.hh
+  BKE_bake_data_block_map.hh
   BKE_bake_items.hh
   BKE_bake_items_paths.hh
   BKE_bake_items_serialize.hh
@@ -379,7 +382,7 @@ set(SRC
   BKE_customdata.hh
   BKE_customdata_file.h
   BKE_data_transfer.h
-  BKE_deform.h
+  BKE_deform.hh
   BKE_displist.h
   BKE_duplilist.h
   BKE_dynamicpaint.h
@@ -405,6 +408,7 @@ set(SRC
   BKE_gpencil_update_cache_legacy.h
   BKE_grease_pencil.h
   BKE_grease_pencil.hh
+  BKE_grease_pencil_vertex_groups.hh
   BKE_icons.h
   BKE_idprop.h
   BKE_idprop.hh
@@ -417,7 +421,7 @@ set(SRC
   BKE_instances.hh
   BKE_ipo.h
   BKE_kelvinlet.h
-  BKE_key.h
+  BKE_key.hh
   BKE_keyconfig.h
   BKE_lattice.hh
   BKE_layer.hh

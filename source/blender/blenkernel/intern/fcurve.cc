@@ -242,8 +242,8 @@ FCurve *id_data_find_fcurve(
     return nullptr;
   }
 
-  char *path = RNA_path_from_ID_to_property(&ptr, prop);
-  if (path == nullptr) {
+  const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop);
+  if (!path) {
     return nullptr;
   }
 
@@ -252,15 +252,13 @@ FCurve *id_data_find_fcurve(
   bool is_driven = false;
   const float frame_time = 0.0f; /* TODO: see if we can get the current frame from somewhere. */
   FCurve *fcu = BKE_animadata_fcurve_find_by_rna_path(
-      id, adt, frame_time, path, index, nullptr, &is_driven);
+      id, adt, frame_time, path->c_str(), index, nullptr, &is_driven);
   if (is_driven) {
     if (r_driven != nullptr) {
       *r_driven = is_driven;
     }
     fcu = nullptr;
   }
-
-  MEM_freeN(path);
 
   return fcu;
 }
@@ -477,8 +475,8 @@ FCurve *BKE_fcurve_find_by_rna_context_ui(bContext *C,
   }
 
   /* XXX This function call can become a performance bottleneck. */
-  char *rna_path = RNA_path_from_ID_to_property(ptr, prop);
-  if (rna_path == nullptr) {
+  const std::optional<std::string> rna_path = RNA_path_from_ID_to_property(ptr, prop);
+  if (!rna_path) {
     return nullptr;
   }
 
@@ -486,13 +484,12 @@ FCurve *BKE_fcurve_find_by_rna_context_ui(bContext *C,
   const Scene *scene = CTX_data_scene(C);
   const float frame_time = BKE_scene_frame_get(scene);
   FCurve *fcu = BKE_animadata_fcurve_find_by_rna_path(
-      ptr->owner_id, adt, frame_time, rna_path, rnaindex, r_action, r_driven);
+      ptr->owner_id, adt, frame_time, rna_path->c_str(), rnaindex, r_action, r_driven);
 
   if (fcu != nullptr && r_animdata != nullptr) {
     *r_animdata = adt;
   }
 
-  MEM_freeN(rna_path);
   return fcu;
 }
 
@@ -1370,7 +1367,7 @@ void sort_time_fcurve(FCurve *fcu)
       if (a < (fcu->totvert - 1)) {
         /* Swap if one is after the other (and indicate that order has changed). */
         if (bezt->vec[1][0] > (bezt + 1)->vec[1][0]) {
-          SWAP(BezTriple, *bezt, *(bezt + 1));
+          std::swap(*bezt, *(bezt + 1));
           ok = true;
         }
       }

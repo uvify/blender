@@ -220,6 +220,7 @@ static void image_operatortypes()
   WM_operatortype_append(IMAGE_OT_clipboard_paste);
 
   WM_operatortype_append(IMAGE_OT_flip);
+  WM_operatortype_append(IMAGE_OT_rotate_orthogonal);
   WM_operatortype_append(IMAGE_OT_invert);
   WM_operatortype_append(IMAGE_OT_resize);
 
@@ -807,7 +808,8 @@ static void image_buttons_region_layout(const bContext *C, ARegion *region)
       break;
   }
 
-  ED_region_panels_layout_ex(C, region, &region->type->paneltypes, contexts_base, nullptr);
+  ED_region_panels_layout_ex(
+      C, region, &region->type->paneltypes, WM_OP_INVOKE_REGION_WIN, contexts_base, nullptr);
 }
 
 static void image_buttons_region_draw(const bContext *C, ARegion *region)

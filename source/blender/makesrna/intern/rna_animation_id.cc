@@ -20,7 +20,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -72,6 +72,8 @@ const EnumPropertyItem rna_enum_strip_type_items[] = {
 #  include "ANIM_animation.hh"
 
 #  include "DEG_depsgraph.hh"
+
+#  include <fmt/format.h>
 
 using namespace blender;
 
@@ -194,7 +196,7 @@ static int rna_iterator_animation_outputs_length(PointerRNA *ptr)
   return anim.outputs().size();
 }
 
-static char *rna_AnimationOutput_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_AnimationOutput_path(const PointerRNA *ptr)
 {
   animrig::Animation &anim = rna_animation(ptr);
   animrig::Output &output_to_find = rna_data_output(ptr);
@@ -206,18 +208,18 @@ static char *rna_AnimationOutput_path(const PointerRNA *ptr)
       continue;
     }
 
-    return BLI_sprintfN("outputs[%d]", i);
+    return fmt::format("outputs[{}]", i);
   }
-  return nullptr;
+  return std::nullopt;
 }
 
-static char *rna_AnimationLayer_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_AnimationLayer_path(const PointerRNA *ptr)
 {
   animrig::Layer &layer = rna_data_layer(ptr);
 
   char name_esc[sizeof(layer.name) * 2];
   BLI_str_escape(name_esc, layer.name, sizeof(name_esc));
-  return BLI_sprintfN("layers[\"%s\"]", name_esc);
+  return fmt::format("layers[\"%s\"]", name_esc);
 }
 
 static void rna_iterator_animationlayer_strips_begin(CollectionPropertyIterator *iter,
@@ -271,7 +273,7 @@ static StructRNA *rna_AnimationStrip_refine(PointerRNA *ptr)
   return &RNA_UnknownType;
 }
 
-static char *rna_AnimationStrip_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_AnimationStrip_path(const PointerRNA *ptr)
 {
   animrig::Animation &anim = rna_animation(ptr);
   animrig::Strip &strip_to_find = rna_data_strip(ptr);
@@ -285,14 +287,14 @@ static char *rna_AnimationStrip_path(const PointerRNA *ptr)
       }
 
       PointerRNA layer_ptr = RNA_pointer_create(&anim.id, &RNA_AnimationLayer, layer);
-      char *layer_path = rna_AnimationLayer_path(&layer_ptr);
-      char *strip_path = BLI_sprintfN("%s.strips[%d]", layer_path, i);
-      MEM_freeN(layer_path);
+      const std::optional<std::string> layer_path = rna_AnimationLayer_path(&layer_ptr);
+      BLI_assert_msg(layer_path, "Every animation layer should have a valid RNA path.");
+      const std::string strip_path = fmt::format("{}.strips[{}]", *layer_path, i);
       return strip_path;
     }
   }
 
-  return nullptr;
+  return std::nullopt;
 }
 
 static void rna_iterator_keyframestrip_chans_for_out_begin(CollectionPropertyIterator *iter,
