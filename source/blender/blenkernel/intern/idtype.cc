@@ -393,6 +393,7 @@ short BKE_idtype_idcode_from_index(const int index)
 
   switch (index) {
     CASE_IDCODE(AC);
+    CASE_IDCODE(AN);
     CASE_IDCODE(AR);
     CASE_IDCODE(BR);
     CASE_IDCODE(CA);
