@@ -468,7 +468,7 @@ static void rna_def_animation_output(BlenderRNA *brna)
   prop = RNA_def_property(srna, "stable_index", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
-  prop = RNA_def_property(srna, "fallback", PROP_STRING, PROP_NONE);
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 

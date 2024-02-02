@@ -1467,8 +1467,8 @@ static void rna_def_animdata(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, nullptr, "output_stable_index");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA_ACTCHANGE, "rna_AnimData_dependency_update");
 
-  prop = RNA_def_property(srna, "animation_output_fallback", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, nullptr, "output_fallback");
+  prop = RNA_def_property(srna, "animation_output_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "output_name");
 
   RNA_define_lib_overridable(false);
 

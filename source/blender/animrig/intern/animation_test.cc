@@ -165,11 +165,11 @@ TEST_F(AnimationLayersTest, add_output)
   ASSERT_NE(nullptr, out);
   EXPECT_EQ(1, out->stable_index);
 
-  EXPECT_EQ("", std::string(out->fallback));
+  EXPECT_EQ("", std::string(out->name));
   EXPECT_EQ(0, out->idtype);
 
   out->assign_id(&cube);
-  EXPECT_EQ("Küüübus", std::string(out->fallback));
+  EXPECT_EQ("Küüübus", std::string(out->name));
   EXPECT_EQ(GS(cube.name), out->idtype);
 }
 
@@ -203,7 +203,7 @@ TEST_F(AnimationLayersTest, find_suitable_output)
    * These should nevertheless be matched up. */
   Output *out = anim.output_add();
   out->stable_index = 327;
-  STRNCPY_UTF8(out->fallback, "OBKüüübus");
+  STRNCPY_UTF8(out->name, "OBKüüübus");
   out->idtype = GS(cube.id.name);
   EXPECT_EQ(out, anim.find_suitable_output_for(&cube.id));
 
@@ -221,7 +221,7 @@ TEST_F(AnimationLayersTest, find_suitable_output)
   adt->animation = nullptr;
   /* Configure adt to use the stable index of one output, and the name of the other. */
   adt->output_stable_index = other_out->stable_index;
-  STRNCPY_UTF8(adt->output_fallback, out->fallback);
+  STRNCPY_UTF8(adt->output_name, out->name);
   EXPECT_EQ(out, anim.find_suitable_output_for(&cube.id));
 
   /* ===
@@ -236,7 +236,7 @@ TEST_F(AnimationLayersTest, find_suitable_output)
    * An output exists, but doesn't match anything in the anim data of the cube. This should fall
    * back to using the ID name. */
   adt->output_stable_index = 161;
-  STRNCPY_UTF8(adt->output_fallback, "¿¿What's this??");
+  STRNCPY_UTF8(adt->output_name, "¿¿What's this??");
   EXPECT_EQ(out, anim.find_suitable_output_for(&cube.id));
 
   BKE_id_free(nullptr, &cube.id);

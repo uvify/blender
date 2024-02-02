@@ -1160,7 +1160,8 @@ typedef struct AnimData {
   FCurve **driver_array;
 
   /**
-   * Active Animation data-block. If this is set, `action` will be ignored.
+   * Active Animation data-block. If this is set, `action` and NLA-related
+   * properties will be ignored.
    */
   struct Animation *animation;
 
@@ -1169,8 +1170,12 @@ typedef struct AnimData {
    * data-block.
    */
   int32_t output_stable_index;
-  /** Fallback string for remapping outputs. */
-  char output_fallback[64];
+  /**
+   * Output name, primarily used for mapping to the right output when assigning
+   * another Animation data-block.
+   *
+   * \see AnimationOutput::name */
+  char output_name[64];
 
   /* settings for animation evaluation */
   /** User-defined settings. */
@@ -1312,8 +1317,18 @@ typedef enum eAnimationLayer_Flags {
 ENUM_OPERATORS(eAnimationLayer_Flags, ANIM_LAYER_ENABLED);
 
 typedef struct AnimationOutput {
+  /**
+   * Typically the ID name this output was created for, including the two
+   * letters indicating the ID type.
+   *
+   * \see AnimData::output_name */
+  char name[64];
+
+  /**
+   * For fast lookups into other data-structures. Only valid within the same
+   * Animation data-block that owns this Output.
+   */
   int32_t stable_index;
-  char fallback[64]; /* Fallback string for remapping outputs. */
 
   /**
    * Type of ID-blocks that this output can be assigned to.
@@ -1330,8 +1345,7 @@ typedef struct AnimationOutput {
 #ifdef __cplusplus
 static_assert(std::is_same_v<decltype(AnimationOutput::stable_index),
                              decltype(AnimData::output_stable_index)>);
-static_assert(
-    std::is_same_v<decltype(AnimationOutput::fallback), decltype(AnimData::output_fallback)>);
+static_assert(std::is_same_v<decltype(AnimationOutput::name), decltype(AnimData::output_name)>);
 #endif
 
 typedef struct AnimationStrip {

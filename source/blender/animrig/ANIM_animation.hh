@@ -65,7 +65,7 @@ class Animation : public ::Animation {
 
   Output *output_for_stable_index(output_index_t stable_index);
   const Output *output_for_stable_index(output_index_t stable_index) const;
-  Output *output_for_fallback(const char *fallback);
+  Output *output_find_by_name(const char *output_name);
 
   Output *output_for_id(const ID *animated_id);
   const Output *output_for_id(const ID *animated_id) const;
@@ -75,11 +75,17 @@ class Animation : public ::Animation {
   void unassign_id(ID *animated_id);
 
   /**
-   * Find the output with the same stable index.
-   * If that is not available, use the fallback string.
+   * Find the output that best matches the animated ID.
+   *
+   * If the ID is already animated by this Animation, by matching this
+   * Animation's outputs with (in order):
+   *
+   * - `animated_id->adt->output_stable_index`,
+   * - `animated_id->adt->output_name`,
+   * - `animated_id->name`.
    *
    * Note that this different from #output_for_id, which does not use the
-   * fallback string. */
+   * output name, and only works when this Animation is already assigned. */
   Output *find_suitable_output_for(const ID *animated_id);
 
  protected:

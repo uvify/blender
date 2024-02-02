@@ -196,10 +196,10 @@ const Output *Animation::output_for_stable_index(const output_index_t stable_ind
   }
   return nullptr;
 }
-Output *Animation::output_for_fallback(const char *fallback)
+Output *Animation::output_find_by_name(const char *output_name)
 {
   for (Output *out : outputs()) {
-    if (STREQ(out->fallback, fallback)) {
+    if (STREQ(out->name, output_name)) {
       return out;
     }
   }
@@ -261,15 +261,15 @@ Output *Animation::find_suitable_output_for(const ID *animated_id)
   }
 
   /* Try the output name from the AnimData, if it is set,*/
-  if (adt && adt->output_fallback[0]) {
-    Output *out = this->output_for_fallback(adt->output_fallback);
+  if (adt && adt->output_name[0]) {
+    Output *out = this->output_find_by_name(adt->output_name);
     if (out && out->is_suitable_for(animated_id)) {
       return out;
     }
   }
 
   /* As a last resort, search for the ID name. */
-  Output *out = this->output_for_fallback(animated_id->name);
+  Output *out = this->output_find_by_name(animated_id->name);
   if (out && out->is_suitable_for(animated_id)) {
     return out;
   }
@@ -287,7 +287,7 @@ bool Animation::assign_id(Output &output, ID *animated_id)
   }
 
   adt->output_stable_index = output.stable_index;
-  STRNCPY(adt->output_fallback, output.fallback);
+  STRNCPY(adt->output_name, output.name);
 
   adt->animation = this;
   id_us_plus(&this->id);
@@ -391,7 +391,7 @@ bool Output::assign_id(ID *animated_id)
   /* The ID type bytes can be stripped from the name, as that information is
    * already stored in this->idtype. This also makes it easier to combine
    * names when multiple IDs share the same this-> */
-  STRNCPY_UTF8(this->fallback, animated_id->name + 2);
+  STRNCPY_UTF8(this->name, animated_id->name + 2);
 
   /* This does NOT update the ID itself, as that also requires actually setting its Animation* to
    * the owner of this Output. It is expected that the caller deals with this. */
@@ -597,7 +597,7 @@ FCurve *KeyframeStrip::keyframe_insert(const Output &out,
                  "FCurve %s[%d] for output %s doesn't allow inserting keys.\n",
                  rna_path,
                  array_index,
-                 out.fallback);
+                 out.name);
     return nullptr;
   }
 
@@ -608,7 +608,7 @@ FCurve *KeyframeStrip::keyframe_insert(const Output &out,
                  "Could not insert key into FCurve %s[%d] for output %s.\n",
                  rna_path,
                  array_index,
-                 out.fallback);
+                 out.name);
     return nullptr;
   }
 
