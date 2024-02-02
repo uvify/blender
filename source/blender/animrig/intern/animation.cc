@@ -388,10 +388,7 @@ bool Output::assign_id(ID *animated_id)
     this->idtype = GS(animated_id->name);
   }
 
-  /* The ID type bytes can be stripped from the name, as that information is
-   * already stored in this->idtype. This also makes it easier to combine
-   * names when multiple IDs share the same this-> */
-  STRNCPY_UTF8(this->name, animated_id->name + 2);
+  STRNCPY_UTF8(this->name, animated_id->name);
 
   /* This does NOT update the ID itself, as that also requires actually setting its Animation* to
    * the owner of this Output. It is expected that the caller deals with this. */

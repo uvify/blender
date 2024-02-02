@@ -169,7 +169,7 @@ TEST_F(AnimationLayersTest, add_output)
   EXPECT_EQ(0, out->idtype);
 
   out->assign_id(&cube);
-  EXPECT_EQ("Küüübus", std::string(out->name));
+  EXPECT_EQ("OBKüüübus", std::string(out->name));
   EXPECT_EQ(GS(cube.name), out->idtype);
 }
 

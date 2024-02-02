@@ -1175,7 +1175,8 @@ typedef struct AnimData {
    * another Animation data-block.
    *
    * \see AnimationOutput::name */
-  char output_name[64];
+  char output_name[66];
+  uint8_t _pad0[6];
 
   /* settings for animation evaluation */
   /** User-defined settings. */
@@ -1322,7 +1323,8 @@ typedef struct AnimationOutput {
    * letters indicating the ID type.
    *
    * \see AnimData::output_name */
-  char name[64];
+  char name[66];
+  uint8_t _pad0[6];
 
   /**
    * For fast lookups into other data-structures. Only valid within the same
