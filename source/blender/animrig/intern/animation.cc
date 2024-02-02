@@ -251,17 +251,25 @@ Output *Animation::find_suitable_output_for(const ID *animated_id)
 {
   AnimData *adt = BKE_animdata_from_id(animated_id);
 
-  /* Note that there is no check that `adt->animation` is actually `this`; this
-   * function can also be used while assigning an Animation to an ID. */
-
-  /* First step: find by stable index. */
-  Output *out = this->output_for_stable_index(adt->output_stable_index);
-  if (out && out->is_suitable_for(animated_id)) {
-    return out;
+  /* The stable index is only valid when this animation has already been
+   * assigned. Otherwise it's meaningless. */
+  if (adt && adt->animation == this) {
+    Output *out = this->output_for_stable_index(adt->output_stable_index);
+    if (out && out->is_suitable_for(animated_id)) {
+      return out;
+    }
   }
 
-  /* Second step: find by fallback string. */
-  out = this->output_for_fallback(adt->output_fallback);
+  /* Try the output name from the AnimData, if it is set,*/
+  if (adt && adt->output_fallback[0]) {
+    Output *out = this->output_for_fallback(adt->output_fallback);
+    if (out && out->is_suitable_for(animated_id)) {
+      return out;
+    }
+  }
+
+  /* As a last resort, search for the ID name. */
+  Output *out = this->output_for_fallback(animated_id->name);
   if (out && out->is_suitable_for(animated_id)) {
     return out;
   }

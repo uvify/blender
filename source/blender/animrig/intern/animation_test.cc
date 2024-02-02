@@ -4,17 +4,22 @@
 
 #include "ANIM_animation.hh"
 
+#include "BKE_anim_data.h"
 #include "BKE_animation.hh"
 #include "BKE_fcurve.h"
 #include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_object.hh"
 
 #include "DNA_anim_types.h"
+#include "DNA_object_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_string_utf8.h"
 
 #include <limits>
 
+#include "CLG_log.h"
 #include "testing/testing.h"
 
 namespace blender::animrig::tests {
@@ -24,8 +29,16 @@ class AnimationLayersTest : public testing::Test {
 
   static void SetUpTestSuite()
   {
+    /* BKE_id_free() hits a code path that uses CLOG, which crashes if not initialised properly. */
+    CLG_init();
+
     /* To make id_can_have_animdata() and friends work, the `id_types` array needs to be set up. */
     BKE_idtype_init();
+  }
+
+  static void TearDownTestSuite()
+  {
+    CLG_exit();
   }
 
   void SetUp() override
@@ -175,6 +188,58 @@ TEST_F(AnimationLayersTest, add_output_multiple)
   EXPECT_EQ(2, anim.last_output_stable_index);
   EXPECT_EQ(1, out_cube->stable_index);
   EXPECT_EQ(2, out_suzanne->stable_index);
+}
+
+TEST_F(AnimationLayersTest, find_suitable_output)
+{
+  Object &cube = *BKE_object_add_only_object(nullptr, OB_EMPTY, "Küüübus");
+
+  /* ===
+   * Empty case, no outputs exist yet and the ID doesn't even have an AnimData. */
+  EXPECT_EQ(nullptr, anim.find_suitable_output_for(&cube.id));
+
+  /* ===
+   * Output exists with the same name & type as the ID, but the ID doesn't have any AnimData yet.
+   * These should nevertheless be matched up. */
+  Output *out = anim.output_add();
+  out->stable_index = 327;
+  STRNCPY_UTF8(out->fallback, "OBKüüübus");
+  out->idtype = GS(cube.id.name);
+  EXPECT_EQ(out, anim.find_suitable_output_for(&cube.id));
+
+  /* ===
+   * Output exists with the same name & type as the ID, and the ID has an AnimData with the same
+   * output name, but a different output_stable_index. Since the Animation has not yet been
+   * assigned to this ID, the output_stable_index should be ignored, and the output name used for
+   * matching. */
+
+  /* Create an output with the stable index that should be ignored.*/
+  Output *other_out = anim.output_add();
+  other_out->stable_index = 47;
+
+  AnimData *adt = BKE_animdata_ensure_id(&cube.id);
+  adt->animation = nullptr;
+  /* Configure adt to use the stable index of one output, and the name of the other. */
+  adt->output_stable_index = other_out->stable_index;
+  STRNCPY_UTF8(adt->output_fallback, out->fallback);
+  EXPECT_EQ(out, anim.find_suitable_output_for(&cube.id));
+
+  /* ===
+   * Same situation as above (AnimData has name of one output, but stable index of another), except
+   * that the animation data-block has already been assigned. In this case the stable index should
+   * take precedence. */
+  adt->animation = &anim;
+  id_us_plus(&anim.id);
+  EXPECT_EQ(other_out, anim.find_suitable_output_for(&cube.id));
+
+  /* ===
+   * An output exists, but doesn't match anything in the anim data of the cube. This should fall
+   * back to using the ID name. */
+  adt->output_stable_index = 161;
+  STRNCPY_UTF8(adt->output_fallback, "¿¿What's this??");
+  EXPECT_EQ(out, anim.find_suitable_output_for(&cube.id));
+
+  BKE_id_free(nullptr, &cube.id);
 }
 
 TEST_F(AnimationLayersTest, strip)
