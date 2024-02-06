@@ -121,7 +121,10 @@ def register():
         for cls in mod.classes:
             register_class(cls)
 
-    space_filebrowser.register_props()
+    for mod in _modules_loaded:
+        mod_register_props = getattr(mod, "register_props", None)
+        if callable(mod_register_props):
+            mod_register_props()
 
     from bpy.props import (
         EnumProperty,
