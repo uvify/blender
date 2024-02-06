@@ -9,6 +9,8 @@
 #include "BKE_animation.hh"
 #include "BKE_animsys.h"
 #include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_object.hh"
 
 #include "DNA_object_types.h"
 
@@ -29,7 +31,7 @@ using namespace blender::animrig::internal;
 class AnimationEvaluationTest : public testing::Test {
  protected:
   Animation anim = {};
-  Object cube = {};
+  Object *cube;
   Output *out;
   Layer *layer;
 
@@ -46,19 +48,25 @@ class AnimationEvaluationTest : public testing::Test {
 
   void SetUp() override
   {
-    STRNCPY_UTF8(cube.id.name, "OBKüüübus");
+    anim = {};
+    STRNCPY_UTF8(anim.id.name, "ANÄnimåtië");
+
+    cube = BKE_object_add_only_object(nullptr, OB_EMPTY, "Küüübus");
+
     out = anim.output_add();
-    out->assign_id(&cube.id);
+    anim.assign_id(out, &cube->id);
     layer = anim.layer_add("Kübus layer");
 
     /* Make it easier to predict test values. */
     settings.interpolation = BEZT_IPO_LIN;
 
-    cube_rna_ptr = RNA_pointer_create(&cube.id, &RNA_Object, &cube.id);
+    cube_rna_ptr = RNA_pointer_create(&cube->id, &RNA_Object, &cube->id);
   }
 
   void TearDown() override
   {
+    BKE_id_free(nullptr, &cube->id);
+
     BKE_animation_free_data(&anim);
   }
 
@@ -139,12 +147,12 @@ TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
 
   /* Set the animated properties to some values. These should not be overwritten
    * by the evaluation itself. */
-  cube.loc[0] = 3.0f;
-  cube.loc[1] = 2.0f;
-  cube.loc[2] = 7.0f;
-  cube.rot[0] = 3.0f;
-  cube.rot[1] = 2.0f;
-  cube.rot[2] = 7.0f;
+  cube->loc[0] = 3.0f;
+  cube->loc[1] = 2.0f;
+  cube->loc[2] = 7.0f;
+  cube->rot[0] = 3.0f;
+  cube->rot[1] = 2.0f;
+  cube->rot[2] = 7.0f;
 
   /* Evaluate. */
   anim_eval_context.eval_time = 3.0f;
@@ -157,12 +165,12 @@ TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
   ASSERT_NE(nullptr, loc0_result) << "location[0] should have been animated";
   EXPECT_EQ(47.3f, loc0_result->value);
 
-  EXPECT_EQ(3.0f, cube.loc[0]) << "Evaluation should not modify the animated ID";
-  EXPECT_EQ(2.0f, cube.loc[1]) << "Evaluation should not modify the animated ID";
-  EXPECT_EQ(7.0f, cube.loc[2]) << "Evaluation should not modify the animated ID";
-  EXPECT_EQ(3.0f, cube.rot[0]) << "Evaluation should not modify the animated ID";
-  EXPECT_EQ(2.0f, cube.rot[1]) << "Evaluation should not modify the animated ID";
-  EXPECT_EQ(7.0f, cube.rot[2]) << "Evaluation should not modify the animated ID";
+  EXPECT_EQ(3.0f, cube->loc[0]) << "Evaluation should not modify the animated ID";
+  EXPECT_EQ(2.0f, cube->loc[1]) << "Evaluation should not modify the animated ID";
+  EXPECT_EQ(7.0f, cube->loc[2]) << "Evaluation should not modify the animated ID";
+  EXPECT_EQ(3.0f, cube->rot[0]) << "Evaluation should not modify the animated ID";
+  EXPECT_EQ(2.0f, cube->rot[1]) << "Evaluation should not modify the animated ID";
+  EXPECT_EQ(7.0f, cube->rot[2]) << "Evaluation should not modify the animated ID";
 }
 
 TEST_F(AnimationEvaluationTest, strip_boundaries__single_strip)

@@ -27,6 +27,9 @@ class AnimationLayersTest : public testing::Test {
  public:
   Animation anim;
 
+  Object *cube;
+  Object *suzanne;
+
   static void SetUpTestSuite()
   {
     /* BKE_id_free() hits a code path that uses CLOG, which crashes if not initialised properly. */
@@ -45,10 +48,15 @@ class AnimationLayersTest : public testing::Test {
   {
     anim = {};
     STRNCPY_UTF8(anim.id.name, "ANÄnimåtië");
+
+    cube = BKE_object_add_only_object(nullptr, OB_EMPTY, "Küüübus");
+    suzanne = BKE_object_add_only_object(nullptr, OB_EMPTY, "OBSuzanne");
   }
 
   void TearDown() override
   {
+    BKE_id_free(nullptr, &cube->id);
+    BKE_id_free(nullptr, &suzanne->id);
     BKE_animation_free_data(&anim);
   }
 };
@@ -157,9 +165,6 @@ TEST_F(AnimationLayersTest, remove_strip)
 
 TEST_F(AnimationLayersTest, add_output)
 {
-  ID cube = {};
-  STRNCPY_UTF8(cube.name, "OBKüüübus");
-
   Output *out = anim.output_add();
   EXPECT_EQ(1, anim.last_output_stable_index);
   ASSERT_NE(nullptr, out);
@@ -168,22 +173,17 @@ TEST_F(AnimationLayersTest, add_output)
   EXPECT_EQ("", std::string(out->name));
   EXPECT_EQ(0, out->idtype);
 
-  out->assign_id(&cube);
+  out->assign_id(&cube->id);
   EXPECT_EQ("OBKüüübus", std::string(out->name));
-  EXPECT_EQ(GS(cube.name), out->idtype);
+  EXPECT_EQ(GS(cube->id.name), out->idtype);
 }
 
 TEST_F(AnimationLayersTest, add_output_multiple)
 {
-  ID cube = {};
-  STRNCPY_UTF8(cube.name, "OBKüüübus");
-  ID suzanne = {};
-  STRNCPY_UTF8(suzanne.name, "OBSuzanne");
-
   Output *out_cube = anim.output_add();
   Output *out_suzanne = anim.output_add();
-  out_cube->assign_id(&cube);
-  out_suzanne->assign_id(&suzanne);
+  out_cube->assign_id(&cube->id);
+  out_suzanne->assign_id(&suzanne->id);
 
   EXPECT_EQ(2, anim.last_output_stable_index);
   EXPECT_EQ(1, out_cube->stable_index);
@@ -192,11 +192,9 @@ TEST_F(AnimationLayersTest, add_output_multiple)
 
 TEST_F(AnimationLayersTest, find_suitable_output)
 {
-  Object &cube = *BKE_object_add_only_object(nullptr, OB_EMPTY, "Küüübus");
-
   /* ===
    * Empty case, no outputs exist yet and the ID doesn't even have an AnimData. */
-  EXPECT_EQ(nullptr, anim.find_suitable_output_for(&cube.id));
+  EXPECT_EQ(nullptr, anim.find_suitable_output_for(&cube->id));
 
   /* ===
    * Output exists with the same name & type as the ID, but the ID doesn't have any AnimData yet.
@@ -204,8 +202,8 @@ TEST_F(AnimationLayersTest, find_suitable_output)
   Output *out = anim.output_add();
   out->stable_index = 327;
   STRNCPY_UTF8(out->name, "OBKüüübus");
-  out->idtype = GS(cube.id.name);
-  EXPECT_EQ(out, anim.find_suitable_output_for(&cube.id));
+  out->idtype = GS(cube->id.name);
+  EXPECT_EQ(out, anim.find_suitable_output_for(&cube->id));
 
   /* ===
    * Output exists with the same name & type as the ID, and the ID has an AnimData with the same
@@ -217,12 +215,12 @@ TEST_F(AnimationLayersTest, find_suitable_output)
   Output *other_out = anim.output_add();
   other_out->stable_index = 47;
 
-  AnimData *adt = BKE_animdata_ensure_id(&cube.id);
+  AnimData *adt = BKE_animdata_ensure_id(&cube->id);
   adt->animation = nullptr;
   /* Configure adt to use the stable index of one output, and the name of the other. */
   adt->output_stable_index = other_out->stable_index;
   STRNCPY_UTF8(adt->output_name, out->name);
-  EXPECT_EQ(out, anim.find_suitable_output_for(&cube.id));
+  EXPECT_EQ(out, anim.find_suitable_output_for(&cube->id));
 
   /* ===
    * Same situation as above (AnimData has name of one output, but stable index of another), except
@@ -230,16 +228,14 @@ TEST_F(AnimationLayersTest, find_suitable_output)
    * take precedence. */
   adt->animation = &anim;
   id_us_plus(&anim.id);
-  EXPECT_EQ(other_out, anim.find_suitable_output_for(&cube.id));
+  EXPECT_EQ(other_out, anim.find_suitable_output_for(&cube->id));
 
   /* ===
    * An output exists, but doesn't match anything in the anim data of the cube. This should fall
    * back to using the ID name. */
   adt->output_stable_index = 161;
   STRNCPY_UTF8(adt->output_name, "¿¿What's this??");
-  EXPECT_EQ(out, anim.find_suitable_output_for(&cube.id));
-
-  BKE_id_free(nullptr, &cube.id);
+  EXPECT_EQ(out, anim.find_suitable_output_for(&cube->id));
 }
 
 TEST_F(AnimationLayersTest, strip)
@@ -281,10 +277,8 @@ TEST_F(AnimationLayersTest, strip)
 
 TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
 {
-  ID cube = {};
-  STRNCPY_UTF8(cube.name, "OBKüüübus");
   Output *out = anim.output_add();
-  out->assign_id(&cube);
+  out->assign_id(&cube->id);
   Layer *layer = anim.layer_add("Kübus layer");
 
   Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
