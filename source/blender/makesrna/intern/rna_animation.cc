@@ -24,6 +24,7 @@
 
 #include "rna_internal.hh"
 
+#include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "ED_keyframing.hh"
@@ -192,6 +193,45 @@ static void rna_AnimData_animation_set(PointerRNA *ptr, PointerRNA value, Report
   }
 
   blender::animrig::assign_animation(anim->wrap(), animated_id);
+}
+
+static void rna_AnimData_animation_output_index_set(PointerRNA *ptr, const int new_output_index)
+{
+  ID *animated_id = ptr->owner_id;
+
+  /* 'adt' is guaranteed to exist, or otherwise this function could not be called. */
+  AnimData *adt = BKE_animdata_from_id(animated_id);
+  BLI_assert_msg(adt, "ID.animation_data is unexpectedly empty");
+  if (!adt) {
+    WM_reportf(RPT_ERROR,
+               "Data-block '%s' does not have any animation data, how did you set this property?",
+               animated_id->name + 2);
+    return;
+  }
+
+  if (new_output_index == 0) {
+    /* No need to check with the Animation, as 'no output' is always valid. */
+    adt->output_stable_index = 0;
+    return;
+  }
+
+  blender::animrig::Animation *anim = blender::animrig::get_animation(animated_id);
+  if (!anim) {
+    /* No animation to verify the stable index is valid. Just set it, it'll be ignored anyway. */
+    adt->output_stable_index = new_output_index;
+    return;
+  }
+
+  blender::animrig::Output *out = anim->output_for_stable_index(new_output_index);
+  if (!out) {
+    WM_reportf(RPT_ERROR,
+               "Animation '%s' has no output with index %d",
+               anim->id.name + 2,
+               new_output_index);
+    return;
+  }
+
+  adt->output_stable_index = new_output_index;
 }
 
 /* ****************************** */
@@ -1461,11 +1501,12 @@ static void rna_def_animdata(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_pointer_funcs(prop, nullptr, "rna_AnimData_animation_set", nullptr, nullptr);
   RNA_def_property_ui_text(prop, "Animation", "Active Animation for this data-block");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA_ACTCHANGE, "rna_AnimData_dependency_update");
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimData_dependency_update");
 
   prop = RNA_def_property(srna, "animation_output_index", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "output_stable_index");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA_ACTCHANGE, "rna_AnimData_dependency_update");
+  RNA_def_property_int_funcs(prop, nullptr, "rna_AnimData_animation_output_index_set", nullptr);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimData_dependency_update");
 
   prop = RNA_def_property(srna, "animation_output_name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "output_name");

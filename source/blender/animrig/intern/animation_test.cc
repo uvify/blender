@@ -173,7 +173,7 @@ TEST_F(AnimationLayersTest, add_output)
   EXPECT_EQ("", std::string(out->name));
   EXPECT_EQ(0, out->idtype);
 
-  out->assign_id(&cube->id);
+  EXPECT_TRUE(out->assign_id(&cube->id));
   EXPECT_EQ("OBKüüübus", std::string(out->name));
   EXPECT_EQ(GS(cube->id.name), out->idtype);
 }
@@ -182,12 +182,20 @@ TEST_F(AnimationLayersTest, add_output_multiple)
 {
   Output *out_cube = anim.output_add();
   Output *out_suzanne = anim.output_add();
-  out_cube->assign_id(&cube->id);
-  out_suzanne->assign_id(&suzanne->id);
+  EXPECT_TRUE(out_cube->assign_id(&cube->id));
+  EXPECT_TRUE(out_suzanne->assign_id(&suzanne->id));
 
   EXPECT_EQ(2, anim.last_output_stable_index);
   EXPECT_EQ(1, out_cube->stable_index);
   EXPECT_EQ(2, out_suzanne->stable_index);
+}
+
+TEST_F(AnimationLayersTest, anim_assign_id)
+{
+  Output *out_cube = anim.output_add();
+  ASSERT_TRUE(anim.assign_id(out_cube, &cube->id));
+
+  // TODO: expand this test.
 }
 
 TEST_F(AnimationLayersTest, find_suitable_output)
@@ -278,7 +286,7 @@ TEST_F(AnimationLayersTest, strip)
 TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
 {
   Output *out = anim.output_add();
-  out->assign_id(&cube->id);
+  EXPECT_TRUE(out->assign_id(&cube->id));
   Layer *layer = anim.layer_add("Kübus layer");
 
   Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);

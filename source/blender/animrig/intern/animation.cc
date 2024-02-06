@@ -277,17 +277,27 @@ Output *Animation::find_suitable_output_for(const ID *animated_id)
   return nullptr;
 }
 
-bool Animation::assign_id(Output &output, ID *animated_id)
+bool Animation::assign_id(Output *output, ID *animated_id)
 {
   AnimData *adt = BKE_animdata_ensure_id(animated_id);
-  BLI_assert_msg(adt->animation == nullptr, "Unassign the ID from its existing animation first");
-
-  if (!output.assign_id(animated_id)) {
+  if (!adt) {
     return false;
   }
 
-  adt->output_stable_index = output.stable_index;
-  STRNCPY(adt->output_name, output.name);
+  BLI_assert_msg(adt->animation == nullptr, "Unassign the ID from its existing animation first");
+
+  if (output) {
+    if (!output->assign_id(animated_id)) {
+      return false;
+    }
+  }
+  else {
+    adt->output_stable_index = 0;
+    /* Keep adt->output_name untouched, as A) it's not necessary to erase it
+     * because `adt->output_stable_index = 0` already indicates "no output yet",
+     * and B) it would erase information that can later be used when trying to
+     * identify which output this was once attached to.  */
+  }
 
   adt->animation = this;
   id_us_plus(&this->id);
@@ -376,11 +386,12 @@ int64_t Layer::find_strip_index(const Strip &strip) const
 
 bool Output::assign_id(ID *animated_id)
 {
-  if (!id_can_have_animdata(animated_id)) {
+  if (!this->is_suitable_for(animated_id)) {
     return false;
   }
 
-  if (!this->is_suitable_for(animated_id)) {
+  AnimData *adt = BKE_animdata_ensure_id(animated_id);
+  if (!adt) {
     return false;
   }
 
@@ -388,10 +399,12 @@ bool Output::assign_id(ID *animated_id)
     this->idtype = GS(animated_id->name);
   }
 
-  STRNCPY_UTF8(this->name, animated_id->name);
+  adt->output_stable_index = this->stable_index;
 
-  /* This does NOT update the ID itself, as that also requires actually setting its Animation* to
-   * the owner of this Output. It is expected that the caller deals with this. */
+  /* Use the ID name as the output name. */
+  STRNCPY_UTF8(this->name, animated_id->name);
+  STRNCPY_UTF8(adt->output_name, this->name);
+
   return true;
 }
 
@@ -407,10 +420,7 @@ bool assign_animation(Animation &anim, ID *animated_id)
   unassign_animation(animated_id);
 
   Output *out = anim.find_suitable_output_for(animated_id);
-  if (!out) {
-    out = anim.output_add();
-  }
-  return anim.assign_id(*out, animated_id);
+  return anim.assign_id(out, animated_id);
 }
 
 void unassign_animation(ID *animated_id)
@@ -421,6 +431,15 @@ void unassign_animation(ID *animated_id)
   }
 
   adt->animation->wrap().unassign_id(animated_id);
+}
+
+Animation *get_animation(ID *animated_id)
+{
+  AnimData *adt = BKE_animdata_from_id(animated_id);
+  if (!adt) {
+    return nullptr;
+  }
+  return &adt->animation->wrap();
 }
 
 /* ----- AnimationStrip C++ implementation ----------- */

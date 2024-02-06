@@ -71,7 +71,14 @@ class Animation : public ::Animation {
   const Output *output_for_id(const ID *animated_id) const;
 
   Output *output_add();
-  bool assign_id(Output &output, ID *animated_id);
+
+  /** Assign this animation to the ID.
+   *
+   * \param output The output this ID should be animated by, may be nullptr if it is to be assigned
+   * later. In that case, the ID will not actually receive any animation.
+   * \param animated_id The ID that should be animated by this Animation data-block.
+   */
+  bool assign_id(Output *output, ID *animated_id);
   void unassign_id(ID *animated_id);
 
   /**
@@ -135,7 +142,10 @@ class Output : public ::AnimationOutput {
   ~Output() = default;
 
   /**
-   * Assign the ID to this Output.
+   * Let the given ID receive animation from this output.
+   *
+   * \note This does _not_ set animated_id->adt->animation to the owner of this
+   * Output. It's the caller's responsibility to do that.
    *
    * \return Whether this was possible. If the Output was already bound to a
    * specific ID type, and `animated_id` is of a different type, it will be
@@ -263,6 +273,11 @@ bool assign_animation(Animation &anim, ID *animated_id);
  * Ensure that this ID is no longer animated.
  */
 void unassign_animation(ID *animated_id);
+
+/**
+ * Return the Animation of this ID, or nullptr if it has none.
+ */
+Animation *get_animation(ID *animated_id);
 
 }  // namespace blender::animrig
 
