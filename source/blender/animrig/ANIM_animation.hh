@@ -65,6 +65,14 @@ class Animation : public ::Animation {
 
   Output *output_for_stable_index(output_index_t stable_index);
   const Output *output_for_stable_index(output_index_t stable_index) const;
+
+  /**
+   * Set the output name.
+   *
+   * This has to be done on the Animation level to ensure each output has a
+   * unique name within the Animation.
+   */
+  void output_name_set(Output &out, StringRefNull new_name);
   Output *output_find_by_name(const char *output_name);
 
   Output *output_for_id(const ID *animated_id);
@@ -150,6 +158,9 @@ class Output : public ::AnimationOutput {
    * \return Whether this was possible. If the Output was already bound to a
    * specific ID type, and `animated_id` is of a different type, it will be
    * refused. If the ID type cannot be animated at all, false is also returned.
+   *
+   * \see assign_animation
+   * \see Animation::assign_id
    */
   bool assign_id(ID *animated_id);
 

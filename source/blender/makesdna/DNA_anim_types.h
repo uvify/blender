@@ -1168,8 +1168,10 @@ typedef struct AnimData {
   /**
    * Identifier for which AnimationOutput of the above Animation is actually animating this
    * data-block.
+   *
+   * Do not set this directly, use one of the assignment functions in ANIM_animation.hh instead.
    */
-  int32_t output_stable_index;
+  int output_stable_index;
   /**
    * Output name, primarily used for mapping to the right output when assigning
    * another Animation data-block.

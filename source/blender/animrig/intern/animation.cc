@@ -11,6 +11,7 @@
 #include "BLI_math_base.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
+#include "BLI_string_utils.hh"
 
 #include "BKE_anim_data.h"
 #include "BKE_animation.hh"
@@ -196,6 +197,46 @@ const Output *Animation::output_for_stable_index(const output_index_t stable_ind
   }
   return nullptr;
 }
+
+static void anim_output_name_ensure_unique(Animation &animation, Output &out)
+{
+  /* Cannot capture parameters by reference in the lambda, as that would change its signature
+   * and no longer be compatible with BLI_uniquename_cb(). That's why this struct is necessary. */
+  struct DupNameCheckData {
+    Animation &anim;
+    Output &out;
+  };
+  DupNameCheckData check_data = {animation, out};
+
+  auto check_name_is_used = [](void *arg, const char *name) -> bool {
+    DupNameCheckData *data = static_cast<DupNameCheckData *>(arg);
+    for (const Output *output : data->anim.outputs()) {
+      if (output == &data->out) {
+        /* Don't compare against the output that's being renamed. */
+        continue;
+      }
+      if (STREQ(output->name, name)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  BLI_uniquename_cb(check_name_is_used, &check_data, "", '.', out.name, sizeof(out.name));
+}
+
+void Animation::output_name_set(Output &out, StringRefNull new_name)
+{
+  STRNCPY_UTF8(out.name, new_name.c_str());
+  anim_output_name_ensure_unique(*this, out);
+
+  /* TODO: update `AnimData::animation_output_name` field of any ID that is animated by this.
+   *  When this gets added, reconsider the code in Animation::unassign_id((). */
+
+  /* If ever any Output properties get animatable, this should call
+   * BKE_animdata_fix_paths_rename_all() as well. */
+}
+
 Output *Animation::output_find_by_name(const char *output_name)
 {
   for (Output *out : outputs()) {
@@ -310,6 +351,14 @@ void Animation::unassign_id(ID *animated_id)
   AnimData *adt = BKE_animdata_from_id(animated_id);
   BLI_assert_msg(adt->animation == this, "ID is not assigned to this Animation");
 
+  /* Before unassigning, make sure that the stored Output name is up to date.
+   * This can be removed when Animation::output_name_set() actually updates this whenever the
+   * output name changes. */
+  const Output *out = this->output_for_stable_index(adt->output_stable_index);
+  if (out) {
+    STRNCPY_UTF8(adt->output_name, out->name);
+  }
+
   id_us_min(&this->id);
   adt->animation = nullptr;
 }
@@ -401,8 +450,11 @@ bool Output::assign_id(ID *animated_id)
 
   adt->output_stable_index = this->stable_index;
 
-  /* Use the ID name as the output name. */
-  STRNCPY_UTF8(this->name, animated_id->name);
+  /* If the output is not yet named, use the ID name. */
+  if (this->name[0] == '\0') {
+    STRNCPY_UTF8(this->name, animated_id->name);
+  }
+  /* Always make sure the ID's output name matches the assigned output. */
   STRNCPY_UTF8(adt->output_name, this->name);
 
   return true;
