@@ -2412,8 +2412,6 @@ static const char *idtype_alloc_name_get(short id_code)
         /* #INDEX_ID_NULL returns the #IDType_ID_LINK_PLACEHOLDER type info, here we will rather
          * use it for unknown/invalid ID types. */
         n[size_t(idtype_index)] = "Data from UNKNWOWN ID Type";
-    case ID_AN:
-      return "Data from AN";
       }
       else {
         n[size_t(idtype_index)] = std::string("Data from '") + idtype_info->name + "'";

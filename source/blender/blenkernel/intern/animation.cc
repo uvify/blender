@@ -25,7 +25,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_defaults.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 using namespace blender;
 

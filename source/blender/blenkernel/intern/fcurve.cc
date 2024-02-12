@@ -41,7 +41,7 @@
 #include "BKE_idprop.h"
 #include "BKE_lib_query.hh"
 #include "BKE_nla.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "BLO_read_write.hh"
 
