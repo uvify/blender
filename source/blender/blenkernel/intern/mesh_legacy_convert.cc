@@ -33,7 +33,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idprop.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
@@ -44,7 +44,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 using blender::MutableSpan;
 using blender::Span;

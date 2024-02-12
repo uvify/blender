@@ -38,8 +38,8 @@
 #include "BKE_context.hh"
 #include "BKE_idprop.h"
 #include "BKE_main.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_unit.hh"
 
@@ -49,7 +49,7 @@
 #include "GPU_state.h"
 
 #include "BLF_api.hh"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
@@ -1425,7 +1425,7 @@ static std::optional<std::string> ui_but_event_property_operator_string(const bC
         C, ptr, prop, prop_index);
 
     /* Always iterate once, even if data-path isn't set. */
-    data_path_variations.append(data_path.has_value() ? data_path.value() : "");
+    data_path_variations.append(data_path.value_or(""));
 
     if (data_path.has_value()) {
       StringRef data_path_ref = StringRef(data_path.value());

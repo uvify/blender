@@ -19,9 +19,9 @@
 #  include "BKE_context.hh"
 #  include "BKE_file_handler.hh"
 #  include "BKE_gpencil_legacy.h"
-#  include "BKE_report.h"
+#  include "BKE_report.hh"
 
-#  include "BLT_translation.h"
+#  include "BLT_translation.hh"
 
 #  include "RNA_access.hh"
 #  include "RNA_define.hh"

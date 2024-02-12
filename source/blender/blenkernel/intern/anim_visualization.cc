@@ -12,10 +12,10 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_anim_visualization.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "GPU_batch.h"
 
