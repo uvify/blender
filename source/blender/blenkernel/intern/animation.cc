@@ -408,37 +408,8 @@ static void read_animation_outputs(BlendDataReader *reader, animrig::Animation &
 static void animation_blend_read_data(BlendDataReader *reader, ID *id)
 {
   animrig::Animation &animation = reinterpret_cast<Animation *>(id)->wrap();
-
-  // animation.layer_array = nullptr;
-  // animation.layer_array_num = 0;
-  // animation.output_array = nullptr;
-  // animation.output_array_num = 0;
-
   read_animation_layers(reader, animation);
   read_animation_outputs(reader, animation);
-
-  // BLO_read_list(reader, &animation->curves);
-  // BLO_read_list(reader, &animation->chanbase); /* XXX deprecated - old animation system */
-  // BLO_read_list(reader, &animation->groups);
-  // BLO_read_list(reader, &animation->markers);
-
-  // /* XXX deprecated - old animation system <<< */
-  // LISTBASE_FOREACH (banimationChannel *, achan, &animation->chanbase) {
-  //   BLO_read_data_address(reader, &achan->grp);
-
-  //   BLO_read_list(reader, &achan->constraintChannels);
-  // }
-  // /* >>> XXX deprecated - old animation system */
-
-  // BKE_fcurve_blend_read_data(reader, &animation->curves);
-
-  // LISTBASE_FOREACH (banimationGroup *, agrp, &animation->groups) {
-  //   BLO_read_data_address(reader, &agrp->channels.first);
-  //   BLO_read_data_address(reader, &agrp->channels.last);
-  // }
-
-  // BLO_read_data_address(reader, &animation->preview);
-  // BKE_previewimg_blend_read(reader, animation->preview);
 }
 
 IDTypeInfo IDType_ID_AN = {
