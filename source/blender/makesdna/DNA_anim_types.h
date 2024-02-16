@@ -1306,8 +1306,8 @@ typedef struct AnimationLayer {
 } AnimationLayer;
 
 typedef enum eAnimationLayer_MixMode {
-  ANIM_LAYER_MIX_OVERRIDE = 0,
-  ANIM_LAYER_MIX_COMBINE = 1,
+  ANIM_LAYER_MIX_REPLACE = 0,
+  ANIM_LAYER_MIX_OFFSET = 1,
   ANIM_LAYER_MIX_ADD = 2,
   ANIM_LAYER_MIX_SUBTRACT = 3,
   ANIM_LAYER_MIX_MULTIPLY = 4,

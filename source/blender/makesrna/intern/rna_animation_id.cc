@@ -26,15 +26,15 @@
 #include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_layer_mix_mode_items[] = {
-    {ANIM_LAYER_MIX_OVERRIDE,
-     "OVERRIDE",
+    {ANIM_LAYER_MIX_REPLACE,
+     "REPLACE",
      0,
-     "Override",
+     "Replace",
      "Animation channels in this layer override the same channels from underlying layers"},
-    {ANIM_LAYER_MIX_COMBINE,
-     "COMBINE",
+    {ANIM_LAYER_MIX_OFFSET,
+     "OFFSET",
      0,
-     "Combine",
+     "Offset",
      "Animation channels in this layer are added, as sequential operations, to the output of "
      "underlying layers"},
     {ANIM_LAYER_MIX_ADD,
