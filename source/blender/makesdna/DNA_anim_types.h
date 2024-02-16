@@ -1161,7 +1161,8 @@ typedef struct AnimData {
 
   /**
    * Active Animation data-block. If this is set, `action` and NLA-related
-   * properties will be ignored.
+   * properties should be ignored. Note that there is plenty of code in Blender
+   * that doesn't check this pointer yet.
    */
   struct Animation *animation;
 
