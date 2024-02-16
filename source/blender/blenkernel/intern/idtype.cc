@@ -343,7 +343,6 @@ short BKE_idtype_index_to_idcode(const int idtype_index)
 
   BLI_assert_unreachable();
   return -1;
-    CASE_IDCODE(AN);
 }
 
 uint64_t BKE_idtype_index_to_idfilter(const int idtype_index)

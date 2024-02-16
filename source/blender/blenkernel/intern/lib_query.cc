@@ -432,9 +432,6 @@ uint64_t BKE_library_id_can_use_filter_id(const ID *owner_id,
   }
   if (owner_id_type) {
     return owner_id_type->dependencies_id_types;
-    case ID_AN:
-      /* Animation doesn't directly reference other IDs, it does so via the outputs system. */
-      return 0;
   }
   BLI_assert_unreachable();
   return 0;

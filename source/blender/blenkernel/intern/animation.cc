@@ -444,6 +444,7 @@ static void animation_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_AN = {
     /*id_code*/ ID_AN,
     /*id_filter*/ FILTER_ID_AN,
+    /*dependencies_id_types*/ 0,
     /*main_listbase_index*/ INDEX_ID_AN,
     /*struct_size*/ sizeof(Animation),
     /*name*/ "Animation",
