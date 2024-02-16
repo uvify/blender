@@ -1171,7 +1171,7 @@ typedef struct AnimData {
    *
    * Do not set this directly, use one of the assignment functions in ANIM_animation.hh instead.
    */
-  int output_stable_index;
+  int32_t output_stable_index;
   /**
    * Output name, primarily used for mapping to the right output when assigning
    * another Animation data-block.
@@ -1258,9 +1258,6 @@ class Strip;
 /** Container of layered animation data. */
 typedef struct Animation {
   ID id;
-  int32_t last_output_stable_index;
-
-  uint8_t _pad0[4];
 
   struct AnimationLayer **layer_array;   /* Array of 'layer_array_num' layers. */
   struct AnimationOutput **output_array; /* Array of 'output_array_num` outputs. */
@@ -1268,8 +1265,7 @@ typedef struct Animation {
   int layer_array_num;
   int layer_active_index; /* Index into layer_array, -1 means 'no active'. */
   int output_array_num;
-
-  uint8_t _pad1[4];
+  int32_t last_output_stable_index;
 
 #ifdef __cplusplus
   blender::animrig::Animation &wrap();
@@ -1325,14 +1321,8 @@ typedef struct AnimationOutput {
    * letters indicating the ID type.
    *
    * \see AnimData::output_name */
-  char name[66];
-  uint8_t _pad0[6];
-
-  /**
-   * For fast lookups into other data-structures. Only valid within the same
-   * Animation data-block that owns this Output.
-   */
-  int32_t stable_index;
+  char name[66]; /* MAX_ID_NAME */
+  uint8_t _pad0[2];
 
   /**
    * Type of ID-blocks that this output can be assigned to.
@@ -1340,17 +1330,17 @@ typedef struct AnimationOutput {
    */
   int idtype;
 
+  /**
+   * For fast lookups into other data-structures. Only valid within the same
+   * Animation data-block that owns this Output.
+   */
+  int32_t stable_index;
+
 #ifdef __cplusplus
   blender::animrig::Output &wrap();
   const blender::animrig::Output &wrap() const;
 #endif
 } AnimationOutput;
-
-#ifdef __cplusplus
-static_assert(std::is_same_v<decltype(AnimationOutput::stable_index),
-                             decltype(AnimData::output_stable_index)>);
-static_assert(std::is_same_v<decltype(AnimationOutput::name), decltype(AnimData::output_name)>);
-#endif
 
 typedef struct AnimationStrip {
   /** eAnimationStrip_type */
@@ -1387,7 +1377,7 @@ typedef struct KeyframeAnimationStrip {
 } KeyframeAnimationStrip;
 
 typedef struct AnimationChannelsForOutput {
-  int output_stable_index;
+  int32_t output_stable_index;
 
   /* TODO: when converting this listbase to array, make sure the fcurve next/prev pointers are nil
    * to avoid accidental 'compatibility' with LISTBASE_FOREACH and friends. */
@@ -1403,3 +1393,14 @@ typedef struct AnimationChannelsForOutput {
   const blender::animrig::ChannelsForOutput &wrap() const;
 #endif
 } ChannelsForOutput;
+
+#ifdef __cplusplus
+/* Some static assertions that things that should have the same type actually do. */
+static_assert(std::is_same_v<decltype(AnimationOutput::stable_index),
+                             decltype(AnimData::output_stable_index)>);
+static_assert(std::is_same_v<decltype(AnimationOutput::stable_index),
+                             decltype(Animation::last_output_stable_index)>);
+static_assert(std::is_same_v<decltype(AnimationOutput::stable_index),
+                             decltype(AnimationChannelsForOutput::output_stable_index)>);
+static_assert(std::is_same_v<decltype(AnimationOutput::name), decltype(AnimData::output_name)>);
+#endif
