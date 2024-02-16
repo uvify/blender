@@ -1379,12 +1379,16 @@ typedef struct KeyframeAnimationStrip {
 typedef struct AnimationChannelsForOutput {
   int32_t output_stable_index;
 
+  /* Erased when saving to disk, see fcurve_listbase below. */
   /* TODO: when converting this listbase to array, make sure the fcurve next/prev pointers are nil
    * to avoid accidental 'compatibility' with LISTBASE_FOREACH and friends. */
   int fcurve_array_num;
   FCurve **fcurve_array; /* Array of 'fcurve_array_num' FCurves. */
 
-  ListBase fcurve_listbase; /* ONLY for writing to blend files. */
+  /* ONLY for writing to blend files. The FCurve writing code is not the simplest, and it takes a
+   * ListBase of FCurves to write. So instead of of rewriting it, for now just convert
+   * `fcurve_array` to a `ListBase` and reuse the existing code. */
+  ListBase fcurve_listbase;
 
   /* TODO: Design & implement a way to integrate other channel types as well,
    * and still have them map to a certain output */
