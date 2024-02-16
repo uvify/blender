@@ -19,7 +19,7 @@ class VIEW3D_PT_animation_layers(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Animation"
-    bl_label = "Layers"
+    bl_label = "Baklava"
 
     @classmethod
     def poll(cls, context: Context) -> bool:
@@ -71,12 +71,12 @@ class VIEW3D_PT_animation_layers(Panel):
             col.prop(layer, "influence")
             col.prop(layer, "mix_mode")
 
-            for strip_idx, strip in enumerate(layer.strips):
-                stripcol = col.column(align=True)
-                stripcol.label(text=f"Strip {strip_idx+1}:")
-                stripcol.prop(strip, "frame_start")
-                stripcol.prop(strip, "frame_end")
-                stripcol.prop(strip, "frame_offset")
+            # for strip_idx, strip in enumerate(layer.strips):
+            #     stripcol = col.column(align=True)
+            #     stripcol.label(text=f"Strip {strip_idx+1}:")
+            #     stripcol.prop(strip, "frame_start")
+            #     stripcol.prop(strip, "frame_end")
+            #     stripcol.prop(strip, "frame_offset")
 
 
 classes = (
