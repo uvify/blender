@@ -47,7 +47,9 @@ set(SRC
   intern/MOD_grease_pencil_color.cc
   intern/MOD_grease_pencil_dash.cc
   intern/MOD_grease_pencil_lattice.cc
+  intern/MOD_grease_pencil_length.cc
   intern/MOD_grease_pencil_mirror.cc
+  intern/MOD_grease_pencil_multiply.cc
   intern/MOD_grease_pencil_noise.cc
   intern/MOD_grease_pencil_offset.cc
   intern/MOD_grease_pencil_opacity.cc
@@ -56,6 +58,7 @@ set(SRC
   intern/MOD_grease_pencil_thickness.cc
   intern/MOD_grease_pencil_tint.cc
   intern/MOD_grease_pencil_util.cc
+  intern/MOD_grease_pencil_weight_angle.cc
   intern/MOD_hook.cc
   intern/MOD_laplaciandeform.cc
   intern/MOD_laplaciansmooth.cc
