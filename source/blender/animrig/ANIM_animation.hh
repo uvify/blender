@@ -248,6 +248,7 @@ static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");
 
 template<> KeyframeStrip &Strip::as<KeyframeStrip>();
+template<> const KeyframeStrip &Strip::as<KeyframeStrip>() const;
 
 class ChannelsForOutput : public ::AnimationChannelsForOutput {
  public:
