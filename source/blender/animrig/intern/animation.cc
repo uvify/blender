@@ -273,7 +273,10 @@ const Output *Animation::output_for_id(const ID *animated_id) const
 Output &Animation::output_allocate_()
 {
   Output &output = MEM_new<AnimationOutput>(__func__)->wrap();
-  output.stable_index = atomic_add_and_fetch_int32(&this->last_output_stable_index, 1);
+  this->last_output_stable_index++;
+  BLI_assert_msg(this->last_output_stable_index > 0,
+                 "Animation Output stable index 32-bit overflow");
+  output.stable_index = this->last_output_stable_index;
   return output;
 }
 
