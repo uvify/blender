@@ -521,25 +521,25 @@ void Strip::resize(const float frame_start, const float frame_end)
 
 /* ----- KeyframeAnimationStrip C++ implementation ----------- */
 
-blender::Span<const ChannelsForOutput *> KeyframeStrip::channels_for_output() const
+blender::Span<const ChannelsForOutput *> KeyframeStrip::channels_for_output_span() const
 {
   return blender::Span<ChannelsForOutput *>{
       reinterpret_cast<ChannelsForOutput **>(this->channels_for_output_array),
       this->channels_for_output_array_num};
 }
-blender::MutableSpan<ChannelsForOutput *> KeyframeStrip::channels_for_output()
+blender::MutableSpan<ChannelsForOutput *> KeyframeStrip::channels_for_output_span()
 {
   return blender::MutableSpan<ChannelsForOutput *>{
       reinterpret_cast<ChannelsForOutput **>(this->channels_for_output_array),
       this->channels_for_output_array_num};
 }
-const ChannelsForOutput *KeyframeStrip::channel_for_output(const int64_t index) const
+const ChannelsForOutput *KeyframeStrip::channels_for_output_at(const int64_t array_index) const
 {
-  return &this->channels_for_output_array[index]->wrap();
+  return &this->channels_for_output_array[array_index]->wrap();
 }
-ChannelsForOutput *KeyframeStrip::channel_for_output(const int64_t index)
+ChannelsForOutput *KeyframeStrip::channels_for_output_at(const int64_t array_index)
 {
-  return &this->channels_for_output_array[index]->wrap();
+  return &this->channels_for_output_array[array_index]->wrap();
 }
 
 template<> KeyframeStrip &Strip::as<KeyframeStrip>()
@@ -560,7 +560,7 @@ const ChannelsForOutput *KeyframeStrip::chans_for_out(
     const output_index_t output_stable_index) const
 {
   /* FIXME: use a hash map lookup for this. */
-  for (const ChannelsForOutput *channels : this->channels_for_output()) {
+  for (const ChannelsForOutput *channels : this->channels_for_output_span()) {
     if (channels->output_stable_index == output_stable_index) {
       return channels;
     }

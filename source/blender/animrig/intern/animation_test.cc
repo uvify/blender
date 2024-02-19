@@ -298,8 +298,8 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
       << "Expect all the necessary data structures to be created on insertion of a key";
 
   /* Check the strip was created correctly, with the channels for the output. */
-  ASSERT_EQ(1, key_strip.channels_for_output().size());
-  ChannelsForOutput *chan_for_out = key_strip.channel_for_output(0);
+  ASSERT_EQ(1, key_strip.channels_for_output_span().size());
+  ChannelsForOutput *chan_for_out = key_strip.channels_for_output_at(0);
   EXPECT_EQ(out->stable_index, chan_for_out->output_stable_index);
 
   /* Insert a second key, should insert into the same FCurve as before. */

@@ -309,13 +309,13 @@ static void rna_iterator_keyframestrip_chans_for_out_begin(CollectionPropertyIte
                                                            PointerRNA *ptr)
 {
   animrig::KeyframeStrip &key_strip = rna_data_keyframe_strip(ptr);
-  rna_iterator_array_begin(iter, key_strip.channels_for_output());
+  rna_iterator_array_begin(iter, key_strip.channels_for_output_span());
 }
 
 static int rna_iterator_keyframestrip_chans_for_out_length(PointerRNA *ptr)
 {
   animrig::KeyframeStrip &key_strip = rna_data_keyframe_strip(ptr);
-  return key_strip.channels_for_output().size();
+  return key_strip.channels_for_output_span().size();
 }
 
 static FCurve *rna_KeyframeAnimationStrip_key_insert(KeyframeAnimationStrip *strip,

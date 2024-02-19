@@ -201,11 +201,12 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
   KeyframeStrip(const KeyframeStrip &other) = default;
   ~KeyframeStrip() = default;
 
-  /* Strip access. */
-  blender::Span<const ChannelsForOutput *> channels_for_output() const;
-  blender::MutableSpan<ChannelsForOutput *> channels_for_output();
-  const ChannelsForOutput *channel_for_output(int64_t index) const;
-  ChannelsForOutput *channel_for_output(int64_t index);
+  /* ChannelsForOutput array access. Note that the 'array_index' is the index
+   * into channels_for_output_array in the DNA base struct. */
+  blender::Span<const ChannelsForOutput *> channels_for_output_span() const;
+  blender::MutableSpan<ChannelsForOutput *> channels_for_output_span();
+  const ChannelsForOutput *channels_for_output_at(int64_t array_index) const;
+  ChannelsForOutput *channels_for_output_at(int64_t array_index);
 
   /**
    * Find the animation channels for this output.

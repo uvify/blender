@@ -213,7 +213,7 @@ static void anim_strip_free_data_keyframe(AnimationStrip *strip)
 {
   animrig::KeyframeStrip &key_strip = strip->wrap().as<animrig::KeyframeStrip>();
 
-  for (ChannelsForOutput *chans_for_out : key_strip.channels_for_output()) {
+  for (ChannelsForOutput *chans_for_out : key_strip.channels_for_output_span()) {
     anim_channels_for_output_free_data(chans_for_out);
     MEM_delete(chans_for_out);
   }
@@ -241,7 +241,7 @@ static void animation_foreach_id(ID *id, LibraryForeachIDData *data)
       switch (strip->type) {
         case ANIM_STRIP_TYPE_KEYFRAME: {
           auto &key_strip = strip->as<animrig::KeyframeStrip>();
-          for (animrig::ChannelsForOutput *chans_for_out : key_strip.channels_for_output()) {
+          for (animrig::ChannelsForOutput *chans_for_out : key_strip.channels_for_output_span()) {
             for (FCurve *fcurve : chans_for_out->fcurves()) {
               BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_fcurve_foreach_id(fcurve, data));
             }
@@ -288,7 +288,7 @@ static void write_keyframe_strip(BlendWriter *writer, animrig::KeyframeStrip &ke
 {
   BLO_write_struct(writer, KeyframeAnimationStrip, &key_strip);
 
-  auto channels_for_output = key_strip.channels_for_output();
+  auto channels_for_output = key_strip.channels_for_output_span();
   BLO_write_pointer_array(writer, channels_for_output.size(), channels_for_output.data());
 
   for (animrig::ChannelsForOutput *chans_for_out : channels_for_output) {
