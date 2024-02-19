@@ -65,6 +65,7 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
+#include "BKE_grease_pencil_legacy_convert.hh"
 #include "BKE_key.hh"
 #include "BKE_lattice.hh"
 #include "BKE_layer.hh"
@@ -1955,7 +1956,7 @@ static int collection_drop_exec(bContext *C, wmOperator *op)
 
   if (RNA_boolean_get(op->ptr, "use_instance")) {
     BKE_collection_child_remove(bmain, active_collection->collection, add_info->collection);
-    DEG_id_tag_update(&active_collection->collection->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&active_collection->collection->id, ID_RECALC_SYNC_TO_EVAL);
     DEG_relations_tag_update(bmain);
 
     Object *ob = ED_object_add_type(C,
@@ -2834,7 +2835,7 @@ static void make_object_duplilist_real(bContext *C,
   BKE_main_id_newptr_and_tag_clear(bmain);
 
   base->object->transflag &= ~OB_DUPLI;
-  DEG_id_tag_update(&base->object->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&base->object->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 static int object_duplicates_make_real_exec(bContext *C, wmOperator *op)
@@ -3222,8 +3223,6 @@ static int object_convert_exec(bContext *C, wmOperator *op)
     {
       ob->flag |= OB_DONE;
 
-      bGPdata *gpd = static_cast<bGPdata *>(ob->data);
-
       if (keep_original) {
         BLI_assert_unreachable();
       }
@@ -3231,16 +3230,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob = ob;
       }
 
-      GreasePencil *new_grease_pencil = static_cast<GreasePencil *>(
-          BKE_id_new(bmain, ID_GP, newob->id.name + 2));
-      newob->data = new_grease_pencil;
-      newob->type = OB_GREASE_PENCIL;
-
-      bke::greasepencil::convert::legacy_gpencil_to_grease_pencil(
-          *bmain, *new_grease_pencil, *gpd);
-
-      BKE_object_free_derived_caches(newob);
-      BKE_object_free_modifiers(newob, 0);
+      bke::greasepencil::convert::legacy_gpencil_object(*bmain, *newob);
     }
     else if (target == OB_CURVES) {
       ob->flag |= OB_DONE;
@@ -3995,7 +3985,7 @@ static int duplicate_exec(bContext *C, wmOperator *op)
   ED_outliner_select_sync_from_object_tag(C);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
 
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);

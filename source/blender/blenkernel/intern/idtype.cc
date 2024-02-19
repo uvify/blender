@@ -24,7 +24,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_main.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "BKE_idtype.hh"
 
@@ -108,6 +108,7 @@ static void id_type_init()
   init_types_num++;
 
   BLI_assert_msg(init_types_num == INDEX_ID_MAX, "Some IDTypeInfo initialization is missing");
+  UNUSED_VARS_NDEBUG(init_types_num);
 
 #undef INIT_TYPE
 }

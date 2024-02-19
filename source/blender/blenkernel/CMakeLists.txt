@@ -408,6 +408,7 @@ set(SRC
   BKE_gpencil_update_cache_legacy.h
   BKE_grease_pencil.h
   BKE_grease_pencil.hh
+  BKE_grease_pencil_legacy_convert.hh
   BKE_grease_pencil_vertex_groups.hh
   BKE_icons.h
   BKE_idprop.h
@@ -461,7 +462,6 @@ set(SRC
   BKE_movieclip.h
   BKE_multires.hh
   BKE_nla.h
-  BKE_node.h
   BKE_node.hh
   BKE_node_enum.hh
   BKE_node_runtime.hh

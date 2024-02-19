@@ -109,6 +109,8 @@ typedef enum ModifierType {
   eModifierType_GreasePencilMultiply = 72,
   eModifierType_GreasePencilLength = 73,
   eModifierType_GreasePencilWeightAngle = 74,
+  eModifierType_GreasePencilArray = 75,
+  eModifierType_GreasePencilWeightProximity = 76,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2896,3 +2898,52 @@ typedef enum GreasePencilWeightAngleModifierSpace {
   MOD_GREASE_PENCIL_WEIGHT_ANGLE_SPACE_LOCAL = 0,
   MOD_GREASE_PENCIL_WEIGHT_ANGLE_SPACE_WORLD = 1,
 } GreasePencilWeightAngleModifierSpace;
+
+typedef struct GreasePencilArrayModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  struct Object *object;
+  int count;
+  /** #GreasePencilArrayModifierFlag */
+  int flag;
+  float offset[3];
+  float shift[3];
+
+  float rnd_offset[3];
+  float rnd_rot[3];
+  float rnd_scale[3];
+
+  char _pad[4];
+  /** (first element is the index) random values. (?) */
+  int seed;
+
+  /* Replacement material index. */
+  int mat_rpl;
+} GreasePencilArrayModifierData;
+
+typedef enum GreasePencilArrayModifierFlag {
+  MOD_GREASE_PENCIL_ARRAY_USE_OFFSET = (1 << 7),
+  MOD_GREASE_PENCIL_ARRAY_USE_RELATIVE = (1 << 8),
+  MOD_GREASE_PENCIL_ARRAY_USE_OB_OFFSET = (1 << 9),
+  MOD_GREASE_PENCIL_ARRAY_UNIFORM_RANDOM_SCALE = (1 << 10),
+} GreasePencilArrayModifierFlag;
+
+typedef struct GreasePencilWeightProximityModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  /* #GreasePencilWeightProximityFlag. */
+  int flag;
+  char target_vgname[64];
+  float min_weight;
+
+  float dist_start;
+  float dist_end;
+
+  struct Object *object;
+} GreasePencilWeightProximityModifierData;
+
+typedef enum GreasePencilWeightProximityFlag {
+  MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_INVERT_OUTPUT = (1 << 0),
+  MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA = (1 << 1),
+} GreasePencilWeightProximityFlag;
