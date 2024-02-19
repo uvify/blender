@@ -1495,8 +1495,6 @@ static void rna_def_animdata(BlenderRNA *brna)
   /* Animation data-block */
   prop = RNA_def_property(srna, "animation", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Animation");
-  /* this flag as well as the dynamic test must be defined for this to be editable... */
-  // RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_pointer_funcs(prop, nullptr, "rna_AnimData_animation_set", nullptr, nullptr);
   RNA_def_property_ui_text(prop, "Animation", "Active Animation for this data-block");

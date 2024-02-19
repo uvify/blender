@@ -716,46 +716,6 @@ static void rna_def_chans_for_out_fcurves(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_sdna(srna, "bAnimationChannelsForOutput");
   RNA_def_struct_ui_text(
       srna, "F-Curves", "Collection of F-Curves for a specific animation output");
-
-  // /* AnimationChannelsForOutput.fcurves.new(...) */
-  // func = RNA_def_function(srna, "new", "rna_AnimationChannelsForOutput_fcurve_new");
-  // RNA_def_function_ui_description(func, "Add an F-Curve to the action");
-  // RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_MAIN);
-  // parm = RNA_def_string(func, "data_path", nullptr, 0, "Data Path", "F-Curve data path to use");
-  // RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  // RNA_def_int(func, "index", 0, 0, INT_MAX, "Index", "Array index", 0, INT_MAX);
-  // RNA_def_string(
-  //     func, "action_group", nullptr, 0, "AnimationChannelsForOutput Group", "Acton group to add
-  //     this F-Curve into");
-
-  // parm = RNA_def_pointer(func, "fcurve", "FCurve", "", "Newly created F-Curve");
-  // RNA_def_function_return(func, parm);
-
-  /* AnimationChannelsForOutput.fcurves.find(...) */
-  // func = RNA_def_function(srna, "find", "rna_AnimationChannelsForOutput_fcurve_find");
-  // RNA_def_function_ui_description(
-  //     func,
-  //     "Find an F-Curve. Note that this function performs a linear scan "
-  //     "of all F-Curves in the action.");
-  // RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  // parm = RNA_def_string(func, "data_path", nullptr, 0, "Data Path", "F-Curve data path");
-  // RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  // RNA_def_int(func, "index", 0, 0, INT_MAX, "Index", "Array index", 0, INT_MAX);
-  // parm = RNA_def_pointer(
-  //     func, "fcurve", "FCurve", "", "The found F-Curve, or None if it doesn't exist");
-  // RNA_def_function_return(func, parm);
-
-  /* AnimationChannelsForOutput.fcurves.remove(...) */
-  // func = RNA_def_function(srna, "remove", "rna_AnimationChannelsForOutput_fcurve_remove");
-  // RNA_def_function_ui_description(func, "Remove F-Curve");
-  // RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  // parm = RNA_def_pointer(func, "fcurve", "FCurve", "", "F-Curve to remove");
-  // RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  // RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
-
-  /* AnimationChannelsForOutput.fcurves.clear() */
-  // func = RNA_def_function(srna, "clear", "rna_AnimationChannelsForOutput_fcurve_clear");
-  // RNA_def_function_ui_description(func, "Remove all F-Curves");
 }
 
 static void rna_def_animation_channels_for_output(BlenderRNA *brna)
