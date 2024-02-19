@@ -478,12 +478,11 @@ bool assign_animation(Animation &anim, ID *animated_id)
 
 void unassign_animation(ID *animated_id)
 {
-  AnimData *adt = BKE_animdata_from_id(animated_id);
-  if (!adt || !adt->animation) {
+  Animation *anim = get_animation(animated_id);
+  if (!anim) {
     return;
   }
-
-  adt->animation->wrap().unassign_id(animated_id);
+  anim->unassign_id(animated_id);
 }
 
 Animation *get_animation(ID *animated_id)
