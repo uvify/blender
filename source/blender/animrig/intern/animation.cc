@@ -491,6 +491,9 @@ Animation *get_animation(ID *animated_id)
   if (!adt) {
     return nullptr;
   }
+  if (!adt->animation) {
+    return nullptr;
+  }
   return &adt->animation->wrap();
 }
 
