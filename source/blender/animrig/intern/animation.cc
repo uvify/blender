@@ -504,9 +504,9 @@ bool Strip::contains_frame(const float frame_time) const
 
 bool Strip::is_last_frame(const float frame_time) const
 {
-  /* GoogleTest also uses 4 ULPs in their float equality checks. */
-  const int diff_ulp = 4;
-  return compare_ff_relative(this->frame_end, frame_time, FLT_EPSILON, diff_ulp);
+  /* TODO: Maybe this needs a more advanced equality check. Implement that when
+   * we have an actual example case that breaks. */
+  return this->frame_end == frame_time;
 }
 
 void Strip::resize(const float frame_start, const float frame_end)
