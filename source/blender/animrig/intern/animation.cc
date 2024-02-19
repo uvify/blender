@@ -331,6 +331,13 @@ bool Animation::assign_id(Output *output, ID *animated_id)
     if (!output->assign_id(animated_id)) {
       return false;
     }
+
+    /* If the output is not yet named, use the ID name. */
+    if (output->name[0] == '\0') {
+      this->output_name_set(*output, animated_id->name);
+    }
+    /* Always make sure the ID's output name matches the assigned output. */
+    STRNCPY_UTF8(adt->output_name, output->name);
   }
   else {
     adt->output_stable_index = 0;
@@ -449,15 +456,6 @@ bool Output::assign_id(ID *animated_id)
   }
 
   adt->output_stable_index = this->stable_index;
-
-  /* If the output is not yet named, use the ID name. */
-  if (this->name[0] == '\0') {
-    STRNCPY_UTF8(this->name, animated_id->name);
-    /* FIXME: this should NOT happen, as this can create a name collision with other outputs. */
-  }
-  /* Always make sure the ID's output name matches the assigned output. */
-  STRNCPY_UTF8(adt->output_name, this->name);
-
   return true;
 }
 

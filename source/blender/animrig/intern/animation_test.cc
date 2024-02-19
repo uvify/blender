@@ -170,11 +170,12 @@ TEST_F(AnimationLayersTest, add_output)
   ASSERT_NE(nullptr, out);
   EXPECT_EQ(1, out->stable_index);
 
-  EXPECT_EQ("", std::string(out->name));
+  EXPECT_STREQ("", out->name);
   EXPECT_EQ(0, out->idtype);
 
   EXPECT_TRUE(out->assign_id(&cube->id));
-  EXPECT_EQ("OBKüüübus", std::string(out->name));
+  EXPECT_STREQ("", out->name)
+      << "This low-level assignment function should not manipulate the Output name";
   EXPECT_EQ(GS(cube->id.name), out->idtype);
 }
 
@@ -192,12 +193,37 @@ TEST_F(AnimationLayersTest, add_output_multiple)
 
 TEST_F(AnimationLayersTest, anim_assign_id)
 {
+  /* Assign to the only, 'virgin' Output, should always work. */
   Output *out_cube = anim.output_add();
   ASSERT_TRUE(anim.assign_id(out_cube, &cube->id));
+  EXPECT_EQ(out_cube->stable_index, cube->adt->output_stable_index);
+  EXPECT_STREQ(out_cube->name, cube->id.name)
+      << "The output should be named after the assigned ID";
+  EXPECT_STREQ(out_cube->name, cube->adt->output_name)
+      << "The output name should be copied to the adt";
 
-  // TODO: expand this test.
-  // TODO: include unnamed outputs getting auto-named to their assigned ID. With the current code,
-  // this can cause name collisions.
+  /* Assign another ID to the same Output. */
+  ASSERT_TRUE(anim.assign_id(out_cube, &suzanne->id));
+  EXPECT_STREQ(out_cube->name, cube->id.name)
+      << "The output should not be renamed on assignment once it has a name";
+  EXPECT_STREQ(out_cube->name, cube->adt->output_name)
+      << "The output name should be copied to the adt";
+
+  /* Assign Cube to another 'virgin' output. This should not cause a name
+   * collision between the Outputs. */
+  Output *another_out_cube = anim.output_add();
+  anim.unassign_id(&cube->id);
+  ASSERT_TRUE(anim.assign_id(another_out_cube, &cube->id));
+  EXPECT_EQ(another_out_cube->stable_index, cube->adt->output_stable_index);
+  EXPECT_STREQ("OBKüüübus.001", another_out_cube->name) << "The output should be uniquely named";
+  EXPECT_STREQ("OBKüüübus.001", cube->adt->output_name)
+      << "The output name should be copied to the adt";
+
+  /* Create an ID of another type. This should not be assignable to this output. */
+  ID *mesh = static_cast<ID *>(BKE_id_new_nomain(ID_ME, "Mesh"));
+  EXPECT_FALSE(anim.assign_id(out_cube, mesh))
+      << "Mesh should not be animatable by an Object output";
+  BKE_id_free(nullptr, mesh);
 }
 
 TEST_F(AnimationLayersTest, find_suitable_output)
@@ -319,8 +345,6 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
   EXPECT_NE(fcurve_loc_b, fcurve_rot)
       << "Expected rotation and location curves to be different FCurves.";
   EXPECT_EQ(2, chan_for_out->fcurves().size()) << "Expected a second FCurve to be created.";
-
-  /* TODO: test with finite strips & strip offsets. */
 }
 
 }  // namespace blender::animrig::tests

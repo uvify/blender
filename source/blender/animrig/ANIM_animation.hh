@@ -152,6 +152,9 @@ class Output : public ::AnimationOutput {
   /**
    * Let the given ID receive animation from this output.
    *
+   * This is a low-level function; for most purposes you want
+   * #Animation::assign_id instead.
+   *
    * \note This does _not_ set animated_id->adt->animation to the owner of this
    * Output. It's the caller's responsibility to do that.
    *
