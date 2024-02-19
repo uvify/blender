@@ -173,7 +173,7 @@ void RNA_def_main(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  /* See the RNA_MAIN_LISTBASE_FUNCS_DEF calls above for the rna_Main_..._begin functions. */
+  /* Plural must match ID-types in `readblenentry.cc`. */
   MainCollectionDef lists[] = {
       {"cameras",
        "Camera",
