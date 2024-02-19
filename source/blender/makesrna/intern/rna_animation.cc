@@ -1415,7 +1415,8 @@ static void rna_def_animdata(BlenderRNA *brna)
   prop = RNA_def_property(srna, "action", PROP_POINTER, PROP_NONE);
   /* this flag as well as the dynamic test must be defined for this to be editable... */
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
-  RNA_def_property_pointer_funcs(prop, nullptr, "rna_AnimData_action_set", nullptr, nullptr);
+  RNA_def_property_pointer_funcs(
+      prop, nullptr, "rna_AnimData_action_set", nullptr, "rna_Action_id_poll");
   RNA_def_property_editable_func(prop, "rna_AnimData_action_editable");
   RNA_def_property_ui_text(prop, "Action", "Active Action for this data-block");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA_ACTCHANGE, "rna_AnimData_dependency_update");
