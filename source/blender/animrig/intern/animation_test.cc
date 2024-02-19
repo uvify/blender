@@ -196,6 +196,8 @@ TEST_F(AnimationLayersTest, anim_assign_id)
   ASSERT_TRUE(anim.assign_id(out_cube, &cube->id));
 
   // TODO: expand this test.
+  // TODO: include unnamed outputs getting auto-named to their assigned ID. With the current code,
+  // this can cause name collisions.
 }
 
 TEST_F(AnimationLayersTest, find_suitable_output)

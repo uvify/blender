@@ -276,9 +276,14 @@ static_assert(sizeof(ChannelsForOutput) == sizeof(::AnimationChannelsForOutput),
  *
  * - By stable index.
  * - By fallback string.
- * - Add a new Output for this ID.
+ * - By the ID's name (matching agains the output name).
+ * - If the above do not find a suitable output, the animated ID will not
+ *   receive any animation and the calller is responsible for creating an output
+ *   and assigning it.
  *
- * \return false if the assignment was not possible.
+ * \return `false` if the assignment was not possible (for example the ID is of a type that cannot
+ * be animated). If the above fall-through case of "no output found" is reached, this function will
+ * still return `true` as the Animation was succesfully assigned.
  */
 bool assign_animation(Animation &anim, ID *animated_id);
 

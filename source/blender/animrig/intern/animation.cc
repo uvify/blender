@@ -232,9 +232,6 @@ void Animation::output_name_set(Output &out, StringRefNull new_name)
 
   /* TODO: update `AnimData::animation_output_name` field of any ID that is animated by this.
    *  When this gets added, reconsider the code in Animation::unassign_id((). */
-
-  /* If ever any Output properties get animatable, this should call
-   * BKE_animdata_fix_paths_rename_all() as well. */
 }
 
 Output *Animation::output_find_by_name(const char *output_name)
@@ -456,6 +453,7 @@ bool Output::assign_id(ID *animated_id)
   /* If the output is not yet named, use the ID name. */
   if (this->name[0] == '\0') {
     STRNCPY_UTF8(this->name, animated_id->name);
+    /* FIXME: this should NOT happen, as this can create a name collision with other outputs. */
   }
   /* Always make sure the ID's output name matches the assigned output. */
   STRNCPY_UTF8(adt->output_name, this->name);
