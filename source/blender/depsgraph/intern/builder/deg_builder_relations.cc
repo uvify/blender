@@ -1576,7 +1576,8 @@ void DepsgraphRelationBuilder::build_animdata_curves(ID *id)
     build_animation(adt->animation);
   }
   if (adt->action == nullptr && adt->animation == nullptr &&
-      BLI_listbase_is_empty(&adt->nla_tracks)) {
+      BLI_listbase_is_empty(&adt->nla_tracks))
+  {
     return;
   }
   /* Ensure evaluation order from entry to exit. */
