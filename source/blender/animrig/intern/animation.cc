@@ -325,7 +325,11 @@ bool Animation::assign_id(Output *output, ID *animated_id)
     return false;
   }
 
-  BLI_assert_msg(adt->animation == nullptr, "Unassign the ID from its existing animation first");
+  if (adt->animation) {
+    /* Unassign the ID from its existing animation first, or use the top-level
+     * function `assign_animation(anim, ID)`. */
+    return false;
+  }
 
   if (output) {
     if (!output->assign_id(animated_id)) {

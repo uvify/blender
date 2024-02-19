@@ -209,9 +209,13 @@ TEST_F(AnimationLayersTest, anim_assign_id)
   EXPECT_STREQ(out_cube->name, cube->adt->output_name)
       << "The output name should be copied to the adt";
 
+  /* Assign Cube to another output without unassigning first. */
+  Output *another_out_cube = anim.output_add();
+  ASSERT_FALSE(anim.assign_id(another_out_cube, &cube->id))
+      << "Assigning animation (with this function) when already assigned should fail.";
+
   /* Assign Cube to another 'virgin' output. This should not cause a name
    * collision between the Outputs. */
-  Output *another_out_cube = anim.output_add();
   anim.unassign_id(&cube->id);
   ASSERT_TRUE(anim.assign_id(another_out_cube, &cube->id));
   EXPECT_EQ(another_out_cube->stable_index, cube->adt->output_stable_index);
