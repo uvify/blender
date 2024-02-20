@@ -227,7 +227,7 @@ static std::optional<std::string> rna_AnimationLayer_path(const PointerRNA *ptr)
 
   char name_esc[sizeof(layer.name) * 2];
   BLI_str_escape(name_esc, layer.name, sizeof(name_esc));
-  return fmt::format("layers[\"%s\"]", name_esc);
+  return fmt::format("layers[\"{}\"]", name_esc);
 }
 
 static void rna_iterator_animationlayer_strips_begin(CollectionPropertyIterator *iter,
