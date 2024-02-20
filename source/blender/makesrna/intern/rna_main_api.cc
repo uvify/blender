@@ -637,6 +637,7 @@ static bAction *rna_Main_actions_new(Main *bmain, const char *name)
   return act;
 }
 
+#  ifdef WITH_ANIM_BAKLAVA
 static Animation *rna_Main_animations_new(Main *bmain, const char *name)
 {
   char safe_name[MAX_ID_NAME - 2];
@@ -650,6 +651,7 @@ static Animation *rna_Main_animations_new(Main *bmain, const char *name)
 
   return anim;
 }
+#  endif
 
 static ParticleSettings *rna_Main_particles_new(Main *bmain, const char *name)
 {
@@ -837,7 +839,9 @@ RNA_MAIN_ID_TAG_FUNCS_DEF(speakers, speakers, ID_SPK)
 RNA_MAIN_ID_TAG_FUNCS_DEF(sounds, sounds, ID_SO)
 RNA_MAIN_ID_TAG_FUNCS_DEF(armatures, armatures, ID_AR)
 RNA_MAIN_ID_TAG_FUNCS_DEF(actions, actions, ID_AC)
+#  ifdef WITH_ANIM_BAKLAVA
 RNA_MAIN_ID_TAG_FUNCS_DEF(animations, animations, ID_AN)
+#  endif
 RNA_MAIN_ID_TAG_FUNCS_DEF(particles, particles, ID_PA)
 RNA_MAIN_ID_TAG_FUNCS_DEF(palettes, palettes, ID_PAL)
 RNA_MAIN_ID_TAG_FUNCS_DEF(gpencils, gpencils, ID_GD_LEGACY)
@@ -1898,6 +1902,7 @@ void RNA_def_main_actions(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_boolean(func, "value", false, "Value", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
+#  ifdef WITH_ANIM_BAKLAVA
 void RNA_def_main_animations(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
@@ -1939,6 +1944,7 @@ void RNA_def_main_animations(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_boolean(func, "value", false, "Value", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
+#  endif
 void RNA_def_main_particles(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;

@@ -11,7 +11,7 @@ import contextlib
 import threading
 
 import bpy
-from bpy.types import Context, Panel, Animation, WindowManager
+from bpy.types import Context, Panel, WindowManager
 from bpy.props import PointerProperty
 
 
@@ -23,7 +23,7 @@ class VIEW3D_PT_animation_layers(Panel):
 
     @classmethod
     def poll(cls, context: Context) -> bool:
-        return context.object
+        return context.preferences.experimental.use_animation_baklava and context.object
 
     def draw(self, context: Context) -> None:
         layout = self.layout
@@ -105,6 +105,13 @@ def _wm_selected_animation_update(self: WindowManager, context: Context) -> None
 
 
 def register_props() -> None:
+    # Put behind a `try` because it won't exist when Blender is built without
+    # experimental features.
+    try:
+        from bpy.types import Animation
+    except ImportError:
+        return
+
     # Due to this hackyness, the WindowManager will increase the user count of
     # the pointed-to Animation data-block.
     WindowManager.selected_animation = PointerProperty(

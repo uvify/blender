@@ -183,6 +183,7 @@ bool rna_AnimData_tweakmode_override_apply(Main * /*bmain*/,
   return true;
 }
 
+#  ifdef WITH_ANIM_BAKLAVA
 static void rna_AnimData_animation_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   ID *animated_id = ptr->owner_id;
@@ -232,6 +233,7 @@ static void rna_AnimData_animation_output_index_set(PointerRNA *ptr, const int n
   }
   out->assign_id(animated_id);
 }
+#  endif
 
 /* ****************************** */
 
@@ -1493,6 +1495,7 @@ static void rna_def_animdata(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Pin in Graph Editor", "");
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
 
+#  ifdef WITH_ANIM_BAKLAVA
   /* Animation data-block */
   prop = RNA_def_property(srna, "animation", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Animation");
@@ -1508,6 +1511,7 @@ static void rna_def_animdata(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "animation_output_name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "output_name");
+#  endif
 
   RNA_define_lib_overridable(false);
 

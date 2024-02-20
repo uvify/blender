@@ -26,7 +26,6 @@ set(DEFSRC
   rna_ID.cc
   rna_action.cc
   rna_animation.cc
-  rna_animation_id.cc
   rna_animviz.cc
   rna_armature.cc
   rna_asset.cc
@@ -111,8 +110,10 @@ endif()
 if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
   add_definitions(-DWITH_GREASE_PENCIL_V3)
+  add_definitions(-DWITH_ANIM_BAKLAVA)
   list(APPEND DEFSRC
     rna_grease_pencil.cc
+    rna_animation_id.cc
   )
 endif()
 
