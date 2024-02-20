@@ -179,7 +179,7 @@ void reevaluate_fcurve_errors(bAnimContext *ac)
 const FCurve *fcurve_find_by_rna_path(const Animation &anim,
                                       const ID *animated_id,
                                       const float frame_time,
-                                      const char *rna_path,
+                                      const StringRefNull rna_path,
                                       const int array_index)
 {
   const Output *out = anim.output_for_id(animated_id);

@@ -113,12 +113,12 @@ Layer *Animation::layer(const int64_t index)
   return &this->layer_array[index]->wrap();
 }
 
-Layer *Animation::layer_add(const char *name)
+Layer *Animation::layer_add(const StringRefNull name)
 {
   using namespace blender::animrig;
 
   Layer *new_layer = animationlayer_alloc();
-  STRNCPY_UTF8(new_layer->name, name);
+  STRNCPY_UTF8(new_layer->name, name.c_str());
 
   grow_array_and_append<::AnimationLayer *>(&this->layer_array, &this->layer_array_num, new_layer);
   this->layer_active_index = this->layer_array_num - 1;
@@ -225,7 +225,7 @@ static void anim_output_name_ensure_unique(Animation &animation, Output &out)
   BLI_uniquename_cb(check_name_is_used, &check_data, "", '.', out.name, sizeof(out.name));
 }
 
-void Animation::output_name_set(Output &out, StringRefNull new_name)
+void Animation::output_name_set(Output &out, const StringRefNull new_name)
 {
   STRNCPY_UTF8(out.name, new_name.c_str());
   anim_output_name_ensure_unique(*this, out);
@@ -234,10 +234,10 @@ void Animation::output_name_set(Output &out, StringRefNull new_name)
    *  When this gets added, reconsider the code in Animation::unassign_id((). */
 }
 
-Output *Animation::output_find_by_name(const char *output_name)
+Output *Animation::output_find_by_name(const StringRefNull output_name)
 {
   for (Output *out : outputs()) {
-    if (STREQ(out->name, output_name)) {
+    if (STREQ(out->name, output_name.c_str())) {
       return out;
     }
   }
@@ -603,7 +603,9 @@ ChannelsForOutput *KeyframeStrip::chans_for_out_add(const Output &out)
   return &channels;
 }
 
-FCurve *KeyframeStrip::fcurve_find(const Output &out, const char *rna_path, const int array_index)
+FCurve *KeyframeStrip::fcurve_find(const Output &out,
+                                   const StringRefNull rna_path,
+                                   const int array_index)
 {
   ChannelsForOutput *channels = this->chans_for_out(out);
   if (channels == nullptr) {
@@ -616,9 +618,7 @@ FCurve *KeyframeStrip::fcurve_find(const Output &out, const char *rna_path, cons
   for (FCurve *fcu : channels->fcurves()) {
     /* Check indices first, much cheaper than a string comparison. */
     /* Simple string-compare (this assumes that they have the same root...) */
-    if (UNLIKELY(fcu->array_index == array_index && fcu->rna_path &&
-                 fcu->rna_path[0] == rna_path[0] && STREQ(fcu->rna_path, rna_path)))
-    {
+    if (fcu->array_index == array_index && fcu->rna_path && StringRef(fcu->rna_path) == rna_path) {
       return fcu;
     }
   }
@@ -626,7 +626,7 @@ FCurve *KeyframeStrip::fcurve_find(const Output &out, const char *rna_path, cons
 }
 
 FCurve *KeyframeStrip::fcurve_find_or_create(const Output &out,
-                                             const char *rna_path,
+                                             const StringRefNull rna_path,
                                              const int array_index)
 {
   FCurve *fcurve = this->fcurve_find(out, rna_path, array_index);
@@ -637,7 +637,7 @@ FCurve *KeyframeStrip::fcurve_find_or_create(const Output &out,
   /* Copied from ED_action_fcurve_ensure(). */
   /* TODO: move to separate function, call that from both places. */
   fcurve = BKE_fcurve_create();
-  fcurve->rna_path = BLI_strdup(rna_path);
+  fcurve->rna_path = BLI_strdup(rna_path.c_str());
   fcurve->array_index = array_index;
 
   fcurve->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
@@ -657,7 +657,7 @@ FCurve *KeyframeStrip::fcurve_find_or_create(const Output &out,
 }
 
 FCurve *KeyframeStrip::keyframe_insert(const Output &out,
-                                       const char *rna_path,
+                                       const StringRefNull rna_path,
                                        const int array_index,
                                        const float2 time_value,
                                        const KeyframeSettings &settings)
@@ -668,7 +668,7 @@ FCurve *KeyframeStrip::keyframe_insert(const Output &out,
     /* TODO: handle this properly, in a way that can be communicated to the user. */
     std::fprintf(stderr,
                  "FCurve %s[%d] for output %s doesn't allow inserting keys.\n",
-                 rna_path,
+                 rna_path.c_str(),
                  array_index,
                  out.name);
     return nullptr;
@@ -679,7 +679,7 @@ FCurve *KeyframeStrip::keyframe_insert(const Output &out,
   if (index < 0) {
     std::fprintf(stderr,
                  "Could not insert key into FCurve %s[%d] for output %s.\n",
-                 rna_path,
+                 rna_path.c_str(),
                  array_index,
                  out.name);
     return nullptr;
@@ -709,11 +709,12 @@ FCurve *ChannelsForOutput::fcurve(const int64_t index)
   return this->fcurve_array[index];
 }
 
-const FCurve *ChannelsForOutput::fcurve_find(const char *rna_path, const int array_index) const
+const FCurve *ChannelsForOutput::fcurve_find(const StringRefNull rna_path,
+                                             const int array_index) const
 {
   for (const FCurve *fcu : this->fcurves()) {
     /* Check indices first, much cheaper than a string comparison. */
-    if (fcu->array_index == array_index && fcu->rna_path && STREQ(fcu->rna_path, rna_path)) {
+    if (fcu->array_index == array_index && fcu->rna_path && StringRef(fcu->rna_path) == rna_path) {
       return fcu;
     }
   }

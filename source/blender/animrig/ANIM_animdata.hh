@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include "BLI_string_ref.hh"
+
 struct ID;
 struct Main;
 
@@ -68,8 +70,8 @@ bool animdata_remove_empty_action(AnimData *adt);
  */
 const FCurve *fcurve_find_by_rna_path(const Animation &anim,
                                       const ID *animated_id,
-                                      const float frame_time,
-                                      const char *rna_path,
+                                      float frame_time,
+                                      StringRefNull rna_path,
                                       int array_index);
 
 }  // namespace blender::animrig

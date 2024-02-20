@@ -19,6 +19,7 @@
 
 #include "BLI_math_vector.hh"
 #include "BLI_set.hh"
+#include "BLI_string_ref.hh"
 
 struct AnimationEvalContext;
 struct FCurve;
@@ -47,7 +48,7 @@ class Animation : public ::Animation {
   const Layer *layer(int64_t index) const;
   Layer *layer(int64_t index);
 
-  Layer *layer_add(const char *name);
+  Layer *layer_add(StringRefNull name);
   /**
    * Remove the layer from this animation.
    *
@@ -73,7 +74,7 @@ class Animation : public ::Animation {
    * unique name within the Animation.
    */
   void output_name_set(Output &out, StringRefNull new_name);
-  Output *output_find_by_name(const char *output_name);
+  Output *output_find_by_name(StringRefNull output_name);
 
   Output *output_for_id(const ID *animated_id);
   const Output *output_for_id(const ID *animated_id) const;
@@ -233,17 +234,17 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
    *
    * If it cannot be found, `nullptr` is returned.
    */
-  FCurve *fcurve_find(const Output &out, const char *rna_path, int array_index);
+  FCurve *fcurve_find(const Output &out, StringRefNull rna_path, int array_index);
 
   /**
    * Find an FCurve for this output + RNA path + array index combination.
    *
    * If it cannot be found, a new one is created.
    */
-  FCurve *fcurve_find_or_create(const Output &out, const char *rna_path, int array_index);
+  FCurve *fcurve_find_or_create(const Output &out, StringRefNull rna_path, int array_index);
 
   FCurve *keyframe_insert(const Output &out,
-                          const char *rna_path,
+                          StringRefNull rna_path,
                           int array_index,
                           float2 time_value,
                           const KeyframeSettings &settings);
@@ -266,7 +267,7 @@ class ChannelsForOutput : public ::AnimationChannelsForOutput {
   const FCurve *fcurve(int64_t index) const;
   FCurve *fcurve(int64_t index);
 
-  const FCurve *fcurve_find(const char *rna_path, int array_index) const;
+  const FCurve *fcurve_find(StringRefNull rna_path, int array_index) const;
 };
 static_assert(sizeof(ChannelsForOutput) == sizeof(::AnimationChannelsForOutput),
               "DNA struct and its C++ wrapper must have the same size");
