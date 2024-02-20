@@ -161,10 +161,23 @@ static int rna_iterator_animation_layers_length(PointerRNA *ptr)
   return anim.layers().size();
 }
 
-static AnimationLayer *rna_Animation_layers_new(Animation *anim, const char *name)
+static AnimationLayer *rna_Animation_layers_new(Animation *dna_animation,
+                                                bContext *C,
+                                                ReportList *reports,
+                                                const char *name)
 {
-  AnimationLayer *layer = anim->wrap().layer_add(name);
-  // TODO: notifiers.
+  animrig::Animation &anim = dna_animation->wrap();
+
+  if (anim.layers().size() >= 1) {
+    /* Not allowed to have more than one layer, for now. This limitation is in
+     * place until working with multiple animated IDs is fleshed out better. */
+    BKE_report(reports, RPT_ERROR, "An Animation may not have more than one layer");
+    return nullptr;
+  }
+
+  AnimationLayer *layer = anim.layer_add(name);
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
   return layer;
 }
 
@@ -243,11 +256,21 @@ static int rna_iterator_animationlayer_strips_length(PointerRNA *ptr)
   return layer.strips().size();
 }
 
-AnimationStrip *rna_AnimationStrips_new(AnimationLayer *dna_layer, const int type)
+AnimationStrip *rna_AnimationStrips_new(AnimationLayer *dna_layer,
+                                        ReportList *reports,
+                                        const int type)
 {
   const eAnimationStrip_type strip_type = eAnimationStrip_type(type);
 
   animrig::Layer &layer = dna_layer->wrap();
+
+  if (layer.strips().size() >= 1) {
+    /* Not allowed to have more than one strip, for now. This limitation is in
+     * place until working with layers is fleshed out better. */
+    BKE_report(reports, RPT_ERROR, "A layer may not have more than one strip");
+    return nullptr;
+  }
+
   animrig::Strip *strip = layer.strip_add(strip_type);
 
   // TODO: notifiers.
@@ -399,6 +422,7 @@ static void rna_def_animation_layers(BlenderRNA *brna, PropertyRNA *cprop)
 
   /* Animation.layers.new(...) */
   func = RNA_def_function(srna, "new", "rna_Animation_layers_new");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Add a layer to the animation");
   parm = RNA_def_string(func,
                         "name",
@@ -497,6 +521,7 @@ static void rna_def_animationlayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
   /* Layer.strips.new(type='...') */
   func = RNA_def_function(srna, "new", "rna_AnimationStrips_new");
   RNA_def_function_ui_description(func, "Add a new infinite strip to the layer");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_enum(func,
                       "type",
                       rna_enum_strip_type_items,
@@ -690,18 +715,6 @@ static void rna_def_animation_strip(BlenderRNA *brna)
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, prop_type_items);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-
-  prop = RNA_def_property(srna, "frame_start", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Frame Start", "");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_Animation_tag_animupdate");
-
-  prop = RNA_def_property(srna, "frame_end", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_ui_text(prop, "End", "");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_Animation_tag_animupdate");
-
-  prop = RNA_def_property(srna, "frame_offset", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Offset", "");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_Animation_tag_animupdate");
 
   /* Define Strip subclasses. */
   rna_def_animation_keyframe_strip(brna);
