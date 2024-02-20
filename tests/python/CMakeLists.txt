@@ -387,6 +387,11 @@ add_blender_test(
 )
 
 add_blender_test(
+  bl_animation_id
+  --python ${CMAKE_CURRENT_LIST_DIR}/bl_animation_id.py
+)
+
+add_blender_test(
   bl_animation_keyframing
   --python ${CMAKE_CURRENT_LIST_DIR}/bl_animation_keyframing.py
   --

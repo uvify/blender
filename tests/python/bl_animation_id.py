@@ -8,7 +8,7 @@ import sys
 import bpy
 
 """
-blender -b --factory-startup --python tests/python/bl_animation_id.py --
+blender -b --factory-startup --python tests/python/bl_animation_id.py
 """
 
 
@@ -107,10 +107,9 @@ def main():
     global args
     import argparse
 
+    argv = [sys.argv[0]]
     if '--' in sys.argv:
-        argv = [sys.argv[0]] + sys.argv[sys.argv.index('--') + 1:]
-    else:
-        argv = sys.argv
+        argv += sys.argv[sys.argv.index('--') + 1:]
 
     parser = argparse.ArgumentParser()
     args, remaining = parser.parse_known_args(argv)
