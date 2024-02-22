@@ -9,6 +9,7 @@
 #include "BKE_fcurve.h"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_object.hh"
 
 #include "DNA_anim_types.h"
@@ -25,8 +26,8 @@
 namespace blender::animrig::tests {
 class AnimationLayersTest : public testing::Test {
  public:
-  Animation anim;
-
+  Main *bmain;
+  Animation *anim;
   Object *cube;
   Object *suzanne;
 
@@ -46,38 +47,38 @@ class AnimationLayersTest : public testing::Test {
 
   void SetUp() override
   {
-    anim = {};
-    STRNCPY_UTF8(anim.id.name, "ANÄnimåtië");
-
-    cube = BKE_object_add_only_object(nullptr, OB_EMPTY, "Küüübus");
-    suzanne = BKE_object_add_only_object(nullptr, OB_EMPTY, "OBSuzanne");
+    bmain = BKE_main_new();
+    anim = static_cast<Animation *>(BKE_id_new(bmain, ID_AN, "ANÄnimåtië"));
+    cube = BKE_object_add_only_object(bmain, OB_EMPTY, "Küüübus");
+    suzanne = BKE_object_add_only_object(bmain, OB_EMPTY, "OBSuzanne");
   }
 
   void TearDown() override
   {
-    BKE_id_free(nullptr, &cube->id);
-    BKE_id_free(nullptr, &suzanne->id);
-    anim.wrap().free_data();
+    BKE_id_free(bmain, &cube->id);
+    BKE_id_free(bmain, &suzanne->id);
+    BKE_id_free(bmain, &anim->id);
+    BKE_main_free(bmain);
   }
 };
 
 TEST_F(AnimationLayersTest, add_layer)
 {
-  Layer *layer = anim.layer_add("layer name");
+  Layer *layer = anim->layer_add("layer name");
 
-  EXPECT_EQ(anim.layer(0), layer);
+  EXPECT_EQ(anim->layer(0), layer);
   EXPECT_EQ("layer name", std::string(layer->name));
   EXPECT_EQ(1.0f, layer->influence) << "Expected DNA defaults to be used.";
-  EXPECT_EQ(0, anim.layer_active_index)
+  EXPECT_EQ(0, anim->layer_active_index)
       << "Expected newly added layer to become the active layer.";
   ASSERT_EQ(0, layer->strips().size()) << "Expected newly added layer to have no strip.";
 }
 
 TEST_F(AnimationLayersTest, remove_layer)
 {
-  Layer &layer0 = *anim.layer_add("Test Læür nul");
-  Layer &layer1 = *anim.layer_add("Test Læür één");
-  Layer &layer2 = *anim.layer_add("Test Læür twee");
+  Layer &layer0 = *anim->layer_add("Test Læür nul");
+  Layer &layer1 = *anim->layer_add("Test Læür één");
+  Layer &layer2 = *anim->layer_add("Test Læür twee");
 
   /* Add some strips to check that they are freed correctly too (implicitly by the
    * memory leak checker). */
@@ -86,26 +87,26 @@ TEST_F(AnimationLayersTest, remove_layer)
   layer2.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
 
   { /* Test removing a layer that is not owned. */
-    Animation other_anim = {};
-    Layer &other_layer = *other_anim.layer_add("Another Layer");
-    EXPECT_FALSE(anim.layer_remove(other_layer))
+    Animation *other_anim = static_cast<Animation *>(BKE_id_new(bmain, ID_AN, "ANOtherAnim"));
+    Layer &other_layer = *other_anim->layer_add("Another Layer");
+    EXPECT_FALSE(anim->layer_remove(other_layer))
         << "Removing a layer not owned by the animation should be gracefully rejected";
-    other_anim.wrap().free_data();
+    BKE_id_free(bmain, &other_anim->id);
   }
 
-  EXPECT_TRUE(anim.layer_remove(layer1));
-  EXPECT_EQ(2, anim.layers().size());
+  EXPECT_TRUE(anim->layer_remove(layer1));
+  EXPECT_EQ(2, anim->layers().size());
 
-  EXPECT_TRUE(anim.layer_remove(layer2));
-  EXPECT_EQ(1, anim.layers().size());
+  EXPECT_TRUE(anim->layer_remove(layer2));
+  EXPECT_EQ(1, anim->layers().size());
 
-  EXPECT_TRUE(anim.layer_remove(layer0));
-  EXPECT_EQ(0, anim.layers().size());
+  EXPECT_TRUE(anim->layer_remove(layer0));
+  EXPECT_EQ(0, anim->layers().size());
 }
 
 TEST_F(AnimationLayersTest, add_strip)
 {
-  Layer *layer = anim.layer_add("Test Læür");
+  Layer *layer = anim->layer_add("Test Læür");
 
   Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
   ASSERT_EQ(1, layer->strips().size());
@@ -126,21 +127,21 @@ TEST_F(AnimationLayersTest, add_strip)
 
   /* Add some keys to check that also the strip data is freed correctly. */
   const KeyframeSettings settings = get_keyframe_settings(false);
-  Output &out = *anim.output_add();
+  Output &out = *anim->output_add();
   strip->as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
   another_strip->as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
 }
 
 TEST_F(AnimationLayersTest, remove_strip)
 {
-  Layer &layer = *anim.layer_add("Test Læür");
+  Layer &layer = *anim->layer_add("Test Læür");
   Strip &strip0 = *layer.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
   Strip &strip1 = *layer.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
   Strip &strip2 = *layer.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
 
   /* Add some keys to check that also the strip data is freed correctly. */
   const KeyframeSettings settings = get_keyframe_settings(false);
-  Output &out = *anim.output_add();
+  Output &out = *anim->output_add();
   strip0.as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
   strip1.as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
   strip2.as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
@@ -155,7 +156,7 @@ TEST_F(AnimationLayersTest, remove_strip)
   EXPECT_EQ(0, layer.strips().size());
 
   { /* Test removing a strip that is not owned. */
-    Layer &other_layer = *anim.layer_add("Another Layer");
+    Layer &other_layer = *anim->layer_add("Another Layer");
     Strip &other_strip = *other_layer.strip_add(ANIM_STRIP_TYPE_KEYFRAME);
 
     EXPECT_FALSE(layer.strip_remove(other_strip))
@@ -165,8 +166,8 @@ TEST_F(AnimationLayersTest, remove_strip)
 
 TEST_F(AnimationLayersTest, add_output)
 {
-  Output *out = anim.output_add();
-  EXPECT_EQ(1, anim.last_output_stable_index);
+  Output *out = anim->output_add();
+  EXPECT_EQ(1, anim->last_output_stable_index);
   ASSERT_NE(nullptr, out);
   EXPECT_EQ(1, out->stable_index);
 
@@ -181,12 +182,12 @@ TEST_F(AnimationLayersTest, add_output)
 
 TEST_F(AnimationLayersTest, add_output_multiple)
 {
-  Output *out_cube = anim.output_add();
-  Output *out_suzanne = anim.output_add();
+  Output *out_cube = anim->output_add();
+  Output *out_suzanne = anim->output_add();
   EXPECT_TRUE(out_cube->assign_id(&cube->id));
   EXPECT_TRUE(out_suzanne->assign_id(&suzanne->id));
 
-  EXPECT_EQ(2, anim.last_output_stable_index);
+  EXPECT_EQ(2, anim->last_output_stable_index);
   EXPECT_EQ(1, out_cube->stable_index);
   EXPECT_EQ(2, out_suzanne->stable_index);
 }
@@ -194,8 +195,8 @@ TEST_F(AnimationLayersTest, add_output_multiple)
 TEST_F(AnimationLayersTest, anim_assign_id)
 {
   /* Assign to the only, 'virgin' Output, should always work. */
-  Output *out_cube = anim.output_add();
-  ASSERT_TRUE(anim.assign_id(out_cube, &cube->id));
+  Output *out_cube = anim->output_add();
+  ASSERT_TRUE(anim->assign_id(out_cube, &cube->id));
   EXPECT_EQ(out_cube->stable_index, cube->adt->output_stable_index);
   EXPECT_STREQ(out_cube->name, cube->id.name)
       << "The output should be named after the assigned ID";
@@ -203,21 +204,21 @@ TEST_F(AnimationLayersTest, anim_assign_id)
       << "The output name should be copied to the adt";
 
   /* Assign another ID to the same Output. */
-  ASSERT_TRUE(anim.assign_id(out_cube, &suzanne->id));
+  ASSERT_TRUE(anim->assign_id(out_cube, &suzanne->id));
   EXPECT_STREQ(out_cube->name, cube->id.name)
       << "The output should not be renamed on assignment once it has a name";
   EXPECT_STREQ(out_cube->name, cube->adt->output_name)
       << "The output name should be copied to the adt";
 
   /* Assign Cube to another output without unassigning first. */
-  Output *another_out_cube = anim.output_add();
-  ASSERT_FALSE(anim.assign_id(another_out_cube, &cube->id))
+  Output *another_out_cube = anim->output_add();
+  ASSERT_FALSE(anim->assign_id(another_out_cube, &cube->id))
       << "Assigning animation (with this function) when already assigned should fail.";
 
   /* Assign Cube to another 'virgin' output. This should not cause a name
    * collision between the Outputs. */
-  anim.unassign_id(&cube->id);
-  ASSERT_TRUE(anim.assign_id(another_out_cube, &cube->id));
+  anim->unassign_id(&cube->id);
+  ASSERT_TRUE(anim->assign_id(another_out_cube, &cube->id));
   EXPECT_EQ(another_out_cube->stable_index, cube->adt->output_stable_index);
   EXPECT_STREQ("OBKüüübus.001", another_out_cube->name) << "The output should be uniquely named";
   EXPECT_STREQ("OBKüüübus.001", cube->adt->output_name)
@@ -225,7 +226,7 @@ TEST_F(AnimationLayersTest, anim_assign_id)
 
   /* Create an ID of another type. This should not be assignable to this output. */
   ID *mesh = static_cast<ID *>(BKE_id_new_nomain(ID_ME, "Mesh"));
-  EXPECT_FALSE(anim.assign_id(out_cube, mesh))
+  EXPECT_FALSE(anim->assign_id(out_cube, mesh))
       << "Mesh should not be animatable by an Object output";
   BKE_id_free(nullptr, mesh);
 }
@@ -234,16 +235,16 @@ TEST_F(AnimationLayersTest, find_suitable_output)
 {
   /* ===
    * Empty case, no outputs exist yet and the ID doesn't even have an AnimData. */
-  EXPECT_EQ(nullptr, anim.find_suitable_output_for(&cube->id));
+  EXPECT_EQ(nullptr, anim->find_suitable_output_for(&cube->id));
 
   /* ===
    * Output exists with the same name & type as the ID, but the ID doesn't have any AnimData yet.
    * These should nevertheless be matched up. */
-  Output *out = anim.output_add();
+  Output *out = anim->output_add();
   out->stable_index = 327;
   STRNCPY_UTF8(out->name, "OBKüüübus");
   out->idtype = GS(cube->id.name);
-  EXPECT_EQ(out, anim.find_suitable_output_for(&cube->id));
+  EXPECT_EQ(out, anim->find_suitable_output_for(&cube->id));
 
   /* ===
    * Output exists with the same name & type as the ID, and the ID has an AnimData with the same
@@ -252,7 +253,7 @@ TEST_F(AnimationLayersTest, find_suitable_output)
    * matching. */
 
   /* Create an output with the stable index that should be ignored.*/
-  Output *other_out = anim.output_add();
+  Output *other_out = anim->output_add();
   other_out->stable_index = 47;
 
   AnimData *adt = BKE_animdata_ensure_id(&cube->id);
@@ -260,22 +261,22 @@ TEST_F(AnimationLayersTest, find_suitable_output)
   /* Configure adt to use the stable index of one output, and the name of the other. */
   adt->output_stable_index = other_out->stable_index;
   STRNCPY_UTF8(adt->output_name, out->name);
-  EXPECT_EQ(out, anim.find_suitable_output_for(&cube->id));
+  EXPECT_EQ(out, anim->find_suitable_output_for(&cube->id));
 
   /* ===
    * Same situation as above (AnimData has name of one output, but stable index of another), except
    * that the animation data-block has already been assigned. In this case the stable index should
    * take precedence. */
-  adt->animation = &anim;
-  id_us_plus(&anim.id);
-  EXPECT_EQ(other_out, anim.find_suitable_output_for(&cube->id));
+  adt->animation = anim;
+  id_us_plus(&anim->id);
+  EXPECT_EQ(other_out, anim->find_suitable_output_for(&cube->id));
 
   /* ===
    * An output exists, but doesn't match anything in the anim data of the cube. This should fall
    * back to using the ID name. */
   adt->output_stable_index = 161;
   STRNCPY_UTF8(adt->output_name, "¿¿What's this??");
-  EXPECT_EQ(out, anim.find_suitable_output_for(&cube->id));
+  EXPECT_EQ(out, anim->find_suitable_output_for(&cube->id));
 }
 
 TEST_F(AnimationLayersTest, strip)
@@ -317,9 +318,9 @@ TEST_F(AnimationLayersTest, strip)
 
 TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
 {
-  Output *out = anim.output_add();
+  Output *out = anim->output_add();
   EXPECT_TRUE(out->assign_id(&cube->id));
-  Layer *layer = anim.layer_add("Kübus layer");
+  Layer *layer = anim->layer_add("Kübus layer");
 
   Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
   KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
