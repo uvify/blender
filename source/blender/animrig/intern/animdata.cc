@@ -198,7 +198,7 @@ const FCurve *fcurve_find_by_rna_path(const Animation &anim,
   for (int layer_idx = anim.layer_array_num - 1; layer_idx >= 0; layer_idx--) {
     const Layer *layer = anim.layer(layer_idx);
 
-    /* TODO: refactor this into something nicer. */
+    /* TODO: refactor this into something nicer once we have different strip types. */
     for (const Strip *strip : layer->strips()) {
       switch (strip->type) {
         case ANIM_STRIP_TYPE_KEYFRAME: {
