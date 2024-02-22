@@ -508,7 +508,7 @@ bool Strip::contains_frame(const float frame_time) const
 
 bool Strip::is_last_frame(const float frame_time) const
 {
-  /* TODO: Maybe this needs a more advanced equality check. Implement that when
+  /* Maybe this needs a more advanced equality check. Implement that when
    * we have an actual example case that breaks. */
   return this->frame_end == frame_time;
 }

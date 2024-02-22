@@ -219,9 +219,6 @@ EvaluationResult blend_layer_results(const EvaluationResult &last_result,
    * them in parallel, instead of iterating over one and doing map lookups on
    * the other. */
 
-  /* TODO?: make `last_result` non-const, as it's likely faster to update that,
-   * instead of copying everything and updating the copy. */
-
   EvaluationResult blend = last_result;
 
   for (auto channel_result : current_result.items()) {

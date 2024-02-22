@@ -234,8 +234,6 @@ static void animation_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   animrig::Animation &anim = reinterpret_cast<Animation *>(id)->wrap();
 
-  /* TODO: split up into multiple functions. */
-
   for (animrig::Layer *layer : anim.layers()) {
     for (animrig::Strip *strip : layer->strips()) {
       switch (strip->type) {

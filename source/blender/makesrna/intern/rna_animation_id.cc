@@ -465,8 +465,8 @@ static void rna_def_animation(BlenderRNA *brna)
                                     "rna_iterator_array_end",
                                     "rna_iterator_array_dereference_get",
                                     "rna_iterator_animation_outputs_length",
-                                    nullptr, /* TODO */
-                                    nullptr, /* TODO */
+                                    nullptr,
+                                    nullptr,
                                     nullptr);
   RNA_def_property_ui_text(prop, "Outputs", "The list of data-blocks animated by this Animation");
   rna_def_animation_outputs(brna, prop);
@@ -479,8 +479,8 @@ static void rna_def_animation(BlenderRNA *brna)
                                     "rna_iterator_array_end",
                                     "rna_iterator_array_dereference_get",
                                     "rna_iterator_animation_layers_length",
-                                    nullptr, /* TODO */
-                                    nullptr, /* TODO */
+                                    nullptr,
+                                    nullptr,
                                     nullptr);
   RNA_def_property_ui_text(prop, "Layers", "The list of layers that make up this Animation");
   rna_def_animation_layers(brna, prop);
@@ -579,8 +579,8 @@ static void rna_def_animation_layer(BlenderRNA *brna)
                                     "rna_iterator_array_end",
                                     "rna_iterator_array_dereference_get",
                                     "rna_iterator_animationlayer_strips_length",
-                                    nullptr, /* TODO */
-                                    nullptr, /* TODO */
+                                    nullptr,
+                                    nullptr,
                                     nullptr);
   RNA_def_property_ui_text(prop, "Strips", "The list of strips that are on this animation layer");
 
@@ -616,8 +616,8 @@ static void rna_def_animation_keyframe_strip(BlenderRNA *brna)
                                     "rna_iterator_array_end",
                                     "rna_iterator_array_dereference_get",
                                     "rna_iterator_keyframestrip_chans_for_out_length",
-                                    nullptr, /* TODO */
-                                    nullptr, /* TODO */
+                                    nullptr,
+                                    nullptr,
                                     nullptr);
   rna_def_keyframestrip_channels_for_outputs(brna, prop);
 
@@ -749,8 +749,8 @@ static void rna_def_animation_channels_for_output(BlenderRNA *brna)
                                     "rna_iterator_array_end",
                                     "rna_iterator_array_dereference_get",
                                     "rna_iterator_ChansForOut_fcurves_length",
-                                    nullptr, /* TODO */
-                                    nullptr, /* TODO */
+                                    nullptr,
+                                    nullptr,
                                     nullptr);
   RNA_def_property_struct_type(prop, "FCurve");
   RNA_def_property_ui_text(prop, "F-Curves", "The individual F-Curves that animate the output");

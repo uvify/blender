@@ -21,7 +21,6 @@ class PropIdentifier {
   PropIdentifier() = default;
   ~PropIdentifier() = default;
 
-  /* TODO: should we use the PointerRNA or PropertyRNA type here instead? */
   PropIdentifier(const StringRef rna_path, const int array_index)
       : rna_path(rna_path), array_index(array_index)
   {

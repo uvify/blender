@@ -352,7 +352,9 @@ bool BKE_lib_override_library_property_is_animated(
     FCurve *fcurve;
     char *index_token_start = const_cast<char *>(
         RNA_path_array_index_token_find(liboverride_prop->rna_path, override_rna_prop));
-    const float frame_time = 0.0f; /* TODO: see if we can get the current frame from somewhere. */
+    /* TODO: when we add support for finite strips, we'll need to get the current frame
+     * from somewhere to know which strip to get the fcurve from. */
+    const float frame_time = 0.0f;
     if (index_token_start != nullptr) {
       const char index_token_start_backup = *index_token_start;
       *index_token_start = '\0';

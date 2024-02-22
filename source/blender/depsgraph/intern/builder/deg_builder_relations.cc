@@ -1830,7 +1830,6 @@ void DepsgraphRelationBuilder::build_animation(Animation *animation)
 
   build_idproperties(animation->id.properties);
 
-  /* TODO: if the animation is empty, skip adding this relation. */
   TimeSourceKey time_src_key;
   ComponentKey animation_key(&animation->id, NodeType::ANIMATION);
   add_relation(time_src_key, animation_key, "TimeSrc -> Animation");

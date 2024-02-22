@@ -1381,8 +1381,6 @@ typedef struct AnimationChannelsForOutput {
   int32_t output_stable_index;
 
   /* Erased when saving to disk, see fcurve_listbase below. */
-  /* TODO: when converting this listbase to array, make sure the fcurve next/prev pointers are nil
-   * to avoid accidental 'compatibility' with LISTBASE_FOREACH and friends. */
   int fcurve_array_num;
   FCurve **fcurve_array; /* Array of 'fcurve_array_num' FCurves. */
 

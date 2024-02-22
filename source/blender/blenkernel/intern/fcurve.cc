@@ -252,7 +252,9 @@ FCurve *id_data_find_fcurve(
   /* FIXME: The way drivers are handled here (always nullptr-ifying `fcu`) is very weird, this
    * needs to be re-checked I think?. */
   bool is_driven = false;
-  const float frame_time = 0.0f; /* TODO: see if we can get the current frame from somewhere. */
+  /* TODO: when we add support for finite strips, we'll need to get the current frame
+   * from somewhere to know which strip to get the fcurve from. */
+  const float frame_time = 0.0f;
   FCurve *fcu = BKE_animadata_fcurve_find_by_rna_path(
       id, adt, frame_time, path->c_str(), index, nullptr, &is_driven);
   if (is_driven) {
@@ -368,8 +370,9 @@ FCurve *BKE_animadata_fcurve_find_by_rna_path(const ID *id,
 
   /* Animation data-block takes priority over Action data-block. */
   if (animdata->animation) {
-    // TODO: this branch probably also needs a `Animation *r_anim` parameter for full
-    // compatibility with the Action-based uses.
+    /* TODO: this branch probably also needs a `Animation *r_anim` parameter for full
+     * compatibility with the Action-based uses.  Even better: change to return a
+     * result struct with all the relevant information/data. */
     const FCurve *fcu = blender::animrig::fcurve_find_by_rna_path(
         animdata->animation->wrap(), id, frame_time, rna_path, rna_index);
     if (fcu) {
