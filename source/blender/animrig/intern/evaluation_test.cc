@@ -67,7 +67,7 @@ class AnimationEvaluationTest : public testing::Test {
   {
     BKE_id_free(nullptr, &cube->id);
 
-    BKE_animation_free_data(&anim);
+    anim.wrap().free_data();
   }
 
   /** Evaluate the layer, and return result for the given property. */

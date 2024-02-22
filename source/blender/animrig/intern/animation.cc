@@ -318,6 +318,24 @@ Output *Animation::find_suitable_output_for(const ID *animated_id)
   return nullptr;
 }
 
+void Animation::free_data()
+{
+  /* Free layers. */
+  for (Layer *layer : this->layers()) {
+    BKE_animation_layer_free_data(layer);
+    MEM_delete(layer);
+  }
+  MEM_SAFE_FREE(this->layer_array);
+  this->layer_array_num = 0;
+
+  /* Free outputs. */
+  for (Output *output : this->outputs()) {
+    MEM_delete(output);
+  }
+  MEM_SAFE_FREE(this->output_array);
+  this->output_array_num = 0;
+}
+
 bool Animation::assign_id(Output *output, ID *animated_id)
 {
   AnimData *adt = BKE_animdata_ensure_id(animated_id);

@@ -104,6 +104,14 @@ class Animation : public ::Animation {
    * output name, and only works when this Animation is already assigned. */
   Output *find_suitable_output_for(const ID *animated_id);
 
+  /**
+   * Free all data in the `Animation`.
+   *
+   * The `Animation` will effectively be like a freshly-created, empty `Animation`
+   * after this is called.
+   */
+  void free_data();
+
  protected:
   /** Return the layer's index, or -1 if not found in this animation. */
   int64_t find_layer_index(const Layer &layer) const;

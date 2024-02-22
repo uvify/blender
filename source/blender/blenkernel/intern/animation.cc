@@ -166,30 +166,10 @@ static AnimationChannelsForOutput *anim_channels_for_output_duplicate(
   return channels_dup;
 }
 
-void BKE_animation_free_data(Animation *animation)
-{
-  /* TODO: move this entire function into the animrig::Animation class. */
-  animrig::Animation &anim = animation->wrap();
-
-  /* Free layers. */
-  for (animrig::Layer *layer : anim.layers()) {
-    BKE_animation_layer_free_data(layer);
-    MEM_delete(layer);
-  }
-  MEM_SAFE_FREE(animation->layer_array);
-  animation->layer_array_num = 0;
-
-  for (animrig::Output *output : anim.outputs()) {
-    MEM_delete(output);
-  }
-  MEM_SAFE_FREE(animation->output_array);
-  animation->output_array_num = 0;
-}
-
 /** Free (or release) any data used by this animation (does not free the animation itself). */
 static void animation_free_data(ID *id)
 {
-  BKE_animation_free_data((Animation *)id);
+  ((Animation *)id)->wrap().free_data();
 }
 
 void BKE_animation_layer_free_data(AnimationLayer *dna_layer)

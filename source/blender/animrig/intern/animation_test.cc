@@ -57,7 +57,7 @@ class AnimationLayersTest : public testing::Test {
   {
     BKE_id_free(nullptr, &cube->id);
     BKE_id_free(nullptr, &suzanne->id);
-    BKE_animation_free_data(&anim);
+    anim.wrap().free_data();
   }
 };
 
@@ -90,7 +90,7 @@ TEST_F(AnimationLayersTest, remove_layer)
     Layer &other_layer = *other_anim.layer_add("Another Layer");
     EXPECT_FALSE(anim.layer_remove(other_layer))
         << "Removing a layer not owned by the animation should be gracefully rejected";
-    BKE_animation_free_data(&other_anim);
+    other_anim.wrap().free_data();
   }
 
   EXPECT_TRUE(anim.layer_remove(layer1));
