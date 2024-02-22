@@ -208,8 +208,7 @@ class Strip : public ::AnimationStrip {
   Strip(const Strip &other) = default;
   ~Strip() = default;
 
-  // TODO: add? Maybe?
-  // template<typename T> bool is() const;
+  template<typename T> bool is() const;
   template<typename T> T &as();
   template<typename T> const T &as() const;
 

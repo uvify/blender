@@ -616,17 +616,20 @@ ChannelsForOutput *KeyframeStrip::channels_for_output_at(const int64_t array_ind
   return &this->channels_for_output_array[array_index]->wrap();
 }
 
+template<> bool Strip::is<KeyframeStrip>() const
+{
+  return type == ANIM_STRIP_TYPE_KEYFRAME;
+}
+
 template<> KeyframeStrip &Strip::as<KeyframeStrip>()
 {
-  BLI_assert_msg(type == ANIM_STRIP_TYPE_KEYFRAME,
-                 "Strip is not of type ANIM_STRIP_TYPE_KEYFRAME");
+  BLI_assert_msg(this->is<KeyframeStrip>(), "Strip is not a KeyframeStrip");
   return *reinterpret_cast<KeyframeStrip *>(this);
 }
 
 template<> const KeyframeStrip &Strip::as<KeyframeStrip>() const
 {
-  BLI_assert_msg(type == ANIM_STRIP_TYPE_KEYFRAME,
-                 "Strip is not of type ANIM_STRIP_TYPE_KEYFRAME");
+  BLI_assert_msg(this->is<KeyframeStrip>(), "Strip is not a KeyframeStrip");
   return *reinterpret_cast<const KeyframeStrip *>(this);
 }
 
