@@ -31,6 +31,11 @@ struct KeyframeSettings {
  */
 KeyframeSettings get_keyframe_settings(bool from_userprefs);
 
+/**
+ * Create an fcurve for a specific channel, pre-set-up with default flags and interpolation mode.
+ */
+FCurve *create_fcurve_for_channel(const char rna_path[], const int array_index);
+
 /** Initialize the given BezTriple with default values. */
 void initialize_bezt(BezTriple *beztr,
                      float2 position,

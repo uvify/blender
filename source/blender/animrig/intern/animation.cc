@@ -634,14 +634,7 @@ FCurve *KeyframeStrip::fcurve_find_or_create(const Output &out,
     return fcurve;
   }
 
-  /* Copied from ED_action_fcurve_ensure(). */
-  /* TODO: move to separate function, call that from both places. */
-  fcurve = BKE_fcurve_create();
-  fcurve->rna_path = BLI_strdup(rna_path.c_str());
-  fcurve->array_index = array_index;
-
-  fcurve->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
-  fcurve->auto_smoothing = U.auto_smoothing_new;
+  fcurve = create_fcurve_for_channel(rna_path.c_str(), array_index);
 
   ChannelsForOutput *channels = this->chans_for_out(out);
   if (channels == nullptr) {
