@@ -172,17 +172,6 @@ static void animation_free_data(ID *id)
   ((Animation *)id)->wrap().free_data();
 }
 
-void BKE_animation_layer_free_data(AnimationLayer *dna_layer)
-{
-  animrig::Layer &layer = dna_layer->wrap();
-  for (animrig::Strip *strip : layer.strips()) {
-    BKE_animation_strip_free_data(strip);
-    MEM_delete(strip);
-  }
-  MEM_SAFE_FREE(layer.strip_array);
-  layer.strip_array_num = 0;
-}
-
 void BKE_animation_strip_free_data(AnimationStrip *strip)
 {
   anim_strip_freeer freeer = get_strip_freeer(eAnimationStrip_type(strip->type));

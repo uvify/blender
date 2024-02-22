@@ -145,6 +145,14 @@ class Layer : public ::AnimationLayer {
    * \return true when the strip was found & removed, false if it wasn't found. */
   bool strip_remove(Strip &strip);
 
+  /**
+   * Free all data in the `Layer`.
+   *
+   * The `Layer` will effectively be like a freshly-created, empty `Layer`
+   * after this is called.
+   */
+  void free_data();
+
  protected:
   /** Return the strip's index, or -1 if not found in this layer. */
   int64_t find_strip_index(const Strip &strip) const;

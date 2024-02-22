@@ -145,7 +145,7 @@ bool Animation::layer_remove(Layer &layer_to_remove)
 
   shrink_array<::AnimationLayer *>(&this->layer_array, &this->layer_array_num, 1);
 
-  BKE_animation_layer_free_data(&layer_to_remove);
+  layer_to_remove.free_data();
   MEM_delete(&layer_to_remove);
 
   return true;
@@ -322,7 +322,7 @@ void Animation::free_data()
 {
   /* Free layers. */
   for (Layer *layer : this->layers()) {
-    BKE_animation_layer_free_data(layer);
+    layer->free_data();
     MEM_delete(layer);
   }
   MEM_SAFE_FREE(this->layer_array);
@@ -458,6 +458,16 @@ int64_t Layer::find_strip_index(const Strip &strip) const
     }
   }
   return -1;
+}
+
+void Layer::free_data()
+{
+  for (Strip *strip : this->strips()) {
+    BKE_animation_strip_free_data(strip);
+    MEM_delete(strip);
+  }
+  MEM_SAFE_FREE(this->strip_array);
+  this->strip_array_num = 0;
 }
 
 /* ----- AnimationOutput C++ implementation ----------- */
