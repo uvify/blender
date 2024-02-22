@@ -131,6 +131,7 @@ static void rna_iterator_array_begin(CollectionPropertyIterator *iter, MutableSp
 }
 
 static AnimationOutput *rna_Animation_outputs_new(Animation *anim_id,
+                                                  bContext *C,
                                                   ReportList *reports,
                                                   ID *animated_id)
 {
@@ -145,7 +146,8 @@ static AnimationOutput *rna_Animation_outputs_new(Animation *anim_id,
   animrig::Animation &anim = anim_id->wrap();
   animrig::Output *output = anim.output_add();
   output->assign_id(animated_id);
-  // TODO: notifiers.
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
   return output;
 }
 
@@ -257,6 +259,7 @@ static int rna_iterator_animationlayer_strips_length(PointerRNA *ptr)
 }
 
 AnimationStrip *rna_AnimationStrips_new(AnimationLayer *dna_layer,
+                                        bContext *C,
                                         ReportList *reports,
                                         const int type)
 {
@@ -273,7 +276,7 @@ AnimationStrip *rna_AnimationStrips_new(AnimationLayer *dna_layer,
 
   animrig::Strip *strip = layer.strip_add(strip_type);
 
-  // TODO: notifiers.
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
   return strip;
 }
 
@@ -399,7 +402,7 @@ static void rna_def_animation_outputs(BlenderRNA *brna, PropertyRNA *cprop)
   /* Animation.outputs.new(...) */
   func = RNA_def_function(srna, "new", "rna_Animation_outputs_new");
   RNA_def_function_ui_description(func, "Add an output to the animation");
-  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   parm = RNA_def_pointer(
       func, "animated_id", "ID", "Data-Block", "Data-block that will be animated by this output");
 
@@ -521,7 +524,7 @@ static void rna_def_animationlayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
   /* Layer.strips.new(type='...') */
   func = RNA_def_function(srna, "new", "rna_AnimationStrips_new");
   RNA_def_function_ui_description(func, "Add a new infinite strip to the layer");
-  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   parm = RNA_def_enum(func,
                       "type",
                       rna_enum_strip_type_items,
