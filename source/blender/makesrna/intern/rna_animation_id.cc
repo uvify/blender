@@ -236,6 +236,14 @@ static void rna_AnimationOutput_name_set(PointerRNA *ptr, const char *name)
   anim.output_name_set(output, name);
 }
 
+static void rna_AnimationOutput_name_update(Main *bmain, Scene *, PointerRNA *ptr)
+{
+  animrig::Animation &anim = rna_animation(ptr);
+  animrig::Output &output = rna_data_output(ptr);
+
+  anim.output_name_propagate(bmain, output);
+}
+
 static std::optional<std::string> rna_AnimationLayer_path(const PointerRNA *ptr)
 {
   animrig::Layer &layer = rna_data_layer(ptr);
@@ -503,7 +511,7 @@ static void rna_def_animation_output(BlenderRNA *brna)
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_AnimationOutput_name_set");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, nullptr);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimationOutput_name_update");
 
   prop = RNA_def_property(srna, "stable_index", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

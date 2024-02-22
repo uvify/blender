@@ -24,6 +24,7 @@
 struct AnimationEvalContext;
 struct FCurve;
 struct ID;
+struct Main;
 struct PointerRNA;
 
 namespace blender::animrig {
@@ -72,8 +73,19 @@ class Animation : public ::Animation {
    *
    * This has to be done on the Animation level to ensure each output has a
    * unique name within the Animation.
+   *
+   * \see Animation::output_name_propagate
    */
   void output_name_set(Output &out, StringRefNull new_name);
+
+  /**
+   * Update the `AnimData::animation_output_name` field of any ID that is animated by this.Output.
+   *
+   * Should be called after `output_name_set(out)`. This is implemented as a separate function due
+   * to the need to access bmain, which is available in the RNA on-property-update handler, but not
+   * in the RNA property setter. */
+  void output_name_propagate(Main *bmain, const Output &out);
+
   Output *output_find_by_name(StringRefNull output_name);
 
   Output *output_for_id(const ID *animated_id);
@@ -170,6 +182,7 @@ class Output : public ::AnimationOutput {
    * Let the given ID receive animation from this output.
    *
    * This is a low-level function; for most purposes you want
+
    * #Animation::assign_id instead.
    *
    * \note This does _not_ set animated_id->adt->animation to the owner of this

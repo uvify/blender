@@ -17,6 +17,7 @@
 #include "BKE_animation.hh"
 #include "BKE_fcurve.h"
 #include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 
 #include "ED_keyframing.hh"
 
@@ -229,9 +230,37 @@ void Animation::output_name_set(Output &out, const StringRefNull new_name)
 {
   STRNCPY_UTF8(out.name, new_name.c_str());
   anim_output_name_ensure_unique(*this, out);
+}
 
-  /* TODO: update `AnimData::animation_output_name` field of any ID that is animated by this.
-   *  When this gets added, reconsider the code in Animation::unassign_id((). */
+void Animation::output_name_propagate(Main *bmain, const Output &out)
+{
+  /* Just loop over all animatable IDs in the main dataabase. */
+  ListBase *lb;
+  ID *id;
+  FOREACH_MAIN_LISTBASE_BEGIN (bmain, lb) {
+    FOREACH_MAIN_LISTBASE_ID_BEGIN (lb, id) {
+      if (!id_can_have_animdata(id)) {
+        /* This ID type cannot have any animation, so ignore all and continue to
+         * the next ID type. */
+        break;
+      }
+
+      AnimData *adt = BKE_animdata_from_id(id);
+      if (!adt || adt->animation != this) {
+        /* Not animated by this Animation. */
+        continue;
+      }
+      if (adt->output_stable_index != out.stable_index) {
+        /* Not animated by this Output. */
+        continue;
+      }
+
+      /* Ensure the Output name on the AnimData is correct. */
+      STRNCPY_UTF8(adt->output_name, out.name);
+    }
+    FOREACH_MAIN_LISTBASE_ID_END;
+  }
+  FOREACH_MAIN_LISTBASE_END;
 }
 
 Output *Animation::output_find_by_name(const StringRefNull output_name)
@@ -381,8 +410,8 @@ void Animation::unassign_id(ID *animated_id)
   BLI_assert_msg(adt->animation == this, "ID is not assigned to this Animation");
 
   /* Before unassigning, make sure that the stored Output name is up to date.
-   * This can be removed when Animation::output_name_set() actually updates this whenever the
-   * output name changes. */
+   * If Blender would be bug-free, and we could assume that `Animation::output_name_propagate()`
+   * would always be called when appropriate, this code could be removed. */
   const Output *out = this->output_for_stable_index(adt->output_stable_index);
   if (out) {
     STRNCPY_UTF8(adt->output_name, out->name);

@@ -231,6 +231,34 @@ TEST_F(AnimationLayersTest, anim_assign_id)
   BKE_id_free(nullptr, mesh);
 }
 
+TEST_F(AnimationLayersTest, rename_output)
+{
+  Output *out_cube = anim->output_add();
+  ASSERT_TRUE(anim->assign_id(out_cube, &cube->id));
+  EXPECT_EQ(out_cube->stable_index, cube->adt->output_stable_index);
+  EXPECT_STREQ(out_cube->name, cube->id.name)
+      << "The output should be named after the assigned ID";
+  EXPECT_STREQ(out_cube->name, cube->adt->output_name)
+      << "The output name should be copied to the adt";
+
+  anim->output_name_set(*out_cube, "New Output Name");
+  EXPECT_STREQ("New Output Name", out_cube->name);
+  /* At this point the output name will not have been copied to the cube
+   * AnimData. However, I don't want to test for that here, as it's not exactly
+   * desirable behaviour, but more of a side-effect of the current
+   * implementation. */
+
+  anim->output_name_propagate(bmain, *out_cube);
+  EXPECT_STREQ("New Output Name", cube->adt->output_name);
+
+  /* Finally, do another rename, do NOT call the propagate function, then
+   * unassign. This should still result in the correct output name being stored
+   * on the ADT. */
+  anim->output_name_set(*out_cube, "Even Newer Name");
+  anim->unassign_id(&cube->id);
+  EXPECT_STREQ("Even Newer Name", cube->adt->output_name);
+}
+
 TEST_F(AnimationLayersTest, find_suitable_output)
 {
   /* ===
