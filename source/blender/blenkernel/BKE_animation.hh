@@ -12,11 +12,11 @@
 #pragma once
 
 struct Animation;
-struct AnimationLayer;
-struct AnimationStrip;
+struct AnimationChannelsForOutput;
 struct Main;
 
 Animation *BKE_animation_add(Main *bmain, const char name[]);
 
-/** Free any data used by this animation strip (does not free the strip itself). */
-void BKE_animation_strip_free_data(AnimationStrip *strip);
+/** Free any data used by this channels-for-output (does not free the channels-for-output itself).
+ */
+void BKE_anim_channels_for_output_free_data(AnimationChannelsForOutput *channels);

@@ -443,7 +443,7 @@ bool Layer::strip_remove(Strip &strip_to_remove)
 
   shrink_array<::AnimationStrip *>(&this->strip_array, &this->strip_array_num, 1);
 
-  BKE_animation_strip_free_data(&strip_to_remove);
+  strip_to_remove.free_data();
   MEM_delete(&strip_to_remove);
 
   return true;
@@ -463,7 +463,7 @@ int64_t Layer::find_strip_index(const Strip &strip) const
 void Layer::free_data()
 {
   for (Strip *strip : this->strips()) {
-    BKE_animation_strip_free_data(strip);
+    strip->free_data();
     MEM_delete(strip);
   }
   MEM_SAFE_FREE(this->strip_array);
@@ -550,6 +550,18 @@ void Strip::resize(const float frame_start, const float frame_end)
                  "only the start frame can be at negative infinity");
   this->frame_start = frame_start;
   this->frame_end = frame_end;
+}
+
+void Strip::free_data()
+{
+  /* This could be a map lookup, but a `switch` will emit a compiler warning when a new strip type
+   * was added to the enum and forgotten here. */
+  switch (this->type) {
+    case ANIM_STRIP_TYPE_KEYFRAME:
+      this->as<animrig::KeyframeStrip>().free_data();
+      return;
+  }
+  BLI_assert(!"unfreeable strip type!");
 }
 
 /* ----- KeyframeAnimationStrip C++ implementation ----------- */
@@ -707,6 +719,16 @@ FCurve *KeyframeStrip::keyframe_insert(const Output &out,
   }
 
   return fcurve;
+}
+
+void KeyframeStrip::free_data()
+{
+  for (ChannelsForOutput *chans_for_out : this->channels_for_output_span()) {
+    BKE_anim_channels_for_output_free_data(chans_for_out);
+    MEM_delete(chans_for_out);
+  }
+  MEM_SAFE_FREE(this->channels_for_output_array);
+  this->channels_for_output_array_num = 0;
 }
 
 /* KeyframeAnimationStrip C++ implementation. */

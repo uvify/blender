@@ -40,9 +40,6 @@ static AnimationStrip *anim_strip_duplicate_keyframe(const AnimationStrip *strip
 static AnimationChannelsForOutput *anim_channels_for_output_duplicate(
     const AnimationChannelsForOutput *channels_src);
 
-static void anim_strip_free_data_keyframe(AnimationStrip *strip);
-static void anim_channels_for_output_free_data(AnimationChannelsForOutput *channels);
-
 using anim_strip_duplicator = AnimationStrip *(*)(const AnimationStrip *strip_src);
 using anim_strip_freeer = void (*)(AnimationStrip *strip);
 
@@ -56,19 +53,6 @@ static anim_strip_duplicator get_strip_duplicator(const eAnimationStrip_type str
       return anim_strip_duplicate_keyframe;
   }
   BLI_assert(!"unduplicatable strip type!");
-  return nullptr;
-}
-
-/** Get a function that can free a strip of the given type. */
-static anim_strip_freeer get_strip_freeer(const eAnimationStrip_type strip_type)
-{
-  /* This could be a map lookup, but a `switch` will emit a compiler warning when a new strip type
-   * was added to the enum and forgotten here. */
-  switch (strip_type) {
-    case ANIM_STRIP_TYPE_KEYFRAME:
-      return anim_strip_free_data_keyframe;
-  }
-  BLI_assert(!"unfreeable strip type!");
   return nullptr;
 }
 
@@ -172,25 +156,7 @@ static void animation_free_data(ID *id)
   ((Animation *)id)->wrap().free_data();
 }
 
-void BKE_animation_strip_free_data(AnimationStrip *strip)
-{
-  anim_strip_freeer freeer = get_strip_freeer(eAnimationStrip_type(strip->type));
-  return freeer(strip);
-}
-
-static void anim_strip_free_data_keyframe(AnimationStrip *strip)
-{
-  animrig::KeyframeStrip &key_strip = strip->wrap().as<animrig::KeyframeStrip>();
-
-  for (ChannelsForOutput *chans_for_out : key_strip.channels_for_output_span()) {
-    anim_channels_for_output_free_data(chans_for_out);
-    MEM_delete(chans_for_out);
-  }
-  MEM_SAFE_FREE(key_strip.channels_for_output_array);
-  key_strip.channels_for_output_array_num = 0;
-}
-
-static void anim_channels_for_output_free_data(AnimationChannelsForOutput *channels)
+void BKE_anim_channels_for_output_free_data(AnimationChannelsForOutput *channels)
 {
   for (FCurve *fcu : channels->wrap().fcurves()) {
     BKE_fcurve_free(fcu);

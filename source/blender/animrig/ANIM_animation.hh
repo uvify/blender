@@ -211,6 +211,14 @@ class Strip : public ::AnimationStrip {
    * (negative for frame_start, positive for frame_end) are supported.
    */
   void resize(float frame_start, float frame_end);
+
+  /**
+   * Free all data in the `Strip`.
+   *
+   * The `Strip` will effectively be like a freshly-created, empty strip
+   * (of whatever strip type it is) after this is called.
+   */
+  void free_data();
 };
 static_assert(sizeof(Strip) == sizeof(::AnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");
@@ -264,6 +272,14 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
                           int array_index,
                           float2 time_value,
                           const KeyframeSettings &settings);
+
+  /**
+   * Free all data in the `KeyframeStrip`.
+   *
+   * The `KeyframeStrip` will effectively be like a freshly-created, empty
+   * `KeyframeStrip` after this is called.
+   */
+  void free_data();
 };
 static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");
