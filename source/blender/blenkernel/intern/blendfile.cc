@@ -329,7 +329,7 @@ static void swap_old_bmain_data_for_blendfile(ReuseOldBMainData *reuse_data, con
 
   std::swap(*new_lb, *old_lb);
 
-  /* TODO: Could add per-IDType control over namemaps clearing, if this becomes a performances
+  /* TODO: Could add per-IDType control over name-maps clearing, if this becomes a performances
    * concern. */
   BKE_main_namemap_clear(old_bmain);
   BKE_main_namemap_clear(new_bmain);
@@ -1224,6 +1224,9 @@ UserDef *BKE_blendfile_userdef_from_defaults()
   BKE_studiolight_default(userdef->light_param, userdef->light_ambient);
 
   BKE_preferences_asset_library_default_add(userdef);
+
+  BKE_preferences_extension_repo_add_default(userdef);
+  BKE_preferences_extension_repo_add_default_user(userdef);
 
   return userdef;
 }

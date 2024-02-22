@@ -6,7 +6,11 @@
  * \ingroup bke
  */
 
+#include <fmt/format.h>
+
+#include "BKE_anim_data.h"
 #include "BKE_attribute.hh"
+#include "BKE_colorband.hh"
 #include "BKE_colortools.hh"
 #include "BKE_curves.hh"
 #include "BKE_deform.hh"
@@ -22,6 +26,7 @@
 #include "BKE_object.hh"
 
 #include "BLI_color.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
@@ -30,15 +35,85 @@
 
 #include "BLT_translation.hh"
 
+#include "DNA_anim_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 
+#include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
 namespace blender::bke::greasepencil::convert {
+
+/* -------------------------------------------------------------------- */
+/** \name Animation conversion helpers.
+ *
+ * These utilities will call given callback over all relevant F-curves
+ * (also includes drivers, and actions linked through the NLA).
+ * \{ */
+
+static bool legacy_fcurves_process(ListBase &fcurves,
+                                   blender::FunctionRef<bool(FCurve *fcurve)> callback)
+{
+  bool is_changed = false;
+  LISTBASE_FOREACH (FCurve *, fcurve, &fcurves) {
+    const bool local_is_changed = callback(fcurve);
+    is_changed = is_changed || local_is_changed;
+  }
+  return is_changed;
+}
+
+static bool legacy_nla_strip_process(NlaStrip &nla_strip,
+                                     blender::FunctionRef<bool(FCurve *fcurve)> callback)
+{
+  bool is_changed = false;
+  if (nla_strip.act) {
+    if (legacy_fcurves_process(nla_strip.act->curves, callback)) {
+      DEG_id_tag_update(&nla_strip.act->id, ID_RECALC_ANIMATION);
+      is_changed = true;
+    }
+  }
+  LISTBASE_FOREACH (NlaStrip *, nla_strip_children, &nla_strip.strips) {
+    const bool local_is_changed = legacy_nla_strip_process(*nla_strip_children, callback);
+    is_changed = is_changed || local_is_changed;
+  }
+  return is_changed;
+}
+
+static bool legacy_animation_process(AnimData &anim_data,
+                                     blender::FunctionRef<bool(FCurve *fcurve)> callback)
+{
+  bool is_changed = false;
+  if (anim_data.action) {
+    if (legacy_fcurves_process(anim_data.action->curves, callback)) {
+      DEG_id_tag_update(&anim_data.action->id, ID_RECALC_ANIMATION);
+      is_changed = true;
+    }
+  }
+  if (anim_data.tmpact) {
+    if (legacy_fcurves_process(anim_data.tmpact->curves, callback)) {
+      DEG_id_tag_update(&anim_data.tmpact->id, ID_RECALC_ANIMATION);
+      is_changed = true;
+    }
+  }
+
+  {
+    const bool local_is_changed = legacy_fcurves_process(anim_data.drivers, callback);
+    is_changed = is_changed || local_is_changed;
+  }
+
+  LISTBASE_FOREACH (NlaTrack *, nla_track, &anim_data.nla_tracks) {
+    LISTBASE_FOREACH (NlaStrip *, nla_strip, &nla_track->strips) {
+      const bool local_is_changed = legacy_nla_strip_process(*nla_strip, callback);
+      is_changed = is_changed || local_is_changed;
+    }
+  }
+  return is_changed;
+}
+
+/* \} */
 
 /**
  * Find vertex groups that have assigned vertices in this drawing.
@@ -383,6 +458,18 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     /* TODO: Update drawing user counts. */
   }
 
+  /* Second loop, to write to layer attributes after all layers were created. */
+  MutableAttributeAccessor layer_attributes = grease_pencil.attributes_for_write();
+  SpanAttributeWriter<int> layer_passes = layer_attributes.lookup_or_add_for_write_span<int>(
+      "pass_index", bke::AttrDomain::Layer);
+
+  layer_idx = 0;
+  LISTBASE_FOREACH_INDEX (bGPDlayer *, gpl, &gpd.layers, layer_idx) {
+    layer_passes.span[layer_idx] = int(gpl->pass_index);
+  }
+
+  layer_passes.finish();
+
   /* Copy vertex group names and settings. */
   BKE_defgroup_copy_list(&grease_pencil.vertex_group_names, &gpd.vertex_group_names);
   grease_pencil.vertex_group_active_index = gpd.vertex_group_active_index;
@@ -537,7 +624,7 @@ void layer_adjustments_to_modifiers(Main &bmain,
       STRNCPY(tmd->influence.layer_name, gpl->info);
 
       char modifier_name[64];
-      BLI_snprintf(modifier_name, 64, "Tint %s", gpl->info);
+      SNPRINTF(modifier_name, "Tint %s", gpl->info);
       STRNCPY(md->name, modifier_name);
       BKE_modifier_unique_name(&dst_object.modifiers, md);
 
@@ -557,7 +644,7 @@ void layer_adjustments_to_modifiers(Main &bmain,
       auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
 
       char modifier_name[64];
-      BLI_snprintf(modifier_name, 64, "Thickness %s", gpl->info);
+      SNPRINTF(modifier_name, "Thickness %s", gpl->info);
       STRNCPY(md->modifier.name, modifier_name);
       BKE_modifier_unique_name(&dst_object.modifiers, &md->modifier);
       md->node_group = offset_radius_node_tree;
@@ -610,19 +697,108 @@ static ModifierData &legacy_object_modifier_common(Object &object,
   }
   BKE_modifier_unique_name(&object.modifiers, &new_md);
 
-  /* Handle commom modifier data. */
+  /* Handle common modifier data. */
   new_md.mode = legacy_md.mode;
   new_md.flag |= legacy_md.flag & (eModifierFlag_OverrideLibrary_Local | eModifierFlag_Active);
 
   /* Attempt to copy UI state (panels) as best as possible. */
   new_md.ui_expand_flag = legacy_md.ui_expand_flag;
 
+  /* Convert animation data if needed. */
+  AnimData *anim_data = BKE_animdata_from_id(&object.id);
+  if (anim_data) {
+    auto modifier_path_update = [&](FCurve *fcurve) -> bool {
+      /* NOTE: This logic will likely need to be re-used in other similar conditions for other
+       * areas, should be put into its own util then. */
+      if (!fcurve->rna_path) {
+        return false;
+      }
+      StringRefNull rna_path = fcurve->rna_path;
+      const std::string legacy_root_path = fmt::format("grease_pencil_modifiers[\"{}\"]",
+                                                       legacy_md.name);
+      if (!rna_path.startswith(legacy_root_path)) {
+        return false;
+      }
+      const std::string new_rna_path = fmt::format(
+          "modifiers[\"{}\"]{}", new_md.name, rna_path.substr(int64_t(legacy_root_path.size())));
+      MEM_freeN(fcurve->rna_path);
+      fcurve->rna_path = BLI_strdupn(new_rna_path.c_str(), new_rna_path.size());
+      return true;
+    };
+
+    if (legacy_animation_process(*anim_data, modifier_path_update)) {
+      DEG_id_tag_update(&object.id, ID_RECALC_ANIMATION);
+    }
+  }
+
   return new_md;
 }
 
-static void legacy_object_modifier_noise(GreasePencilNoiseModifierData &gp_md_noise,
-                                         NoiseGpencilModifierData &legacy_md_noise)
+static void legacy_object_modifier_influence(GreasePencilModifierInfluenceData &influence,
+                                             StringRef layername,
+                                             const int layer_pass,
+                                             const bool invert_layer,
+                                             const bool invert_layer_pass,
+                                             Material **material,
+                                             const int material_pass,
+                                             const bool invert_material,
+                                             const bool invert_material_pass,
+                                             StringRef vertex_group_name,
+                                             const bool invert_vertex_group,
+                                             CurveMapping **custom_curve,
+                                             const bool use_custom_curve)
 {
+  STRNCPY(influence.layer_name, layername.data());
+  if (invert_layer) {
+    influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_LAYER_FILTER;
+  }
+  influence.layer_pass = layer_pass;
+  if (layer_pass > 0) {
+    influence.flag |= GREASE_PENCIL_INFLUENCE_USE_LAYER_PASS_FILTER;
+  }
+  if (invert_layer_pass) {
+    influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_LAYER_PASS_FILTER;
+  }
+
+  if (material) {
+    influence.material = *material;
+    *material = nullptr;
+  }
+  if (invert_material) {
+    influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_FILTER;
+  }
+  influence.material_pass = material_pass;
+  if (material_pass > 0) {
+    influence.flag |= GREASE_PENCIL_INFLUENCE_USE_MATERIAL_PASS_FILTER;
+  }
+  if (invert_material_pass) {
+    influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_PASS_FILTER;
+  }
+
+  STRNCPY(influence.vertex_group_name, vertex_group_name.data());
+  if (invert_vertex_group) {
+    influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP;
+  }
+
+  if (custom_curve) {
+    if (influence.custom_curve) {
+      BKE_curvemapping_free(influence.custom_curve);
+    }
+    influence.custom_curve = *custom_curve;
+    *custom_curve = nullptr;
+  }
+  if (use_custom_curve) {
+    influence.flag |= GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE;
+  }
+}
+
+static void legacy_object_modifier_noise(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilNoise, legacy_md);
+  auto &gp_md_noise = reinterpret_cast<GreasePencilNoiseModifierData &>(md);
+  auto &legacy_md_noise = reinterpret_cast<NoiseGpencilModifierData &>(legacy_md);
+
   gp_md_noise.flag = legacy_md_noise.flag;
   gp_md_noise.factor = legacy_md_noise.factor;
   gp_md_noise.factor_strength = legacy_md_noise.factor_strength;
@@ -634,50 +810,80 @@ static void legacy_object_modifier_noise(GreasePencilNoiseModifierData &gp_md_no
   gp_md_noise.step = legacy_md_noise.step;
   gp_md_noise.seed = legacy_md_noise.seed;
 
-  STRNCPY(gp_md_noise.influence.layer_name, legacy_md_noise.layername);
-  if (legacy_md_noise.flag & GP_NOISE_INVERT_LAYER) {
-    gp_md_noise.influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_LAYER_FILTER;
-  }
-  gp_md_noise.influence.layer_pass = legacy_md_noise.layer_pass;
-  if (gp_md_noise.influence.layer_pass > 0) {
-    gp_md_noise.influence.flag |= GREASE_PENCIL_INFLUENCE_USE_LAYER_PASS_FILTER;
-  }
-  if (legacy_md_noise.flag & GP_NOISE_INVERT_LAYERPASS) {
-    gp_md_noise.influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_LAYER_PASS_FILTER;
-  }
+  legacy_object_modifier_influence(gp_md_noise.influence,
+                                   legacy_md_noise.layername,
+                                   legacy_md_noise.layer_pass,
+                                   legacy_md_noise.flag & GP_NOISE_INVERT_LAYER,
+                                   legacy_md_noise.flag & GP_NOISE_INVERT_LAYERPASS,
+                                   &legacy_md_noise.material,
+                                   legacy_md_noise.pass_index,
+                                   legacy_md_noise.flag & GP_NOISE_INVERT_MATERIAL,
+                                   legacy_md_noise.flag & GP_NOISE_INVERT_PASS,
+                                   legacy_md_noise.vgname,
+                                   legacy_md_noise.flag & GP_NOISE_INVERT_VGROUP,
+                                   &legacy_md_noise.curve_intensity,
+                                   legacy_md_noise.flag & GP_NOISE_CUSTOM_CURVE);
+}
 
-  if (legacy_md_noise.material) {
-    gp_md_noise.influence.material = legacy_md_noise.material;
-    legacy_md_noise.material = nullptr;
+static GreasePencilModifierColorMode convert_color_mode(eGp_Vertex_Mode legacy_mode)
+{
+  switch (legacy_mode) {
+    case GPPAINT_MODE_BOTH:
+      return MOD_GREASE_PENCIL_COLOR_BOTH;
+    case GPPAINT_MODE_STROKE:
+      return MOD_GREASE_PENCIL_COLOR_STROKE;
+    case GPPAINT_MODE_FILL:
+      return MOD_GREASE_PENCIL_COLOR_FILL;
   }
-  if (legacy_md_noise.flag & GP_NOISE_INVERT_MATERIAL) {
-    gp_md_noise.influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_FILTER;
-  }
-  gp_md_noise.influence.material_pass = legacy_md_noise.pass_index;
-  if (gp_md_noise.influence.material_pass > 0) {
-    gp_md_noise.influence.flag |= GREASE_PENCIL_INFLUENCE_USE_MATERIAL_PASS_FILTER;
-  }
-  if (legacy_md_noise.flag & GP_NOISE_INVERT_PASS) {
-    gp_md_noise.influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_PASS_FILTER;
-  }
+  return MOD_GREASE_PENCIL_COLOR_BOTH;
+}
 
-  if (legacy_md_noise.vgname[0] != '\0') {
-    STRNCPY(gp_md_noise.influence.vertex_group_name, legacy_md_noise.vgname);
+static GreasePencilTintModifierMode convert_tint_mode(eTintGpencil_Type legacy_mode)
+{
+  switch (legacy_mode) {
+    case GP_TINT_UNIFORM:
+      return MOD_GREASE_PENCIL_TINT_UNIFORM;
+    case GP_TINT_GRADIENT:
+      return MOD_GREASE_PENCIL_TINT_GRADIENT;
   }
-  if (legacy_md_noise.flag & GP_NOISE_INVERT_VGROUP) {
-    gp_md_noise.influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP;
-  }
+  return MOD_GREASE_PENCIL_TINT_UNIFORM;
+}
 
-  if (legacy_md_noise.curve_intensity) {
-    if (gp_md_noise.influence.custom_curve) {
-      BKE_curvemapping_free(gp_md_noise.influence.custom_curve);
-    }
-    gp_md_noise.influence.custom_curve = legacy_md_noise.curve_intensity;
-    legacy_md_noise.curve_intensity = nullptr;
+static void legacy_object_modifier_tint(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilTint, legacy_md);
+  auto &md_tint = reinterpret_cast<GreasePencilTintModifierData &>(md);
+  auto &legacy_md_tint = reinterpret_cast<TintGpencilModifierData &>(legacy_md);
+
+  md_tint.flag = 0;
+  if (legacy_md_tint.flag & GP_TINT_WEIGHT_FACTOR) {
+    md_tint.flag |= MOD_GREASE_PENCIL_TINT_USE_WEIGHT_AS_FACTOR;
   }
-  if (legacy_md_noise.flag & GP_NOISE_CUSTOM_CURVE) {
-    gp_md_noise.influence.flag |= GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE;
-  }
+  md_tint.color_mode = convert_color_mode(eGp_Vertex_Mode(legacy_md_tint.mode));
+  md_tint.tint_mode = convert_tint_mode(eTintGpencil_Type(legacy_md_tint.type));
+  md_tint.factor = legacy_md_tint.factor;
+  md_tint.radius = legacy_md_tint.radius;
+  copy_v3_v3(md_tint.color, legacy_md_tint.rgb);
+  md_tint.object = legacy_md_tint.object;
+  legacy_md_tint.object = nullptr;
+  MEM_SAFE_FREE(md_tint.color_ramp);
+  md_tint.color_ramp = legacy_md_tint.colorband;
+  legacy_md_tint.colorband = nullptr;
+
+  legacy_object_modifier_influence(md_tint.influence,
+                                   legacy_md_tint.layername,
+                                   legacy_md_tint.layer_pass,
+                                   legacy_md_tint.flag & GP_TINT_INVERT_LAYER,
+                                   legacy_md_tint.flag & GP_TINT_INVERT_LAYERPASS,
+                                   &legacy_md_tint.material,
+                                   legacy_md_tint.pass_index,
+                                   legacy_md_tint.flag & GP_TINT_INVERT_MATERIAL,
+                                   legacy_md_tint.flag & GP_TINT_INVERT_PASS,
+                                   legacy_md_tint.vgname,
+                                   legacy_md_tint.flag & GP_TINT_INVERT_VGROUP,
+                                   &legacy_md_tint.curve_intensity,
+                                   legacy_md_tint.flag & GP_TINT_CUSTOM_CURVE);
 }
 
 static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
@@ -692,17 +898,14 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
         /* Unknown type, just ignore. */
         break;
       case eGpencilModifierType_Noise: {
-        NoiseGpencilModifierData &legacy_md_noise = *reinterpret_cast<NoiseGpencilModifierData *>(
-            gpd_md);
-        GreasePencilNoiseModifierData &gp_md_noise =
-            reinterpret_cast<GreasePencilNoiseModifierData &>(
-                legacy_object_modifier_common(object, eModifierType_GreasePencilNoise, *gpd_md));
-        legacy_object_modifier_noise(gp_md_noise, legacy_md_noise);
+        legacy_object_modifier_noise(object, *gpd_md);
         break;
       }
       case eGpencilModifierType_Subdiv:
       case eGpencilModifierType_Thick:
       case eGpencilModifierType_Tint:
+        legacy_object_modifier_tint(object, *gpd_md);
+        break;
       case eGpencilModifierType_Array:
       case eGpencilModifierType_Build:
       case eGpencilModifierType_Opacity:
@@ -750,7 +953,7 @@ void legacy_gpencil_object(Main &bmain, Object &object)
 
   legacy_object_modifiers(bmain, object);
 
-  /* Layer adjusments should be added after all other modifiers. */
+  /* Layer adjustments should be added after all other modifiers. */
   layer_adjustments_to_modifiers(bmain, *gpd, object);
   /* Thickness factor is applied after all other changes to the radii. */
   thickness_factor_to_modifier(*gpd, object);
