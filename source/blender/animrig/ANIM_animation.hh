@@ -306,6 +306,8 @@ class ChannelsForOutput : public ::AnimationChannelsForOutput {
   ChannelsForOutput(const ChannelsForOutput &other) = default;
   ~ChannelsForOutput() = default;
 
+  void free_data();
+
   /* FCurves access. */
   blender::Span<const FCurve *> fcurves() const;
   blender::MutableSpan<FCurve *> fcurves();

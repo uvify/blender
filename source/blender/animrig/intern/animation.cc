@@ -761,14 +761,23 @@ FCurve *KeyframeStrip::keyframe_insert(const Output &out,
 void KeyframeStrip::free_data()
 {
   for (ChannelsForOutput *chans_for_out : this->channels_for_output_span()) {
-    BKE_anim_channels_for_output_free_data(chans_for_out);
+    chans_for_out->free_data();
     MEM_delete(chans_for_out);
   }
   MEM_SAFE_FREE(this->channels_for_output_array);
   this->channels_for_output_array_num = 0;
 }
 
-/* KeyframeAnimationStrip C++ implementation. */
+/* AnimationChannelsForOutput C++ implementation. */
+
+void ChannelsForOutput::free_data()
+{
+  for (FCurve *fcu : this->fcurves()) {
+    BKE_fcurve_free(fcu);
+  }
+  MEM_SAFE_FREE(this->fcurve_array);
+  this->fcurve_array_num = 0;
+}
 
 blender::Span<const FCurve *> ChannelsForOutput::fcurves() const
 {
