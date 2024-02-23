@@ -127,7 +127,7 @@ TEST_F(AnimationLayersTest, add_strip)
 
   /* Add some keys to check that also the strip data is freed correctly. */
   const KeyframeSettings settings = get_keyframe_settings(false);
-  Output &out = *anim->output_add();
+  Output &out = anim->output_add();
   strip->as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
   another_strip->as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
 }
@@ -141,7 +141,7 @@ TEST_F(AnimationLayersTest, remove_strip)
 
   /* Add some keys to check that also the strip data is freed correctly. */
   const KeyframeSettings settings = get_keyframe_settings(false);
-  Output &out = *anim->output_add();
+  Output &out = anim->output_add();
   strip0.as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
   strip1.as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
   strip2.as<KeyframeStrip>().keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
@@ -166,95 +166,92 @@ TEST_F(AnimationLayersTest, remove_strip)
 
 TEST_F(AnimationLayersTest, add_output)
 {
-  Output *out = anim->output_add();
+  Output &out = anim->output_add();
   EXPECT_EQ(1, anim->last_output_stable_index);
-  ASSERT_NE(nullptr, out);
-  EXPECT_EQ(1, out->stable_index);
+  EXPECT_EQ(1, out.stable_index);
 
-  EXPECT_STREQ("", out->name);
-  EXPECT_EQ(0, out->idtype);
+  EXPECT_STREQ("", out.name);
+  EXPECT_EQ(0, out.idtype);
 
-  EXPECT_TRUE(out->assign_id(&cube->id));
-  EXPECT_STREQ("", out->name)
+  EXPECT_TRUE(out.assign_id(&cube->id));
+  EXPECT_STREQ("", out.name)
       << "This low-level assignment function should not manipulate the Output name";
-  EXPECT_EQ(GS(cube->id.name), out->idtype);
+  EXPECT_EQ(GS(cube->id.name), out.idtype);
 }
 
 TEST_F(AnimationLayersTest, add_output_multiple)
 {
-  Output *out_cube = anim->output_add();
-  Output *out_suzanne = anim->output_add();
-  EXPECT_TRUE(out_cube->assign_id(&cube->id));
-  EXPECT_TRUE(out_suzanne->assign_id(&suzanne->id));
+  Output &out_cube = anim->output_add();
+  Output &out_suzanne = anim->output_add();
+  EXPECT_TRUE(out_cube.assign_id(&cube->id));
+  EXPECT_TRUE(out_suzanne.assign_id(&suzanne->id));
 
   EXPECT_EQ(2, anim->last_output_stable_index);
-  EXPECT_EQ(1, out_cube->stable_index);
-  EXPECT_EQ(2, out_suzanne->stable_index);
+  EXPECT_EQ(1, out_cube.stable_index);
+  EXPECT_EQ(2, out_suzanne.stable_index);
 }
 
 TEST_F(AnimationLayersTest, anim_assign_id)
 {
   /* Assign to the only, 'virgin' Output, should always work. */
-  Output *out_cube = anim->output_add();
-  ASSERT_TRUE(anim->assign_id(out_cube, &cube->id));
-  EXPECT_EQ(out_cube->stable_index, cube->adt->output_stable_index);
-  EXPECT_STREQ(out_cube->name, cube->id.name)
-      << "The output should be named after the assigned ID";
-  EXPECT_STREQ(out_cube->name, cube->adt->output_name)
+  Output &out_cube = anim->output_add();
+  ASSERT_TRUE(anim->assign_id(&out_cube, &cube->id));
+  EXPECT_EQ(out_cube.stable_index, cube->adt->output_stable_index);
+  EXPECT_STREQ(out_cube.name, cube->id.name) << "The output should be named after the assigned ID";
+  EXPECT_STREQ(out_cube.name, cube->adt->output_name)
       << "The output name should be copied to the adt";
 
   /* Assign another ID to the same Output. */
-  ASSERT_TRUE(anim->assign_id(out_cube, &suzanne->id));
-  EXPECT_STREQ(out_cube->name, cube->id.name)
+  ASSERT_TRUE(anim->assign_id(&out_cube, &suzanne->id));
+  EXPECT_STREQ(out_cube.name, cube->id.name)
       << "The output should not be renamed on assignment once it has a name";
-  EXPECT_STREQ(out_cube->name, cube->adt->output_name)
+  EXPECT_STREQ(out_cube.name, cube->adt->output_name)
       << "The output name should be copied to the adt";
 
   /* Assign Cube to another output without unassigning first. */
-  Output *another_out_cube = anim->output_add();
-  ASSERT_FALSE(anim->assign_id(another_out_cube, &cube->id))
+  Output &another_out_cube = anim->output_add();
+  ASSERT_FALSE(anim->assign_id(&another_out_cube, &cube->id))
       << "Assigning animation (with this function) when already assigned should fail.";
 
   /* Assign Cube to another 'virgin' output. This should not cause a name
    * collision between the Outputs. */
   anim->unassign_id(&cube->id);
-  ASSERT_TRUE(anim->assign_id(another_out_cube, &cube->id));
-  EXPECT_EQ(another_out_cube->stable_index, cube->adt->output_stable_index);
-  EXPECT_STREQ("OBKüüübus.001", another_out_cube->name) << "The output should be uniquely named";
+  ASSERT_TRUE(anim->assign_id(&another_out_cube, &cube->id));
+  EXPECT_EQ(another_out_cube.stable_index, cube->adt->output_stable_index);
+  EXPECT_STREQ("OBKüüübus.001", another_out_cube.name) << "The output should be uniquely named";
   EXPECT_STREQ("OBKüüübus.001", cube->adt->output_name)
       << "The output name should be copied to the adt";
 
   /* Create an ID of another type. This should not be assignable to this output. */
   ID *mesh = static_cast<ID *>(BKE_id_new_nomain(ID_ME, "Mesh"));
-  EXPECT_FALSE(anim->assign_id(out_cube, mesh))
+  EXPECT_FALSE(anim->assign_id(&out_cube, mesh))
       << "Mesh should not be animatable by an Object output";
   BKE_id_free(nullptr, mesh);
 }
 
 TEST_F(AnimationLayersTest, rename_output)
 {
-  Output *out_cube = anim->output_add();
-  ASSERT_TRUE(anim->assign_id(out_cube, &cube->id));
-  EXPECT_EQ(out_cube->stable_index, cube->adt->output_stable_index);
-  EXPECT_STREQ(out_cube->name, cube->id.name)
-      << "The output should be named after the assigned ID";
-  EXPECT_STREQ(out_cube->name, cube->adt->output_name)
+  Output &out_cube = anim->output_add();
+  ASSERT_TRUE(anim->assign_id(&out_cube, &cube->id));
+  EXPECT_EQ(out_cube.stable_index, cube->adt->output_stable_index);
+  EXPECT_STREQ(out_cube.name, cube->id.name) << "The output should be named after the assigned ID";
+  EXPECT_STREQ(out_cube.name, cube->adt->output_name)
       << "The output name should be copied to the adt";
 
-  anim->output_name_set(*out_cube, "New Output Name");
-  EXPECT_STREQ("New Output Name", out_cube->name);
+  anim->output_name_set(out_cube, "New Output Name");
+  EXPECT_STREQ("New Output Name", out_cube.name);
   /* At this point the output name will not have been copied to the cube
    * AnimData. However, I don't want to test for that here, as it's not exactly
    * desirable behaviour, but more of a side-effect of the current
    * implementation. */
 
-  anim->output_name_propagate(bmain, *out_cube);
+  anim->output_name_propagate(bmain, out_cube);
   EXPECT_STREQ("New Output Name", cube->adt->output_name);
 
   /* Finally, do another rename, do NOT call the propagate function, then
    * unassign. This should still result in the correct output name being stored
    * on the ADT. */
-  anim->output_name_set(*out_cube, "Even Newer Name");
+  anim->output_name_set(out_cube, "Even Newer Name");
   anim->unassign_id(&cube->id);
   EXPECT_STREQ("Even Newer Name", cube->adt->output_name);
 }
@@ -268,11 +265,11 @@ TEST_F(AnimationLayersTest, find_suitable_output)
   /* ===
    * Output exists with the same name & type as the ID, but the ID doesn't have any AnimData yet.
    * These should nevertheless be matched up. */
-  Output *out = anim->output_add();
-  out->stable_index = 327;
-  STRNCPY_UTF8(out->name, "OBKüüübus");
-  out->idtype = GS(cube->id.name);
-  EXPECT_EQ(out, anim->find_suitable_output_for(&cube->id));
+  Output &out = anim->output_add();
+  out.stable_index = 327;
+  STRNCPY_UTF8(out.name, "OBKüüübus");
+  out.idtype = GS(cube->id.name);
+  EXPECT_EQ(&out, anim->find_suitable_output_for(&cube->id));
 
   /* ===
    * Output exists with the same name & type as the ID, and the ID has an AnimData with the same
@@ -281,15 +278,15 @@ TEST_F(AnimationLayersTest, find_suitable_output)
    * matching. */
 
   /* Create an output with the stable index that should be ignored.*/
-  Output *other_out = anim->output_add();
-  other_out->stable_index = 47;
+  Output &other_out = anim->output_add();
+  other_out.stable_index = 47;
 
   AnimData *adt = BKE_animdata_ensure_id(&cube->id);
   adt->animation = nullptr;
   /* Configure adt to use the stable index of one output, and the name of the other. */
-  adt->output_stable_index = other_out->stable_index;
-  STRNCPY_UTF8(adt->output_name, out->name);
-  EXPECT_EQ(out, anim->find_suitable_output_for(&cube->id));
+  adt->output_stable_index = other_out.stable_index;
+  STRNCPY_UTF8(adt->output_name, out.name);
+  EXPECT_EQ(&out, anim->find_suitable_output_for(&cube->id));
 
   /* ===
    * Same situation as above (AnimData has name of one output, but stable index of another), except
@@ -297,14 +294,14 @@ TEST_F(AnimationLayersTest, find_suitable_output)
    * take precedence. */
   adt->animation = anim;
   id_us_plus(&anim->id);
-  EXPECT_EQ(other_out, anim->find_suitable_output_for(&cube->id));
+  EXPECT_EQ(&other_out, anim->find_suitable_output_for(&cube->id));
 
   /* ===
    * An output exists, but doesn't match anything in the anim data of the cube. This should fall
    * back to using the ID name. */
   adt->output_stable_index = 161;
   STRNCPY_UTF8(adt->output_name, "¿¿What's this??");
-  EXPECT_EQ(out, anim->find_suitable_output_for(&cube->id));
+  EXPECT_EQ(&out, anim->find_suitable_output_for(&cube->id));
 }
 
 TEST_F(AnimationLayersTest, strip)
@@ -346,25 +343,25 @@ TEST_F(AnimationLayersTest, strip)
 
 TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
 {
-  Output *out = anim->output_add();
-  EXPECT_TRUE(out->assign_id(&cube->id));
+  Output &out = anim->output_add();
+  EXPECT_TRUE(out.assign_id(&cube->id));
   Layer *layer = anim->layer_add("Kübus layer");
 
   Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
   KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
 
   const KeyframeSettings settings = get_keyframe_settings(false);
-  FCurve *fcurve_loc_a = key_strip.keyframe_insert(*out, "location", 0, {1.0f, 47.0f}, settings);
+  FCurve *fcurve_loc_a = key_strip.keyframe_insert(out, "location", 0, {1.0f, 47.0f}, settings);
   ASSERT_NE(nullptr, fcurve_loc_a)
       << "Expect all the necessary data structures to be created on insertion of a key";
 
   /* Check the strip was created correctly, with the channels for the output. */
   ASSERT_EQ(1, key_strip.channels_for_output_span().size());
   ChannelsForOutput *chan_for_out = key_strip.channels_for_output_at(0);
-  EXPECT_EQ(out->stable_index, chan_for_out->output_stable_index);
+  EXPECT_EQ(out.stable_index, chan_for_out->output_stable_index);
 
   /* Insert a second key, should insert into the same FCurve as before. */
-  FCurve *fcurve_loc_b = key_strip.keyframe_insert(*out, "location", 0, {5.0f, 47.1f}, settings);
+  FCurve *fcurve_loc_b = key_strip.keyframe_insert(out, "location", 0, {5.0f, 47.1f}, settings);
   ASSERT_EQ(fcurve_loc_a, fcurve_loc_b)
       << "Expect same (output/rna path/array index) tuple to return the same FCurve.";
 
@@ -374,7 +371,7 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
 
   /* Insert another key for another property, should create another FCurve. */
   FCurve *fcurve_rot = key_strip.keyframe_insert(
-      *out, "rotation_quaternion", 0, {1.0f, 0.25f}, settings);
+      out, "rotation_quaternion", 0, {1.0f, 0.25f}, settings);
   EXPECT_NE(fcurve_loc_b, fcurve_rot)
       << "Expected rotation and location curves to be different FCurves.";
   EXPECT_EQ(2, chan_for_out->fcurves().size()) << "Expected a second FCurve to be created.";

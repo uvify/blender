@@ -91,7 +91,7 @@ class Animation : public ::Animation {
   Output *output_for_id(const ID *animated_id);
   const Output *output_for_id(const ID *animated_id) const;
 
-  Output *output_add();
+  Output &output_add();
 
   /** Assign this animation to the ID.
    *

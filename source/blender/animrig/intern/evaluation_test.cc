@@ -53,7 +53,7 @@ class AnimationEvaluationTest : public testing::Test {
 
     cube = BKE_object_add_only_object(nullptr, OB_EMPTY, "Küüübus");
 
-    out = anim.output_add();
+    out = &anim.output_add();
     anim.assign_id(out, &cube->id);
     layer = anim.layer_add("Kübus layer");
 

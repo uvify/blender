@@ -306,7 +306,7 @@ Output &Animation::output_allocate_()
   return output;
 }
 
-Output *Animation::output_add()
+Output &Animation::output_add()
 {
   Output &output = this->output_allocate_();
 
@@ -314,7 +314,7 @@ Output *Animation::output_add()
   grow_array_and_append<::AnimationOutput *>(
       &this->output_array, &this->output_array_num, &output);
 
-  return &output;
+  return output;
 }
 
 Output *Animation::find_suitable_output_for(const ID *animated_id)
