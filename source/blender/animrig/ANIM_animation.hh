@@ -195,7 +195,7 @@ class Output : public ::AnimationOutput {
    * \see assign_animation
    * \see Animation::assign_id
    */
-  bool assign_id(ID *animated_id);
+  bool connect_id(ID *animated_id);
 
   bool is_suitable_for(const ID *animated_id) const;
 };

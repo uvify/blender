@@ -379,7 +379,7 @@ bool Animation::assign_id(Output *output, ID *animated_id)
   }
 
   if (output) {
-    if (!output->assign_id(animated_id)) {
+    if (!output->connect_id(animated_id)) {
       return false;
     }
 
@@ -501,7 +501,7 @@ void Layer::free_data()
 
 /* ----- AnimationOutput C++ implementation ----------- */
 
-bool Output::assign_id(ID *animated_id)
+bool Output::connect_id(ID *animated_id)
 {
   if (!this->is_suitable_for(animated_id)) {
     return false;

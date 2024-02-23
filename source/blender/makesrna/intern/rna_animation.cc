@@ -231,7 +231,7 @@ static void rna_AnimData_animation_output_index_set(PointerRNA *ptr, const int n
                new_output_index);
     return;
   }
-  out->assign_id(animated_id);
+  out->connect_id(animated_id);
 }
 #  endif
 

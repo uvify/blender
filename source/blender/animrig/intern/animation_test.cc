@@ -173,7 +173,7 @@ TEST_F(AnimationLayersTest, add_output)
   EXPECT_STREQ("", out.name);
   EXPECT_EQ(0, out.idtype);
 
-  EXPECT_TRUE(out.assign_id(&cube->id));
+  EXPECT_TRUE(out.connect_id(&cube->id));
   EXPECT_STREQ("", out.name)
       << "This low-level assignment function should not manipulate the Output name";
   EXPECT_EQ(GS(cube->id.name), out.idtype);
@@ -183,8 +183,8 @@ TEST_F(AnimationLayersTest, add_output_multiple)
 {
   Output &out_cube = anim->output_add();
   Output &out_suzanne = anim->output_add();
-  EXPECT_TRUE(out_cube.assign_id(&cube->id));
-  EXPECT_TRUE(out_suzanne.assign_id(&suzanne->id));
+  EXPECT_TRUE(out_cube.connect_id(&cube->id));
+  EXPECT_TRUE(out_suzanne.connect_id(&suzanne->id));
 
   EXPECT_EQ(2, anim->last_output_stable_index);
   EXPECT_EQ(1, out_cube.stable_index);
@@ -344,7 +344,7 @@ TEST_F(AnimationLayersTest, strip)
 TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
 {
   Output &out = anim->output_add();
-  EXPECT_TRUE(out.assign_id(&cube->id));
+  EXPECT_TRUE(out.connect_id(&cube->id));
   Layer *layer = anim->layer_add("Kübus layer");
 
   Strip *strip = layer->strip_add(ANIM_STRIP_TYPE_KEYFRAME);
