@@ -182,7 +182,6 @@ class Output : public ::AnimationOutput {
    * Let the given ID receive animation from this output.
    *
    * This is a low-level function; for most purposes you want
-
    * #Animation::assign_id instead.
    *
    * \note This does _not_ set animated_id->adt->animation to the owner of this
@@ -198,6 +197,8 @@ class Output : public ::AnimationOutput {
   bool connect_id(ID *animated_id);
 
   bool is_suitable_for(const ID *animated_id) const;
+
+  bool has_name() const;
 };
 static_assert(sizeof(Output) == sizeof(::AnimationOutput),
               "DNA struct and its C++ wrapper must have the same size");

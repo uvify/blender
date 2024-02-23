@@ -146,6 +146,7 @@ static AnimationOutput *rna_Animation_outputs_new(Animation *anim_id,
   animrig::Animation &anim = anim_id->wrap();
   animrig::Output &output = anim.output_add();
   output.connect_id(animated_id);
+  anim.output_name_set(output, animated_id->name);
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
   return &output;

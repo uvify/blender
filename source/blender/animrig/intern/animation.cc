@@ -527,6 +527,11 @@ bool Output::is_suitable_for(const ID *animated_id) const
   return this->idtype == 0 || this->idtype == animated_idtype;
 }
 
+bool Output::has_name() const
+{
+  return this->name[0] != '\0';
+}
+
 bool assign_animation(Animation &anim, ID *animated_id)
 {
   unassign_animation(animated_id);
