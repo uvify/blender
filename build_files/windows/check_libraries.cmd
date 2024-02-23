@@ -1,4 +1,4 @@
-set BUILD_VS_LIBDIR="lib\windows_x64"
+set BUILD_VS_LIBDIR=lib/windows_x64
 
 if NOT "%verbose%" == "" (
 	echo Library Directory = "%BUILD_VS_LIBDIR%"
@@ -14,9 +14,19 @@ if NOT EXIST "%BUILD_VS_LIBDIR%\.git" (
 			echo.
 			echo Downloading %BUILD_VS_LIBDIR% libraries, please wait.
 			echo.
+			echo *********************************************************
+			echo *                                                       *
+			echo * Note: Once the initial download finishes and you see  *
+			echo *       "Resolving deltas: 100%% (nnn/nnn) done"         *
+			echo *       a second, much larger, update will occur with   *
+			echo *       no visible updates. Please do not interrupt     *
+			echo *       this process. It may take over an hour to       *
+			echo *       complete depending on your internet connection. *
+			echo *                                                       *
+			echo *********************************************************
 :RETRY
-			"%GIT%" -C "%BLENDER_DIR%" config --local "submodule.%BUILD_VS_LIBDIR%.update" "checkout"
-			"%GIT%" -C "%BLENDER_DIR%" submodule update --init "%BUILD_VS_LIBDIR%"
+			"%GIT%" -C "%BLENDER_DIR%\" config --local "submodule.%BUILD_VS_LIBDIR%.update" "checkout"
+			"%GIT%" -C "%BLENDER_DIR%\" submodule update --progress --init "%BUILD_VS_LIBDIR%"
 			if errorlevel 1 (
 				set /p LibRetry= "Error during download, retry? y/n"
 				if /I "!LibRetry!"=="Y" (
@@ -28,7 +38,10 @@ if NOT EXIST "%BUILD_VS_LIBDIR%\.git" (
 				echo.
 				exit /b 1
 			)
-		)
+		) else (
+           echo Not downloading libraries, until this is resolved you CANNOT make a successful blender build.
+           exit /b 1
+        )
 	)
 ) else (
 	if NOT EXIST %PYTHON% (
