@@ -1285,6 +1285,63 @@ TEST(path_util, RelPath_BufferOverflowSubdir)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Tests for: #BLI_path_is_rel
+ * \{ */
+
+TEST(path_util, PathIsRel)
+{
+  EXPECT_TRUE(BLI_path_is_rel("//file.txt"));
+
+  EXPECT_FALSE(BLI_path_is_rel(""));
+  EXPECT_FALSE(BLI_path_is_rel("."));
+  EXPECT_FALSE(BLI_path_is_rel("\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("\\\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel(".hide/file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("C:/file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("../file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("\\\\host\\server\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("\\\\?\\C:\\server\\file.txt"));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Tests for: #BLI_path_is_abs_from_cwd
+ * \{ */
+
+TEST(path_util, PathIsAbsFromCwd)
+{
+#ifdef WIN32
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("/file.txt"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("/"));
+
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("C:"));
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("C:/file.txt"));
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("C:\\file.txt"));
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("\\\\host\\server\\file.txt"));
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("\\\\?\\C:\\server\\file.txt"));
+#else
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("/file.txt"));
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("/"));
+
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("C:"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("C:/file.txt"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("C:\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("\\\\host\\server\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("\\\\?\\C:\\server\\file.txt"));
+#endif
+
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd(""));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("."));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("file.txt"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("../file.txt"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("./file.txt"));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Tests for: #BLI_path_contains
  * \{ */
 
