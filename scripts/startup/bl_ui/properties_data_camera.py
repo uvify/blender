@@ -121,6 +121,10 @@ class DATA_PT_lens(CameraButtonsPanel, Panel):
                     col.prop(ccam, "fisheye_polynomial_k2", text="K2")
                     col.prop(ccam, "fisheye_polynomial_k3", text="K3")
                     col.prop(ccam, "fisheye_polynomial_k4", text="K4")
+                elif ccam.panorama_type == 'CYLINDER':
+                    sub = col.column(align=True)
+                    col.prop(ccam, "cylinder_hfov", text="horizontal fov")
+                    col.prop(ccam, "cylinder_vfov", text="vertical fov")
 
             elif engine in {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}:
                 if cam.lens_unit == 'MILLIMETERS':

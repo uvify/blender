@@ -69,6 +69,7 @@ enum_panorama_types = (
                           "Similar to most fisheye modern lens, takes sensor dimensions into consideration", 2),
     ('FISHEYE_LENS_POLYNOMIAL', "Fisheye Lens Polynomial",
      "Defines the lens projection as polynomial to allow real world camera lenses to be mimicked", 4),
+    ('CYLINDER', 'Cylinder', 'Cylinderical camera model', 6)
 )
 
 enum_curve_shape = (
@@ -1054,6 +1055,22 @@ class CyclesCameraSettings(bpy.types.PropertyGroup):
         name="Fisheye Polynomial K4",
         description="Coefficient K4 of the lens polynomial",
         default=camera.default_fisheye_polynomial[4], precision=6, step=0.1, subtype='ANGLE',
+    )
+
+    cylinder_hfov : FloatProperty(
+        name="Cylinder horizontal fov",
+        description="horizontal angle field of view for the cylinder lens",
+        min=0, max=2*pi,
+        subtype='ANGLE',
+        default=2*pi,
+    )
+
+    cylinder_vfov : FloatProperty(
+        name="Cylinder vertical fov",
+        description="vertical angle field of view for the cylinder lens",
+        min=0, max=pi,
+        subtype='ANGLE',
+        default=0.5*pi,
     )
 
     @classmethod

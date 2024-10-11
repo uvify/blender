@@ -107,6 +107,9 @@ NODE_DEFINE(Camera)
   SOCKET_FLOAT(fisheye_polynomial_k3, "Fisheye Polynomial K3", 0.0f);
   SOCKET_FLOAT(fisheye_polynomial_k4, "Fisheye Polynomial K4", 0.0f);
 
+  SOCKET_FLOAT(cylinder_hfov, "Cylinder Horizontal FOV", M_2PI_F);
+  SOCKET_FLOAT(cylinder_vfov, "Cylinder Vertical FOV", M_PI_4_F);
+
   static NodeEnum stereo_eye_enum;
   stereo_eye_enum.insert("none", STEREO_NONE);
   stereo_eye_enum.insert("left", STEREO_LEFT);
@@ -415,6 +418,8 @@ void Camera::update(Scene *scene)
   kcam->fisheye_lens_polynomial_bias = fisheye_polynomial_k0;
   kcam->fisheye_lens_polynomial_coefficients = make_float4(
       fisheye_polynomial_k1, fisheye_polynomial_k2, fisheye_polynomial_k3, fisheye_polynomial_k4);
+  kcam->cylinder_hfov = cylinder_hfov;
+  kcam->cylinder_vfov = cylinder_vfov;
 
   switch (stereo_eye) {
     case STEREO_LEFT:

@@ -165,6 +165,35 @@ ccl_device float2 direction_to_fisheye_lens_polynomial(
   return make_float2(u, v);
 }
 
+ccl_device float3 cylinder_to_direction(
+      float u, float v, float hfov, float vfov) {
+  float max_theta = hfov / 2.f;
+  float theta = (u - 0.5f) * 2.f * max_theta;
+  if (fabsf(theta) > max_theta) return zero_float3();
+  // u: right, v: up
+  // RDF -> UFR == z, -x, -y
+  float x = cosf(theta), y = -sinf(theta);
+  float z = (v - 0.5f) * 2.f * tanf(vfov / 2.f);
+  float invnorm = 1.f / sqrtf(1.f + z * z);
+  x *= invnorm;
+  y *= invnorm;
+  z *= invnorm;
+  return make_float3(x, y, z);
+}
+
+ccl_device float2 direction_to_cylinder(float3 dir, float hfov, float vfov) {
+  // float x = -dir.y, y = dir.z, z = dir.x;
+  // float max_theta = hfov / 2.f;
+  // float theta = atan2f(x, z);
+  // if (fabsf(theta) > max_theta) return make_float2(0.f, 0.f);
+  // float r = sqrtf(x * x + z * z);
+  // if (r < 1e-5f) return make_float2(0.5f, 0.5f);
+  // float u = (theta / max_theta + 1.f) / 2.f;
+  // float v = (y / r / tanf(vfov / 2.f) + 1) / 2.f;
+  // return make_float2(u, 1.f - v);
+  return make_float2(0.f, 0.f);
+}
+
 /* Mirror Ball <-> Cartesion direction */
 
 ccl_device float3 mirrorball_to_direction(float u, float v)
@@ -242,6 +271,9 @@ ccl_device_inline float3 panorama_to_direction(ccl_constant KernelCamera *cam, f
                                                   cam->fisheye_fov,
                                                   cam->sensorwidth,
                                                   cam->sensorheight);
+    case PANORAMA_CYLINDER:
+      return cylinder_to_direction(
+          u, v, cam->cylinder_hfov, cam->cylinder_vfov);
     case PANORAMA_FISHEYE_EQUISOLID:
     default:
       return fisheye_equisolid_to_direction(
@@ -266,6 +298,9 @@ ccl_device_inline float2 direction_to_panorama(ccl_constant KernelCamera *cam, f
                                                   cam->fisheye_lens_polynomial_coefficients,
                                                   cam->sensorwidth,
                                                   cam->sensorheight);
+    case PANORAMA_CYLINDER:
+      return direction_to_cylinder(
+          dir, cam->cylinder_hfov, cam->cylinder_vfov);
     case PANORAMA_FISHEYE_EQUISOLID:
     default:
       return direction_to_fisheye_equisolid(

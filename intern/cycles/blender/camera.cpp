@@ -63,6 +63,9 @@ struct BlenderCamera {
   float fisheye_polynomial_k3;
   float fisheye_polynomial_k4;
 
+  float cylinder_hfov;
+  float cylinder_vfov;
+
   enum { AUTO, HORIZONTAL, VERTICAL } sensor_fit;
   float sensor_width;
   float sensor_height;
@@ -208,6 +211,9 @@ static void blender_camera_from_object(BlenderCamera *bcam,
     bcam->fisheye_polynomial_k2 = RNA_float_get(&ccamera, "fisheye_polynomial_k2");
     bcam->fisheye_polynomial_k3 = RNA_float_get(&ccamera, "fisheye_polynomial_k3");
     bcam->fisheye_polynomial_k4 = RNA_float_get(&ccamera, "fisheye_polynomial_k4");
+
+    bcam->cylinder_hfov = RNA_float_get(&ccamera, "cylinder_hfov");
+    bcam->cylinder_vfov = RNA_float_get(&ccamera, "cylinder_vfov");
 
     bcam->interocular_distance = b_camera.stereo().interocular_distance();
     if (b_camera.stereo().convergence_mode() == BL::CameraStereoData::convergence_mode_PARALLEL) {
@@ -481,6 +487,9 @@ static void blender_camera_sync(Camera *cam,
   cam->set_fisheye_polynomial_k2(bcam->fisheye_polynomial_k2);
   cam->set_fisheye_polynomial_k3(bcam->fisheye_polynomial_k3);
   cam->set_fisheye_polynomial_k4(bcam->fisheye_polynomial_k4);
+
+  cam->set_cylinder_hfov(bcam->cylinder_hfov);
+  cam->set_cylinder_vfov(bcam->cylinder_vfov);
 
   cam->set_longitude_min(bcam->longitude_min);
   cam->set_longitude_max(bcam->longitude_max);
